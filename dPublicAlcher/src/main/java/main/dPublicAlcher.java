@@ -20,7 +20,13 @@ import com.osmb.api.ui.spellbook.StandardSpellbook;
 
 
 // Script manifest (displays in script overview)
-@ScriptDefinition(name = "dPublic Alcher", description = "Alchs items (both high & low) until out of items or runes.", skillCategory = SkillCategory.MAGIC, version = 1.0, author = "JustDavyy")
+@ScriptDefinition(
+        name = "dPublic Alcher",
+        description = "Alchs items (both high & low) until out of items or runes.",
+        skillCategory = SkillCategory.MAGIC,
+        version = 1.0,
+        author = "JustDavyy"
+)
 
 public class dPublicAlcher extends Script {
     public static boolean setupDone = false;
@@ -51,7 +57,7 @@ public class dPublicAlcher extends Script {
         log("INFO", "Starting dPublic Alcher v1.0");
 
         // Build and show our UI
-        ScriptUI ui = new ScriptUI();
+        ScriptUI ui = new ScriptUI(this);
         Scene scene = ui.buildScene(this);
         getStageController().show(scene, "Alcher Options", false);
 
