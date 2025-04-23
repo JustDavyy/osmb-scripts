@@ -1,0 +1,97 @@
+package tasks;
+
+import com.osmb.api.item.ItemID;
+import com.osmb.api.item.ItemSearchResult;
+import com.osmb.api.location.position.types.WorldPosition;
+import com.osmb.api.scene.RSObject;
+import com.osmb.api.script.Script;
+import com.osmb.api.utils.UIResultList;
+import com.osmb.api.utils.timing.Timer;
+import main.dWinemaker;
+import utils.Task;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static main.dWinemaker.*;
+
+public class BankTask extends Task {
+
+    public BankTask(Script script) {
+        super(script);
+    }
+
+    @Override
+    public boolean activate() {
+        return hasReqs && shouldBank;
+    }
+
+    @Override
+    public boolean execute() {
+        if (!script.getWidgetManager().getBank().isVisible()) {
+            openBank();
+            return false;
+        }
+
+        script.log(getClass(), "Depositing full inventory...");
+        script.getWidgetManager().getBank().depositAll(new int[0]);
+
+        UIResultList<ItemSearchResult> grapesBank = script.getItemManager().findAllOfItem(script.getWidgetManager().getBank(), grapeID);
+        UIResultList<ItemSearchResult> jugsBank = script.getItemManager().findAllOfItem(script.getWidgetManager().getBank(), ItemID.JUG_OF_WATER);
+
+        if (grapesBank.isNotFound() || jugsBank.isNotFound()) {
+            script.log(getClass(), "Ran out of supplies. Stopping script.");
+            script.stop();
+            return false;
+        }
+
+        boolean randomOrder = script.random(2) == 0;
+        int targetAmount = 14;
+
+        if (randomOrder) {
+            script.getWidgetManager().getBank().withdraw(grapeID, targetAmount);
+            script.getWidgetManager().getBank().withdraw(ItemID.JUG_OF_WATER, targetAmount);
+        } else {
+            script.getWidgetManager().getBank().withdraw(ItemID.JUG_OF_WATER, targetAmount);
+            script.getWidgetManager().getBank().withdraw(grapeID, targetAmount);
+        }
+
+        script.getWidgetManager().getBank().close();
+        script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), 5000);
+        shouldBank = false;
+
+        return false;
+    }
+
+    private void openBank() {
+        script.log(getClass(), "Searching for a bank...");
+
+        List<RSObject> banksFound = script.getObjectManager().getObjects(dWinemaker.bankQuery);
+        if (banksFound.isEmpty()) {
+            script.log(getClass(), "No bank objects found.");
+            return;
+        }
+
+        RSObject bank = (RSObject) script.getUtils().getClosest(banksFound);
+        if (!bank.interact(dWinemaker.BANK_ACTIONS)) {
+            script.log(getClass(), "Failed to interact with bank object.");
+            return;
+        }
+
+        AtomicReference<Timer> positionChangeTimer = new AtomicReference<>(new Timer());
+        AtomicReference<WorldPosition> previousPosition = new AtomicReference<>(null);
+
+        script.submitTask(() -> {
+            WorldPosition current = script.getWorldPosition();
+            if (current == null) return false;
+
+            if (!Objects.equals(current, previousPosition.get())) {
+                positionChangeTimer.get().reset();
+                previousPosition.set(current);
+            }
+
+            return script.getWidgetManager().getBank().isVisible() || positionChangeTimer.get().timeElapsed() > 2000;
+        }, 15000, true, false, true);
+    }
+}
