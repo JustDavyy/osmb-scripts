@@ -3,23 +3,27 @@ package main;
 // OSMB specific imports
 import com.osmb.api.ScriptCore;
 import com.osmb.api.item.ItemID;
+import com.osmb.api.javafx.JavaFXUtils;
 import com.osmb.api.ui.spellbook.StandardSpellbook;
+import com.osmb.api.javafx.ItemSearchDialogue;
 
 // General java imports
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 public class ScriptUI {
-
+    private ImageView itemToAlchView;
     private static final StandardSpellbook[] ALCHEMY_SPELLS = {
             StandardSpellbook.LOW_ALCHEMY,
             StandardSpellbook.HIGH_LEVEL_ALCHEMY
     };
 
     private ComboBox<StandardSpellbook> spellComboBox;
-    private TextField itemIdField;
+    private int selectedItemID = ItemID.BANK_FILLER;
 
     public Scene buildScene(ScriptCore core) {
         VBox root = new VBox();
@@ -31,10 +35,33 @@ public class ScriptUI {
         spellComboBox.getItems().addAll(ALCHEMY_SPELLS);
         spellComboBox.getSelectionModel().select(StandardSpellbook.HIGH_LEVEL_ALCHEMY);
 
-        // Item ID entry
-        Label itemIdLabel = new Label("Enter item ID to alch");
-        itemIdField = new TextField("892"); // Default: Rune arrows
-        itemIdField.setMaxWidth(100);
+        // Item to alch
+        Label itemLabel = new Label("Item to alch");
+
+        itemToAlchView = JavaFXUtils.getItemImageView(core, selectedItemID);
+        itemToAlchView.setFitWidth(32);
+        itemToAlchView.setFitHeight(32);
+
+        Button itemSearchButton = new Button("\uD83D\uDD0E Search");
+        itemSearchButton.setOnAction(actionEvent -> {
+            int itemID = ItemSearchDialogue.show(core, (Stage) itemSearchButton.getScene().getWindow());
+            if (itemID == -1) {
+                itemID = ItemID.BANK_FILLER;
+            }
+            ImageView imageView = JavaFXUtils.getItemImageView(core, itemID);
+            if (imageView != null) {
+                selectedItemID = itemID;
+                itemToAlchView.setImage(imageView.getImage());
+            }
+        });
+
+        HBox itemSelectionHBox = new HBox(itemToAlchView, itemSearchButton);
+        itemSelectionHBox.setSpacing(5);
+        itemSelectionHBox.setStyle("-fx-alignment: center");
+
+        VBox itemBox = new VBox(itemLabel, itemSelectionHBox);
+        itemBox.setSpacing(5);
+        itemBox.setStyle("-fx-alignment: center");
 
         // Confirm button
         Button confirmButton = new Button("Confirm");
@@ -43,8 +70,7 @@ public class ScriptUI {
                 ((Stage) confirmButton.getScene().getWindow()).close();
         });
 
-        // Add everything to the UI
-        root.getChildren().addAll(spellLabel, spellComboBox, itemIdLabel, itemIdField, confirmButton);
+        root.getChildren().addAll(spellLabel, spellComboBox, itemBox, confirmButton);
 
         Scene scene = new Scene(root);
         scene.getStylesheets().add("style.css");
@@ -56,10 +82,6 @@ public class ScriptUI {
     }
 
     public int getSelectedItemId() {
-        try {
-            return Integer.parseInt(itemIdField.getText().trim());
-        } catch (NumberFormatException e) {
-            return -1;
-        }
+        return selectedItemID;
     }
 }

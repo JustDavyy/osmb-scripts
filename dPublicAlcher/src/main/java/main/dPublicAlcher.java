@@ -37,6 +37,15 @@ public class dPublicAlcher extends Script {
         super(scriptCore);
     }
 
+    // Override regions to prioritise to prevent global searches
+    @Override
+    public int[] regionsToPrioritise() {
+        return new int[]{
+                12598, // Grand Exchange
+                6461, // Wintertodt bank
+        };
+    }
+
     @Override
     public void onStart(){
         log("INFO", "Starting dPublic Alcher v1.0");
