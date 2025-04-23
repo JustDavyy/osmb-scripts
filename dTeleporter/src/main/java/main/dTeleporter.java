@@ -8,7 +8,7 @@ import javafx.scene.Scene;
 import java.util.Arrays;
 import java.util.List;
 
-import tasks.AlchTask;
+import tasks.TeleportTask;
 import tasks.Setup;
 import utils.Task;
 
@@ -21,25 +21,21 @@ import com.osmb.api.ui.spellbook.StandardSpellbook;
 
 // Script manifest (displays in script overview)
 @ScriptDefinition(
-        name = "dPublic Alcher",
-        description = "Alchs items (both high & low) until out of items or runes.",
+        name = "dTeleporter",
+        description = "Trains magic by continuously casting teleportation spells.",
         skillCategory = SkillCategory.MAGIC,
-        version = 1.1,
+        version = 1.0,
         author = "JustDavyy"
 )
 
-public class dPublicAlcher extends Script {
+public class dTeleporter extends Script {
     public static boolean setupDone = false;
     public static StandardSpellbook spellToCast;
-    public static int alchItemID;
-    public static String itemName;
-    public static int stackSize;
-    public static boolean hasReqs;
-    public static UIResult<Rectangle> itemRect;
+    public static boolean hasReqs = true;
 
     private List<Task> tasks;
 
-    public dPublicAlcher(Object scriptCore) {
+    public dTeleporter(Object scriptCore) {
         super(scriptCore);
     }
 
@@ -47,32 +43,36 @@ public class dPublicAlcher extends Script {
     @Override
     public int[] regionsToPrioritise() {
         return new int[]{
-                12598, // Grand Exchange
-                6461, // Wintertodt bank
-                7222, // Tithe farm
-                12633, // Death's office
+                12853, // Varrock
+                12850, // Lumbridge
+                11828, // Falador
+                11062, // Camelot
+                6457,  // Kourend
+                10547, // Ardougne
+                6704,  // Kourend1
+                6705,  // Kourend2
+                10032, // Watchtower
+                11577, // Trollheim
         };
     }
 
     @Override
     public void onStart(){
-        log("INFO", "Starting dPublic Alcher v1.1");
+        log("INFO", "Starting dTeleporter v1.0");
 
         // Build and show our UI
         ScriptUI ui = new ScriptUI(this);
         Scene scene = ui.buildScene(this);
-        getStageController().show(scene, "Alcher Options", false);
+        getStageController().show(scene, "Teleporter Options", false);
 
         spellToCast = ui.getSelectedSpell();
-        alchItemID = ui.getSelectedItemId();
-        itemName = getItemManager().getItemName(alchItemID);
 
-        log("DEBUG", "We are alching " + itemName + " with itemID: " + alchItemID + " using: " + spellToCast);
+        log("DEBUG", "We are casting " + spellToCast.getName());
 
         // Build our list of tasks, tasks will be trying to execute from top to bottom
         tasks = Arrays.asList(
                 new Setup(this),
-                new AlchTask(this)
+                new TeleportTask(this)
         );
     }
 

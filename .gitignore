@@ -1,9 +1,4 @@
-/.idea
-/dPublicAlcher/.gradle
-/dPublicAlcher/.idea
-/dPublicAlcher/gradle
-/dPublicAlcher/build
-/dTempAlcher/.gradle
-/dTempAlcher/.idea
-/dTempAlcher/build
-/dTempAlcher/gradle
+**/.idea/
+**/.gradle/
+**/build/
+**/gradle/
