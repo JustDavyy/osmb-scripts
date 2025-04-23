@@ -21,25 +21,24 @@ import com.osmb.api.ui.spellbook.StandardSpellbook;
 
 // Script manifest (displays in script overview)
 @ScriptDefinition(
-        name = "dPublic Alcher",
-        description = "Alchs items (both high & low) until out of items or runes.",
+        name = "dTemp Alcher",
+        description = "Used as a substitute from dPublic Alcher to allow noted items to be alched by chosing a slot ID to alch instead.",
         skillCategory = SkillCategory.MAGIC,
-        version = 1.1,
+        version = 1.0,
         author = "JustDavyy"
 )
 
-public class dPublicAlcher extends Script {
+public class dTempAlcher extends Script {
     public static boolean setupDone = false;
     public static StandardSpellbook spellToCast;
-    public static int alchItemID;
+    public static int alchSlotID;
     public static String itemName;
-    public static int stackSize;
-    public static boolean hasReqs;
+    public static boolean hasReqs = true;
     public static UIResult<Rectangle> itemRect;
 
     private List<Task> tasks;
 
-    public dPublicAlcher(Object scriptCore) {
+    public dTempAlcher(Object scriptCore) {
         super(scriptCore);
     }
 
@@ -56,7 +55,7 @@ public class dPublicAlcher extends Script {
 
     @Override
     public void onStart(){
-        log("INFO", "Starting dPublic Alcher v1.0");
+        log("INFO", "Starting dTemp Alcher v1.0");
 
         // Build and show our UI
         ScriptUI ui = new ScriptUI(this);
@@ -64,10 +63,9 @@ public class dPublicAlcher extends Script {
         getStageController().show(scene, "Alcher Options", false);
 
         spellToCast = ui.getSelectedSpell();
-        alchItemID = ui.getSelectedItemId();
-        itemName = getItemManager().getItemName(alchItemID);
+        alchSlotID = ui.getSelectedSlotId();
 
-        log("DEBUG", "We are alching " + itemName + " with itemID: " + alchItemID + " using: " + spellToCast);
+        log("DEBUG", "We are alching items in slot: " + alchSlotID + " using: " + spellToCast);
 
         // Build our list of tasks, tasks will be trying to execute from top to bottom
         tasks = Arrays.asList(
