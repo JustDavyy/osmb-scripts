@@ -24,7 +24,7 @@ import com.osmb.api.ui.spellbook.StandardSpellbook;
         name = "dPublic Alcher",
         description = "Alchs items (both high & low) until out of items or runes.",
         skillCategory = SkillCategory.MAGIC,
-        version = 1.1,
+        version = 1.2,
         author = "JustDavyy"
 )
 
@@ -56,7 +56,7 @@ public class dPublicAlcher extends Script {
 
     @Override
     public void onStart(){
-        log("INFO", "Starting dPublic Alcher v1.1");
+        log("INFO", "Starting dPublic Alcher v1.2");
 
         // Build and show our UI
         ScriptUI ui = new ScriptUI(this);
