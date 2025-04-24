@@ -3,7 +3,7 @@ package tasks;
 import com.osmb.api.item.ItemID;
 import com.osmb.api.item.ItemSearchResult;
 import com.osmb.api.ui.chatbox.dialogue.DialogueType;
-import com.osmb.api.utils.UIResult;
+import java.util.function.BooleanSupplier;
 import com.osmb.api.utils.UIResultList;
 import com.osmb.api.utils.timing.Timer;
 import com.osmb.api.script.Script;
@@ -52,9 +52,15 @@ public class ProcessTask extends Task {
         // Dialogue opened - select item to produce
         DialogueType dialogueType = script.getWidgetManager().getDialogue().getDialogueType();
         if (dialogueType == DialogueType.ITEM_OPTION) {
-            boolean selected = script.getWidgetManager().getDialogue().selectItem(wineID, grapeID);
+            boolean selected = script.getWidgetManager().getDialogue().selectItem(ItemID.JUG_OF_WINE, grapeID);
             if (!selected) {
-                script.log(dWinemaker.class, "Failed to select wine in dialogue.");
+                script.log(dWinemaker.class, "Initial selection failed, retrying...");
+                script.sleep(script.random(150, 300)); // slight delay before retry
+                selected = script.getWidgetManager().getDialogue().selectItem(ItemID.JUG_OF_WINE, grapeID);
+            }
+
+            if (!selected) {
+                script.log(dWinemaker.class, "Failed to select wine in dialogue after retry.");
                 return false;
             }
             script.log(dWinemaker.class, "Selected wine to produce.");
@@ -72,17 +78,26 @@ public class ProcessTask extends Task {
         ItemSearchResult second = rand == 0 ? item2 : item1;
 
         if (first.interact() && second.interact()) {
-            return script.submitHumanTask(() -> {
-                DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
-                return type == DialogueType.ITEM_OPTION;
-            }, 3000);
+            boolean useHumanTask = script.random(10) < 3; // 30% chance
+            if (useHumanTask) {
+                return script.submitHumanTask(() -> {
+                    DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
+                    return type == DialogueType.ITEM_OPTION;
+                }, 3000);
+            } else {
+                return script.submitTask(() -> {
+                    DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
+                    return type == DialogueType.ITEM_OPTION;
+                }, 3000);
+            }
         }
         return false;
     }
 
     private void waitUntilFinishedProducing(int... resources) {
         Timer amountChangeTimer = new Timer();
-        script.submitHumanTask(() -> {
+
+        BooleanSupplier condition = () -> {
             DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
             if (type == DialogueType.TAP_HERE_TO_CONTINUE) {
                 script.submitTask(() -> false, script.random(1000, 3000));
@@ -100,7 +115,17 @@ public class ProcessTask extends Task {
             }
 
             return false;
-        }, 60000, true, false, true);
+        };
+
+        boolean useHumanTask = script.random(10) < 3; // 30% chance
+
+        if (useHumanTask) {
+            script.log(getClass(), "Using human task to wait until processing finishes.");
+            script.submitHumanTask(condition, 60000, true, false, true);
+        } else {
+            script.log(getClass(), "Using regular task to wait until processing finishes.");
+            script.submitTask(condition, 60000, true, false, true);
+        }
     }
 
     private void printStats() {

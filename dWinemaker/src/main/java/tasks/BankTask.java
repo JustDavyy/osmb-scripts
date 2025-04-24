@@ -24,7 +24,8 @@ public class BankTask extends Task {
 
     @Override
     public boolean activate() {
-        return hasReqs && shouldBank;
+        // Always activate this task, it's last and prevents getting stuck
+        return true;
     }
 
     @Override
