@@ -51,14 +51,14 @@ public class BankTask extends Task {
         int targetAmount = 14;
 
         if (randomOrder) {
-            script.getWidgetManager().getBank().withdraw(grapeID, targetAmount);
-            script.getWidgetManager().getBank().withdraw(ItemID.JUG_OF_WATER, targetAmount);
+            withdrawWithRetry(grapeID, targetAmount);
+            withdrawWithRetry(ItemID.JUG_OF_WATER, targetAmount);
         } else {
-            script.getWidgetManager().getBank().withdraw(ItemID.JUG_OF_WATER, targetAmount);
-            script.getWidgetManager().getBank().withdraw(grapeID, targetAmount);
+            withdrawWithRetry(ItemID.JUG_OF_WATER, targetAmount);
+            withdrawWithRetry(grapeID, targetAmount);
         }
 
-        script.getWidgetManager().getBank().close();
+        closeBankWithRetry();
         script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), 5000);
         shouldBank = false;
 
@@ -94,5 +94,20 @@ public class BankTask extends Task {
 
             return script.getWidgetManager().getBank().isVisible() || positionChangeTimer.get().timeElapsed() > 2000;
         }, 15000, true, false, true);
+    }
+
+
+    private void withdrawWithRetry(int itemID, int amount) {
+        if (!script.getWidgetManager().getBank().withdraw(itemID, amount)) {
+            script.log(getClass(), "Withdraw failed for " + itemID + ", retrying...");
+            script.getWidgetManager().getBank().withdraw(itemID, amount);
+        }
+    }
+
+    private void closeBankWithRetry() {
+        if (!script.getWidgetManager().getBank().close()) {
+            script.log(getClass(), "Bank close failed, retrying...");
+            script.getWidgetManager().getBank().close();
+        }
     }
 }

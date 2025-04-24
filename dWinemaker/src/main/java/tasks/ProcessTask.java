@@ -77,21 +77,34 @@ public class ProcessTask extends Task {
         ItemSearchResult first = rand == 0 ? item1 : item2;
         ItemSearchResult second = rand == 0 ? item2 : item1;
 
-        if (first.interact() && second.interact()) {
-            boolean useHumanTask = script.random(10) < 3; // 30% chance
-            if (useHumanTask) {
-                return script.submitHumanTask(() -> {
-                    DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
-                    return type == DialogueType.ITEM_OPTION;
-                }, 3000);
-            } else {
-                return script.submitTask(() -> {
-                    DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
-                    return type == DialogueType.ITEM_OPTION;
-                }, 3000);
+        // First interaction
+        if (!first.interact()) {
+            script.log(getClass(), "First item interaction failed, retrying...");
+            if (!first.interact()) {
+                return false;
             }
         }
-        return false;
+
+        script.sleep(script.random(150, 300)); // slight delay
+
+        // Second interaction
+        if (!second.interact()) {
+            script.log(getClass(), "Second item interaction failed, retrying...");
+            if (!second.interact()) {
+                return false;
+            }
+        }
+
+        // After both interactions succeed, wait for the dialogue
+        boolean useHumanTask = script.random(10) < 3; // 30% chance
+        BooleanSupplier condition = () -> {
+            DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
+            return type == DialogueType.ITEM_OPTION;
+        };
+
+        return useHumanTask
+                ? script.submitHumanTask(condition, 3000)
+                : script.submitTask(condition, 3000);
     }
 
     private void waitUntilFinishedProducing(int... resources) {
