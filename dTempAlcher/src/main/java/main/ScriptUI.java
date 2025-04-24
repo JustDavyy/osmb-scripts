@@ -18,7 +18,7 @@ import java.util.prefs.Preferences;
 
 public class ScriptUI {
     private final Preferences prefs = Preferences.userNodeForPackage(ScriptUI.class);
-    private static final String PREF_SELECTED_SPELL = "selected_spell";
+    private static final String PREF_SELECTED_SPELL = "selected_alch_spell";
     private static final String PREF_SELECTED_SLOT_ID = "selected_slot_id";
 
     private final Script script;

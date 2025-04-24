@@ -2,6 +2,7 @@ package main;
 
 // GENERAL JAVA IMPORTS
 import com.osmb.api.shape.Rectangle;
+import com.osmb.api.ui.chatbox.dialogue.DialogueType;
 import com.osmb.api.utils.UIResult;
 import javafx.scene.Scene;
 
@@ -24,7 +25,7 @@ import com.osmb.api.ui.spellbook.StandardSpellbook;
         name = "dTemp Alcher",
         description = "Used as a substitute from dPublic Alcher to allow noted items to be alched by chosing a slot ID to alch instead.",
         skillCategory = SkillCategory.MAGIC,
-        version = 1.0,
+        version = 1.2,
         author = "JustDavyy"
 )
 
@@ -55,7 +56,7 @@ public class dTempAlcher extends Script {
 
     @Override
     public void onStart(){
-        log("INFO", "Starting dTemp Alcher v1.0");
+        log("INFO", "Starting dTemp Alcher v1.2");
 
         // Build and show our UI
         ScriptUI ui = new ScriptUI(this);
