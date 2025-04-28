@@ -1,8 +1,6 @@
 package main;
 
-// GENERAL JAVA IMPORTS
 import com.osmb.api.shape.Rectangle;
-import com.osmb.api.ui.chatbox.dialogue.DialogueType;
 import com.osmb.api.utils.UIResult;
 import javafx.scene.Scene;
 
@@ -13,29 +11,29 @@ import tasks.AlchTask;
 import tasks.Setup;
 import utils.Task;
 
-// OSMB SPECIFIC IMPORTS
 import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
 import com.osmb.api.script.Script;
 import com.osmb.api.ui.spellbook.StandardSpellbook;
+import javafx.collections.ObservableList;
 
-
-// Script manifest (displays in script overview)
 @ScriptDefinition(
         name = "dTemp Alcher",
-        description = "Used as a substitute from dPublic Alcher to allow noted items to be alched by chosing a slot ID to alch instead.",
+        description = "Used as a substitute from dPublic Alcher to allow noted items to be alched by choosing a slot ID to alch instead.",
         skillCategory = SkillCategory.MAGIC,
-        version = 1.2,
+        version = 1.3,
         author = "JustDavyy"
 )
-
 public class dTempAlcher extends Script {
     public static boolean setupDone = false;
     public static StandardSpellbook spellToCast;
     public static int alchSlotID;
-    public static String itemName;
     public static boolean hasReqs = true;
     public static UIResult<Rectangle> itemRect;
+
+    public static boolean multipleSlotsMode = false;
+    public static List<Integer> slotsToAlch;
+    public static int currentSlotIndex = 0;
 
     private List<Task> tasks;
 
@@ -43,32 +41,40 @@ public class dTempAlcher extends Script {
         super(scriptCore);
     }
 
-    // Override regions to prioritise to prevent global searches
     @Override
     public int[] regionsToPrioritise() {
         return new int[]{
-                12598, // Grand Exchange
-                6461, // Wintertodt bank
-                7222, // Tithe farm
-                12633, // Death's office
+                12598, 6461, 7222, 12633
         };
     }
 
     @Override
-    public void onStart(){
-        log("INFO", "Starting dTemp Alcher v1.2");
+    public void onStart() {
+        log("INFO", "Starting dTemp Alcher v1.3");
 
-        // Build and show our UI
         ScriptUI ui = new ScriptUI(this);
         Scene scene = ui.buildScene(this);
         getStageController().show(scene, "Alcher Options", false);
 
         spellToCast = ui.getSelectedSpell();
-        alchSlotID = ui.getSelectedSlotId();
 
-        log("DEBUG", "We are alching items in slot: " + alchSlotID + " using: " + spellToCast);
+        if (ui.isMultipleSelectionMode()) {
+            multipleSlotsMode = true;
+            slotsToAlch = ui.getMultipleSelectedSlotIds();
+            if (slotsToAlch.isEmpty()) {
+                log("ERROR", "Multiple slot mode selected but no slots found. Stopping.");
+                stop();
+                return;
+            }
+            alchSlotID = slotsToAlch.get(0);
+        } else {
+            multipleSlotsMode = false;
+            alchSlotID = ui.getSelectedSlotId();
+        }
 
-        // Build our list of tasks, tasks will be trying to execute from top to bottom
+        log("DEBUG", "Mode: " + (multipleSlotsMode ? "Multiple" : "Single"));
+        log("DEBUG", "Starting with slot: " + alchSlotID + " using: " + spellToCast);
+
         tasks = Arrays.asList(
                 new Setup(this),
                 new AlchTask(this)

@@ -1,16 +1,14 @@
 package tasks;
 
-// GENERAL JAVA IMPORTS
 import com.osmb.api.ui.spellbook.StandardSpellbook;
 import main.dPublicAlcher;
 import utils.Task;
+
 import static main.dPublicAlcher.*;
 
-// OSMB SPECIFIC IMPORTS
 import com.osmb.api.script.Script;
 import com.osmb.api.ui.spellbook.SpellNotFoundException;
 import com.osmb.api.ui.tabs.Spellbook;
-
 
 public class AlchTask extends Task {
     private long lastAlchTime = 0;
@@ -28,8 +26,17 @@ public class AlchTask extends Task {
 
     public boolean execute() {
         if (stackSize == 0) {
-            script.log(dPublicAlcher.class, "We are out of items to alch, stopping script...");
-            script.stop();
+            if (multipleItemsMode && (currentItemIndex + 1) < itemsToAlch.size()) {
+                currentItemIndex++;
+                alchItemID = itemsToAlch.get(currentItemIndex);
+                script.log("INFO", "Switching to next item: " + script.getItemManager().getItemName(alchItemID) + " (ID=" + alchItemID + ")");
+                script.log("INFO", "Items left in list: " + (itemsToAlch.size() - currentItemIndex));
+                setupDone = false;
+                return false;
+            } else {
+                script.log(dPublicAlcher.class, "We are out of items to alch, stopping script...");
+                script.stop();
+            }
         }
 
         boolean success = false;
@@ -56,10 +63,7 @@ public class AlchTask extends Task {
             script.getFinger().tap(itemRect.get().getBounds());
             script.log(dPublicAlcher.class, "Cast " + spellToCast.getName() + " on " + itemName);
 
-            // Print stats to log
             printStats();
-
-            // Schedule next task attempt after cooldown
             script.submitTask(() -> (System.currentTimeMillis() - lastAlchTime) >= getCooldownForSpell(), (int) (getCooldownForSpell() + 1000));
         } else {
             script.log("WARN", "Failed to cast " + spellToCast.getName() + " on " + itemName);
@@ -69,16 +73,13 @@ public class AlchTask extends Task {
     }
 
     private void printStats() {
-        // Alchs per hour
         long elapsed = System.currentTimeMillis() - startTime;
         int alchsPerHour = (int) ((alchCount * 3600000L) / elapsed);
 
-        // XP tracking
         int xpPerCast = (spellToCast == StandardSpellbook.HIGH_LEVEL_ALCHEMY) ? 65 : 31;
         int totalXp = alchCount * xpPerCast;
         int xpPerHour = (int) ((totalXp * 3600000L) / elapsed);
 
-        // Time left (hh:mm:ss)
         long estimatedMillisLeft = (alchsPerHour > 0)
                 ? (stackSize * 3600000L) / alchsPerHour
                 : 0;
