@@ -26,7 +26,7 @@ import com.osmb.api.script.Script;
         name = "dWinemaker",
         description = "Turns your grapes into Jug of Wines or Wine of Zamorak for hefty cooking experience.",
         skillCategory = SkillCategory.COOKING,
-        version = 1.0,
+        version = 1.1,
         author = "JustDavyy"
 )
 
@@ -38,7 +38,7 @@ public class dWinemaker extends Script {
     public static boolean shouldBank = false;
 
     public static final String[] BANK_NAMES = {"Bank", "Chest", "Bank booth", "Bank chest", "Grand Exchange booth"};
-    public static final String[] BANK_ACTIONS = {"bank", "open"};
+    public static final String[] BANK_ACTIONS = {"bank", "open", "use"};
     public static final Predicate<RSObject> bankQuery = gameObject -> {
         // if object has no name
         if (gameObject.getName() == null) {
@@ -136,7 +136,7 @@ public class dWinemaker extends Script {
 
     @Override
     public void onStart() {
-        log("INFO", "Starting dWinemaker v1.0");
+        log("INFO", "Starting dWinemaker v1.1");
 
         // Build and show our UI
         ScriptUI ui = new ScriptUI(this);
