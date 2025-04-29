@@ -22,11 +22,11 @@ import javafx.scene.Scene;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
-@ScriptDefinition(name = "dWyrmAgility", author = "JustDavyy", version = 1.0, description = "Does the Wyrm basic or advanced agility course.", skillCategory = SkillCategory.AGILITY)
+@ScriptDefinition(name = "dWyrmAgility", author = "JustDavyy", version = 1.1, description = "Does the Wyrm basic or advanced agility course.", skillCategory = SkillCategory.AGILITY)
 public class dWyrmAgility extends Script {
     private Course selectedCourse;
     private int nextRunActivate;
-    private int noMovementTimeout = RandomUtils.weightedRandom(6000, 9000);
+    public int noMovementTimeout = RandomUtils.weightedRandom(6000, 9000);
 
     // to handle the osrs glitch where the position doesn't update
     private int failThreshold = random(4, 6);
@@ -143,7 +143,7 @@ public class dWyrmAgility extends Script {
                 if (previousPosition.get() != null) {
                     if (currentPos.equals(previousPosition.get())) {
                         if (noMovementTimer.timeElapsed() > core.noMovementTimeout) {
-                            core.noMovementTimeout = RandomUtils.weightedRandom(2000, 6000);
+                            core.noMovementTimeout = RandomUtils.weightedRandom(2500, 4000);
                             core.printFail();
                             core.failCount++;
                             return true;

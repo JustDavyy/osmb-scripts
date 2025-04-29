@@ -3,6 +3,7 @@ package courses;
 import com.osmb.api.location.area.Area;
 import com.osmb.api.location.area.impl.RectangleArea;
 import com.osmb.api.location.position.types.WorldPosition;
+import com.osmb.api.utils.RandomUtils;
 import main.Course;
 import main.ObstacleHandleResponse;
 import main.dWyrmAgility;
@@ -38,6 +39,7 @@ public class WyrmBasic implements Course {
         if (AREA_1.contains(position)) {
             main.dWyrmAgility.handleObstacle(core, "tightrope", "cross", AREA_2, 35000);
         } else if (AREA_2.contains(position)) {
+            core.noMovementTimeout = RandomUtils.weightedRandom(3000, 5000); // override just for this run (avoid early exit due to timeout)
             main.dWyrmAgility.handleObstacle(core, "tightrope", "cross", OBS3_END_POS, 35000);
             return 0;
         } else if (AREA_3.contains(position)) {
@@ -47,7 +49,11 @@ public class WyrmBasic implements Course {
             main.dWyrmAgility.handleObstacle(core, "ladder", "climb", AREA_5, 15000);
             return 0;
         } else if (AREA_5.contains(position)) {
-            main.dWyrmAgility.handleObstacle(core, "zipline", "slide", COURSE_END_POS, 15000);
+            ObstacleHandleResponse response = main.dWyrmAgility.handleObstacle(core, "zipline", "slide", COURSE_END_POS, 1, false, 15000);
+            if (response == ObstacleHandleResponse.OBJECT_NOT_IN_SCENE) {
+                core.log(getClass().getSimpleName(), "Seems we are encountering the RS Agility bug, moving randomly to get unstuck!");
+                core.getWalker().walkTo(AREA_5.getRandomPosition());
+            }
             return 0;
         } else {
             ObstacleHandleResponse handleResponse = main.dWyrmAgility.handleObstacle(
