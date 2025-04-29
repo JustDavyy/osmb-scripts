@@ -1,0 +1,107 @@
+package main;
+
+// GENERAL JAVA IMPORTS
+import javafx.scene.Scene;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Predicate;
+
+import tasks.BankTask;
+import tasks.ProcessTask;
+import tasks.Setup;
+import utils.Task;
+
+// OSMB SPECIFIC IMPORTS
+import com.osmb.api.scene.RSObject;
+import com.osmb.api.script.ScriptDefinition;
+import com.osmb.api.script.SkillCategory;
+import com.osmb.api.script.Script;
+
+// Script manifest (displays in script overview)
+@ScriptDefinition(
+        name = "dCooker",
+        description = "Cooks a wide variety of fish and other items at cookable objects.",
+        skillCategory = SkillCategory.COOKING,
+        version = 1.0,
+        author = "JustDavyy"
+)
+public class dCooker extends Script {
+    public static boolean setupDone = false;
+    public static boolean hasReqs;
+    public static int cookingItemID;
+
+    public static boolean shouldBank = false;
+
+    public static final String[] BANK_NAMES = {"Bank", "Chest", "Bank booth", "Bank chest", "Grand Exchange booth"};
+    public static final String[] BANK_ACTIONS = {"bank", "open", "use"};
+    public static final String[] COOK_OBJECT_NAMES = {"Range", "Fire", "Clay oven"};
+    public static final String[] COOKING_ACTIONS = {"cook"};
+
+    public static final Predicate<RSObject> bankQuery = gameObject -> {
+        if (gameObject.getName() == null || gameObject.getActions() == null) return false;
+        if (Arrays.stream(BANK_NAMES).noneMatch(name -> name.equalsIgnoreCase(gameObject.getName()))) return false;
+        return Arrays.stream(gameObject.getActions()).anyMatch(action -> Arrays.stream(BANK_ACTIONS).anyMatch(bankAction -> bankAction.equalsIgnoreCase(action)))
+                && gameObject.canReach();
+    };
+
+    public static final Predicate<RSObject> cookableObjectQuery = gameObject -> {
+        if (gameObject.getName() == null || gameObject.getActions() == null) return false;
+        if (Arrays.stream(COOK_OBJECT_NAMES).noneMatch(name -> name.equalsIgnoreCase(gameObject.getName()))) return false;
+        return Arrays.stream(gameObject.getActions()).anyMatch(action -> Arrays.stream(COOKING_ACTIONS).anyMatch(cookAction -> cookAction.equalsIgnoreCase(action)))
+                && gameObject.canReach();
+    };
+
+    private List<Task> tasks;
+
+    public dCooker(Object scriptCore) {
+        super(scriptCore);
+    }
+
+    // Override regions to prioritise to prevent or limit global searches
+    @Override
+    public int[] regionsToPrioritise() {
+        return new int[]{
+                12109, // Rogues den
+        };
+    }
+
+    @Override
+    public void onStart() {
+        log(getClass().getSimpleName(), "Starting dCooker v1.0");
+
+        // Build and show UI
+        ScriptUI ui = new ScriptUI(this);
+        Scene scene = ui.buildScene(this);
+        getStageController().show(scene, "Cooking Options", false);
+
+        cookingItemID = ui.getSelectedItemId();
+
+        log(getClass().getSimpleName(), "We're cooking " + getItemManager().getItemName(cookingItemID) + " during this run, enjoy!");
+
+        // Build task list
+        tasks = Arrays.asList(
+                new Setup(this),
+                new ProcessTask(this),
+                new BankTask(this)
+        );
+    }
+
+    @Override
+    public boolean promptBankTabDialogue() {
+        return true;
+    }
+
+    @Override
+    public int poll() {
+        if (tasks != null) {
+            for (Task task : tasks) {
+                if (task.activate()) {
+                    task.execute();
+                    return 0;
+                }
+            }
+        }
+        return 0;
+    }
+}

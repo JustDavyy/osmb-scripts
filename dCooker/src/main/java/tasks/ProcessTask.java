@@ -1,0 +1,243 @@
+package tasks;
+
+import com.osmb.api.item.ItemID;
+import com.osmb.api.item.ItemSearchResult;
+import com.osmb.api.location.position.types.WorldPosition;
+import com.osmb.api.scene.RSObject;
+import com.osmb.api.ui.chatbox.dialogue.DialogueType;
+import com.osmb.api.utils.UIResultList;
+import com.osmb.api.utils.timing.Timer;
+import com.osmb.api.script.Script;
+import com.osmb.api.walker.WalkConfig;
+import main.dCooker;
+import utils.Task;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
+
+import static main.dCooker.*;
+
+public class ProcessTask extends Task {
+    private long startTime = 0;
+    private int cookCount = 0;
+    private double totalXpGained = 0.0;
+
+    public ProcessTask(Script script) {
+        super(script);
+        this.startTime = System.currentTimeMillis();
+    }
+
+    @Override
+    public boolean activate() {
+        return hasReqs && !shouldBank;
+    }
+
+    @Override
+    public boolean execute() {
+        UIResultList<ItemSearchResult> foodResults = script.getItemManager().findAllOfItem(script.getWidgetManager().getInventory(), cookingItemID);
+        if (foodResults.isNotFound() || foodResults.isEmpty()) {
+            script.log(getClass(), "No food found in inventory. Flagging bank task.");
+            shouldBank = true;
+            return false;
+        }
+
+        if (!script.getItemManager().unSelectItemIfSelected()) {
+            return false;
+        }
+
+        RSObject cookObject = getClosestCookObject();
+        if (cookObject == null) {
+            script.log(getClass(), "No cookable object found nearby (range/fire).");
+            return false;
+        }
+
+        if (!cookObject.interact(COOKING_ACTIONS)) {
+            script.log(getClass(), "Failed to interact with cooking object. Retrying...");
+            if (!cookObject.interact(COOKING_ACTIONS)) {
+                return false;
+            }
+        }
+
+        BooleanSupplier condition = () -> {
+            DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
+            return type == DialogueType.ITEM_OPTION;
+        };
+
+        if (script.random(10) < 3) {
+            script.submitHumanTask(condition, 5000);
+        } else {
+            script.submitTask(condition, 5000);
+        }
+
+        DialogueType dialogueType = script.getWidgetManager().getDialogue().getDialogueType();
+        if (dialogueType == DialogueType.ITEM_OPTION) {
+            boolean selected = script.getWidgetManager().getDialogue().selectItem(cookingItemID);
+            if (!selected) {
+                script.log(getClass(), "Initial food selection failed, retrying...");
+                script.submitTask(() -> false, script.random(150, 300));
+                selected = script.getWidgetManager().getDialogue().selectItem(cookingItemID);
+            }
+
+            if (!selected) {
+                script.log(getClass(), "Failed to select food item in dialogue after retry.");
+                return false;
+            }
+            script.log(getClass(), "Selected food to cook.");
+
+            waitUntilFinishedCooking(cookingItemID);
+
+            int cookedNow = foodResults.size();
+            cookCount += cookedNow;
+            totalXpGained += cookedNow * getXpForFood(cookingItemID);
+            printStats();
+        }
+
+        return false;
+    }
+
+    private RSObject getClosestCookObject() {
+        List<RSObject> objects = script.getObjectManager().getObjects(gameObject -> {
+            if (gameObject.getName() == null || gameObject.getActions() == null) return false;
+            return Objects.equals(gameObject.getName(), "Range") || Objects.equals(gameObject.getName(), "Fire");
+        });
+
+        if (objects.isEmpty()) {
+            return null;
+        }
+
+        RSObject closest = (RSObject) script.getUtils().getClosest(objects);
+        if (closest == null) {
+            return null;
+        }
+
+        if (!closest.canReach()) {
+            script.log(getClass(), "Closest cook object is unreachable, walking to it...");
+
+            WalkConfig.Builder builder = new WalkConfig.Builder();
+            builder.breakCondition(() -> {
+                // Break once we detect ANY reachable Range/Fire
+                return !script.getObjectManager().getObjects(gameObject -> {
+                    if (gameObject.getName() == null || gameObject.getActions() == null) return false;
+                    return (Objects.equals(gameObject.getName(), "Range") || Objects.equals(gameObject.getName(), "Fire"))
+                            && gameObject.canReach();
+                }).isEmpty();
+            });
+
+            script.getWalker().walkTo(closest.getWorldPosition(), builder.build());
+
+            boolean found = script.submitTask(() -> {
+                List<RSObject> refreshedObjects = script.getObjectManager().getObjects(gameObject -> {
+                    if (gameObject.getName() == null || gameObject.getActions() == null) return false;
+                    return (Objects.equals(gameObject.getName(), "Range") || Objects.equals(gameObject.getName(), "Fire"))
+                            && gameObject.canReach();
+                });
+                return !refreshedObjects.isEmpty();
+            }, 5000);
+
+            if (!found) {
+                script.log(getClass(), "Still no reachable cook object after walking.");
+                return null;
+            }
+
+            List<RSObject> refreshedObjects = script.getObjectManager().getObjects(gameObject -> {
+                if (gameObject.getName() == null || gameObject.getActions() == null) return false;
+                return (Objects.equals(gameObject.getName(), "Range") || Objects.equals(gameObject.getName(), "Fire"))
+                        && gameObject.canReach();
+            });
+
+            return (RSObject) script.getUtils().getClosest(refreshedObjects);
+        }
+
+        return closest;
+    }
+
+    private void waitUntilFinishedCooking(int... resources) {
+        Timer amountChangeTimer = new Timer();
+
+        BooleanSupplier condition = () -> {
+            DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
+            if (type == DialogueType.TAP_HERE_TO_CONTINUE) {
+                script.submitTask(() -> false, script.random(1000, 3000));
+                return true;
+            }
+
+            int timeout = (cookingItemID == ItemID.GIANT_SEAWEED) ? 8000 : 66000;
+
+            if (amountChangeTimer.timeElapsed() > timeout) {
+                return true;
+            }
+
+            for (int id : resources) {
+                UIResultList<ItemSearchResult> result = script.getItemManager().findAllOfItem(script.getWidgetManager().getInventory(), id);
+                if (result.isNotVisible()) return false;
+                if (result.isEmpty()) return true;
+            }
+
+            return false;
+        };
+
+        if (script.random(10) < 3) {
+            script.log(getClass(), "Using human task to wait until cooking finishes.");
+            script.submitHumanTask(condition, 66000, true, false, true);
+        } else {
+            script.log(getClass(), "Using regular task to wait until cooking finishes.");
+            script.submitTask(condition, 66000, true, false, true);
+        }
+    }
+
+    private void printStats() {
+        long elapsed = System.currentTimeMillis() - startTime;
+        int cooksPerHour = (int) ((cookCount * 3600000L) / elapsed);
+        int xpPerHour = (int) ((totalXpGained * 3600000L) / elapsed);
+
+        script.log("STATS", String.format(
+                "Food cooked: %,d | Food/hr: %,d | XP gained: %,d | XP/hr: %,d\nXP is estimated, burning is not taken into consideration!",
+                cookCount, cooksPerHour, (int) totalXpGained, xpPerHour
+        ));
+    }
+
+    private double getXpForFood(int itemId) {
+        return switch (itemId) {
+            case ItemID.RAW_SHRIMPS -> 30.0;
+            case ItemID.SEAWEED -> 0.0;
+            case ItemID.GIANT_SEAWEED -> 0.0;
+            case ItemID.BREAD_DOUGH -> 40.0;
+            case ItemID.RAW_CHICKEN -> 30.0;
+            case ItemID.RAW_ANCHOVIES -> 30.0;
+            case ItemID.RAW_SARDINE -> 40.0;
+            case ItemID.RAW_HERRING -> 50.0;
+            case ItemID.RAW_MACKEREL -> 60.0;
+            case ItemID.UNCOOKED_BERRY_PIE -> 78.0;
+            case ItemID.RAW_TROUT -> 70.0;
+            case ItemID.RAW_COD -> 75.0;
+            case ItemID.RAW_PIKE -> 80.0;
+            case ItemID.UNCOOKED_MEAT_PIE -> 110.0;
+            case ItemID.RAW_SALMON -> 90.0;
+            case ItemID.UNCOOKED_STEW -> 117.0;
+            case ItemID.RAW_TUNA -> 100.0;
+            case ItemID.UNCOOKED_APPLE_PIE -> 130.0;
+            case ItemID.RAW_KARAMBWAN -> 190.0;
+            case ItemID.RAW_GARDEN_PIE -> 138.0;
+            case ItemID.RAW_LOBSTER -> 120.0;
+            case ItemID.RAW_BASS -> 130.0;
+            case ItemID.RAW_SWORDFISH -> 140.0;
+            case ItemID.RAW_FISH_PIE -> 164.0;
+            case ItemID.UNCOOKED_BOTANICAL_PIE -> 180.0;
+            case ItemID.UNCOOKED_MUSHROOM_PIE -> 200.0;
+            case ItemID.UNCOOKED_CURRY -> 280.0;
+            case ItemID.RAW_MONKFISH -> 150.0;
+            case ItemID.RAW_ADMIRAL_PIE -> 210.0;
+            case ItemID.UNCOOKED_DRAGONFRUIT_PIE -> 220.0;
+            case ItemID.RAW_SHARK -> 210.0;
+            case ItemID.RAW_SEA_TURTLE -> 211.3;
+            case ItemID.RAW_ANGLERFISH -> 230.0;
+            case ItemID.RAW_WILD_PIE -> 240.0;
+            case ItemID.RAW_DARK_CRAB -> 215.0;
+            case ItemID.RAW_MANTA_RAY -> 216.2;
+            case ItemID.RAW_SUMMER_PIE -> 260.0;
+            default -> 1.0; // fallback value
+        };
+    }
+}
