@@ -22,11 +22,16 @@ import javafx.scene.Scene;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
-@ScriptDefinition(name = "dWyrmAgility", author = "JustDavyy", version = 1.1, description = "Does the Wyrm basic or advanced agility course.", skillCategory = SkillCategory.AGILITY)
+@ScriptDefinition(name = "dWyrmAgility", author = "JustDavyy", version = 1.2, description = "Does the Wyrm basic or advanced agility course.", skillCategory = SkillCategory.AGILITY)
 public class dWyrmAgility extends Script {
     private Course selectedCourse;
     private int nextRunActivate;
     public int noMovementTimeout = RandomUtils.weightedRandom(6000, 9000);
+    public static double xpGained = 0;
+    public static int lapCount = 0;
+    private long startTime = System.currentTimeMillis();
+    private long lastStatsPrint = 0L;
+
 
     // to handle the osrs glitch where the position doesn't update
     private int failThreshold = random(4, 6);
@@ -204,9 +209,6 @@ public class dWyrmAgility extends Script {
 
         // Close tabs if they are open
         getWidgetManager().getTabManager().closeContainer();
-
-        log(getClass().getSimpleName(), "Closing chatbox (if open)");
-        closeChatBox();
     }
 
     @Override
@@ -221,6 +223,13 @@ public class dWyrmAgility extends Script {
             log(dWyrmAgility.class, "Failed object multiple times. Relogging.");
             getWidgetManager().getLogoutTab().logout();
             return 0;
+        }
+
+        // Print stats if it's been 30+ seconds since last print
+        long now = System.currentTimeMillis();
+        if (now - lastStatsPrint >= 30000) {
+            printStats();
+            lastStatsPrint = now;
         }
 
         UIResult<Boolean> runEnabled = getWidgetManager().getMinimapOrbs().isRunEnabled();
@@ -251,20 +260,25 @@ public class dWyrmAgility extends Script {
         return selectedCourse.regions();
     }
 
-    public void closeChatBox() {
-        // tab which resembles the little button
-        ChatboxTab chatboxTab = (ChatboxTab) getWidgetManager().getComponent(ChatboxTab.class);
-        // resembles the rectangle chatbox what opens/closes when clicking the chatbox tab
-        ChatboxComponent chatboxComponent = (ChatboxComponent) getWidgetManager().getComponent(ChatboxComponent.class);
-        if(chatboxComponent.isOpen()) {
-            Rectangle chatBoxTabBounds = chatboxTab.getBounds();
-            if(chatBoxTabBounds == null) {
-                log(getClass().getSimpleName(), "Chatbox bounds are null, cannot close Chatbox.");
-                return;
-            }
-            getFinger().tap(chatBoxTabBounds);
-
-            submitTask(() -> !chatboxComponent.isOpen(), 4000);
+    public static int generateDelay(int minMillis, int maxMillis) {
+        if (maxMillis < minMillis) {
+            int temp = minMillis;
+            minMillis = maxMillis;
+            maxMillis = temp;
         }
+        return minMillis + (int)(Math.random() * ((maxMillis - minMillis) + 1));
+    }
+
+    public void printStats() {
+        long elapsed = System.currentTimeMillis() - startTime;
+        if (elapsed == 0) return;
+
+        int xpPerHour = (int) ((xpGained * 3600000L) / elapsed);
+        int lapsPerHour = (int) ((lapCount * 3600000L) / elapsed);
+
+        log("STATS", String.format(
+                "XP gained: %,.1f | XP/hr: %,d | Laps done: %,d | Laps/hr: %,d",
+                xpGained, xpPerHour, lapCount, lapsPerHour
+        ));
     }
 }

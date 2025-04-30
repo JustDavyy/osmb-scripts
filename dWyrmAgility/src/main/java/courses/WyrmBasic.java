@@ -37,20 +37,48 @@ public class WyrmBasic implements Course {
         WorldPosition position = core.getWorldPosition();
 
         if (AREA_1.contains(position)) {
-            main.dWyrmAgility.handleObstacle(core, "tightrope", "cross", AREA_2, 35000);
+            ObstacleHandleResponse response = main.dWyrmAgility.handleObstacle(core, "tightrope", "cross", AREA_2, 35000);
+            if (response == ObstacleHandleResponse.SUCCESS) {
+                main.dWyrmAgility.xpGained += 74.4;
+            } else if (response == ObstacleHandleResponse.OBJECT_NOT_IN_SCENE) {
+                core.log(getClass().getSimpleName(), "Seems we are encountering the RS Agility bug, moving randomly to get unstuck!");
+                core.getWalker().walkTo(AREA_1.getRandomPosition());
+            }
+            return 0;
         } else if (AREA_2.contains(position)) {
-            core.noMovementTimeout = RandomUtils.weightedRandom(3000, 5000); // override just for this run (avoid early exit due to timeout)
-            main.dWyrmAgility.handleObstacle(core, "tightrope", "cross", OBS3_END_POS, 35000);
+            core.noMovementTimeout = RandomUtils.weightedRandom(3000, 5000); // override just for this run
+            ObstacleHandleResponse response = main.dWyrmAgility.handleObstacle(core, "tightrope", "cross", OBS3_END_POS, 35000);
+            if (response == ObstacleHandleResponse.SUCCESS) {
+                main.dWyrmAgility.xpGained += 37.2;
+            } else if (response == ObstacleHandleResponse.OBJECT_NOT_IN_SCENE) {
+                core.log(getClass().getSimpleName(), "Seems we are encountering the RS Agility bug, moving randomly to get unstuck!");
+                core.getWalker().walkTo(AREA_2.getRandomPosition());
+            }
             return 0;
         } else if (AREA_3.contains(position)) {
-            main.dWyrmAgility.handleObstacle(core, "rope", "climb", OBS4_END_POS, 25000);
+            ObstacleHandleResponse response = main.dWyrmAgility.handleObstacle(core, "rope", "climb", OBS4_END_POS, 25000);
+            if (response == ObstacleHandleResponse.SUCCESS) {
+                main.dWyrmAgility.xpGained += 74.4;
+            } else if (response == ObstacleHandleResponse.OBJECT_NOT_IN_SCENE) {
+                core.log(getClass().getSimpleName(), "Seems we are encountering the RS Agility bug, moving randomly to get unstuck!");
+                core.getWalker().walkTo(AREA_3.getRandomPosition());
+            }
             return 0;
         } else if (AREA_4.contains(position)) {
-            main.dWyrmAgility.handleObstacle(core, "ladder", "climb", AREA_5, 15000);
+            ObstacleHandleResponse response = main.dWyrmAgility.handleObstacle(core, "ladder", "climb", AREA_5, 15000);
+            if (response == ObstacleHandleResponse.SUCCESS) {
+                main.dWyrmAgility.xpGained += 37.2;
+            } else if (response == ObstacleHandleResponse.OBJECT_NOT_IN_SCENE) {
+                core.log(getClass().getSimpleName(), "Seems we are encountering the RS Agility bug, moving randomly to get unstuck!");
+                core.getWalker().walkTo(AREA_4.getRandomPosition());
+            }
             return 0;
         } else if (AREA_5.contains(position)) {
             ObstacleHandleResponse response = main.dWyrmAgility.handleObstacle(core, "zipline", "slide", COURSE_END_POS, 1, false, 15000);
-            if (response == ObstacleHandleResponse.OBJECT_NOT_IN_SCENE) {
+            if (response == ObstacleHandleResponse.SUCCESS) {
+                main.dWyrmAgility.xpGained += 243.7;
+                main.dWyrmAgility.lapCount++;
+            } else if (response == ObstacleHandleResponse.OBJECT_NOT_IN_SCENE) {
                 core.log(getClass().getSimpleName(), "Seems we are encountering the RS Agility bug, moving randomly to get unstuck!");
                 core.getWalker().walkTo(AREA_5.getRandomPosition());
             }
@@ -66,12 +94,13 @@ public class WyrmBasic implements Course {
                     15000,
                     new WorldPosition(1652, 2931, 0)
             );
-            if (handleResponse == ObstacleHandleResponse.OBJECT_NOT_IN_SCENE) {
+            if (handleResponse == ObstacleHandleResponse.SUCCESS) {
+                main.dWyrmAgility.xpGained += 37.2;
+            } else if (handleResponse == ObstacleHandleResponse.OBJECT_NOT_IN_SCENE) {
                 core.getWalker().walkTo(START_AREA.getRandomPosition());
             }
             return 0;
         }
-        return 0;
     }
 
     @Override
