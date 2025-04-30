@@ -6,6 +6,7 @@ import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.scene.RSTile;
 import com.osmb.api.script.Script;
+import com.osmb.api.utils.Result;
 import com.osmb.api.utils.UIResultList;
 import com.osmb.api.utils.timing.Timer;
 import main.dCooker;
@@ -15,9 +16,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static main.dCooker.*;
+import static main.dCooker.cookingItemID;
 
 public class BankTask extends Task {
+
+    private UIResultList<ItemSearchResult> itemInventory;
 
     public BankTask(Script script) {
         super(script);
@@ -25,8 +28,13 @@ public class BankTask extends Task {
 
     @Override
     public boolean activate() {
-        // Always activate this task, it's last and prevents getting stuck
-        return shouldBank;
+        // get inventory amount here, if true execute is processed right after, so no need to search again
+        itemInventory = script.getItemManager().findAllOfItem(script.getWidgetManager().getInventory(), cookingItemID);
+        if (!checkResult(itemInventory, true)) {
+            return true;
+        }
+        // execute the task if no food
+        return itemInventory.isEmpty() || script.getWidgetManager().getBank().isVisible();
     }
 
     @Override
@@ -36,25 +44,56 @@ public class BankTask extends Task {
             return false;
         }
 
-        script.log(getClass(), "Depositing full inventory...");
-        script.getWidgetManager().getBank().depositAll(new int[0]);
-
-        UIResultList<ItemSearchResult> itemBank = script.getItemManager().findAllOfItem(script.getWidgetManager().getBank(), cookingItemID);
-        if (itemBank.isNotFound()) {
-            script.log(getClass(), "Ran out of food to cook. Stopping script.");
-            script.stop();
+        if (!script.getWidgetManager().getBank().depositAll(new int[]{cookingItemID})) {
             return false;
         }
+        // work out our target amount
+        int targetAmount = script.getWidgetManager().getInventory().getGroupSize();
+        if (cookingItemID == ItemID.GIANT_SEAWEED) {
+            targetAmount /= 6;
+        }
 
-        int withdrawAmount = (cookingItemID == ItemID.GIANT_SEAWEED) ? 4 : 28;
+        // here we can simply work out how many we need to withdraw,
+        // if the amount is below 0, it would also mean we have
+        // too many and would want to deposit the absolute value of the negative result
+        int amountNeeded = targetAmount - itemInventory.size();
 
-        withdrawWithRetry(cookingItemID, withdrawAmount);
-
-        closeBankWithRetry();
-        script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), 5000);
-        shouldBank = false;
-
+        if (amountNeeded == 0) {
+            // banking complete
+            script.getWidgetManager().getBank().close();
+            script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), 5000);
+        } else if (amountNeeded > 0) {
+            // need to withdraw
+            UIResultList<ItemSearchResult> itemBank = script.getItemManager().findAllOfItem(script.getWidgetManager().getBank(), cookingItemID);
+            if (!checkResult(itemBank, false)) {
+                return false;
+            }
+            if (!script.getWidgetManager().getBank().withdraw(cookingItemID, targetAmount)) {
+                script.log(getClass(), "Withdraw failed for item id: " + cookingItemID);
+                return false;
+            }
+        } else {
+            // need to deposit...
+            if (!script.getWidgetManager().getBank().deposit(cookingItemID, Math.abs(targetAmount))) {
+                script.log(getClass(), "Withdraw failed for item id: " + cookingItemID);
+                return false;
+            }
+        }
         return false;
+    }
+
+    private boolean checkResult(Result result, boolean inventory) {
+        if (result.isNotVisible()) {
+            return false;
+        }
+        if (result.isNotFound()) {
+            if (!inventory) {
+                script.log(getClass(), "Ran out of food to cook. Stopping script.");
+                script.stop();
+            }
+            return false;
+        }
+        return true;
     }
 
     private void openBank() {
@@ -111,19 +150,5 @@ public class BankTask extends Task {
 
             return script.getWidgetManager().getBank().isVisible() || positionChangeTimer.get().timeElapsed() > 2000;
         }, 15000, true, false, true);
-    }
-
-    private void withdrawWithRetry(int itemID, int amount) {
-        if (!script.getWidgetManager().getBank().withdraw(itemID, amount)) {
-            script.log(getClass(), "Withdraw failed for " + itemID + ", retrying...");
-            script.getWidgetManager().getBank().withdraw(itemID, amount);
-        }
-    }
-
-    private void closeBankWithRetry() {
-        if (!script.getWidgetManager().getBank().close()) {
-            script.log(getClass(), "Bank close failed, retrying...");
-            script.getWidgetManager().getBank().close();
-        }
     }
 }

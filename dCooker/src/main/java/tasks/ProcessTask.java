@@ -2,19 +2,15 @@ package tasks;
 
 import com.osmb.api.item.ItemID;
 import com.osmb.api.item.ItemSearchResult;
-import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
+import com.osmb.api.script.Script;
 import com.osmb.api.ui.chatbox.dialogue.DialogueType;
 import com.osmb.api.utils.UIResultList;
 import com.osmb.api.utils.timing.Timer;
-import com.osmb.api.script.Script;
-import com.osmb.api.walker.WalkConfig;
-import main.dCooker;
 import utils.Task;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 
 import static main.dCooker.*;
@@ -31,15 +27,14 @@ public class ProcessTask extends Task {
 
     @Override
     public boolean activate() {
-        return hasReqs && !shouldBank;
+        return true;
     }
 
     @Override
     public boolean execute() {
         UIResultList<ItemSearchResult> foodResults = script.getItemManager().findAllOfItem(script.getWidgetManager().getInventory(), cookingItemID);
-        if (foodResults.isNotFound() || foodResults.isEmpty()) {
-            script.log(getClass(), "No food found in inventory. Flagging bank task.");
-            shouldBank = true;
+        if (foodResults.isNotVisible()) {
+            script.log(getClass(), "Inventory not visible.");
             return false;
         }
 
@@ -49,7 +44,7 @@ public class ProcessTask extends Task {
 
         RSObject cookObject = getClosestCookObject();
         if (cookObject == null) {
-            script.log(getClass(), "No cookable object found nearby (range/fire).");
+            script.log(getClass(), "No cookable object found nearby (range/fire/clay oven).");
             return false;
         }
 
@@ -99,57 +94,27 @@ public class ProcessTask extends Task {
 
     private RSObject getClosestCookObject() {
         List<RSObject> objects = script.getObjectManager().getObjects(gameObject -> {
-            if (gameObject.getName() == null || gameObject.getActions() == null) return false;
-            return Objects.equals(gameObject.getName(), "Range") || Objects.equals(gameObject.getName(), "Fire");
+            if (gameObject.getName() == null || gameObject.getActions() == null) {
+                return false;
+            }
+            return Objects.equals(gameObject.getName(), "Range") || Objects.equals(gameObject.getName(), "Fire") || Objects.equals(gameObject.getName(), "Clay oven");
         });
 
         if (objects.isEmpty()) {
+            script.log(ProcessTask.class, "No objects found matching query...");
             return null;
         }
 
+        objects.removeIf(object -> !object.canReach());
+        if (objects.isEmpty()) {
+            script.log(ProcessTask.class, "No reachable objects inside the loaded scene..");
+            return null;
+        }
         RSObject closest = (RSObject) script.getUtils().getClosest(objects);
         if (closest == null) {
+            script.log(ProcessTask.class, "Closest object is null.");
             return null;
         }
-
-        if (!closest.canReach()) {
-            script.log(getClass(), "Closest cook object is unreachable, walking to it...");
-
-            WalkConfig.Builder builder = new WalkConfig.Builder();
-            builder.breakCondition(() -> {
-                // Break once we detect ANY reachable Range/Fire
-                return !script.getObjectManager().getObjects(gameObject -> {
-                    if (gameObject.getName() == null || gameObject.getActions() == null) return false;
-                    return (Objects.equals(gameObject.getName(), "Range") || Objects.equals(gameObject.getName(), "Fire"))
-                            && gameObject.canReach();
-                }).isEmpty();
-            });
-
-            script.getWalker().walkTo(closest.getWorldPosition(), builder.build());
-
-            boolean found = script.submitTask(() -> {
-                List<RSObject> refreshedObjects = script.getObjectManager().getObjects(gameObject -> {
-                    if (gameObject.getName() == null || gameObject.getActions() == null) return false;
-                    return (Objects.equals(gameObject.getName(), "Range") || Objects.equals(gameObject.getName(), "Fire"))
-                            && gameObject.canReach();
-                });
-                return !refreshedObjects.isEmpty();
-            }, 5000);
-
-            if (!found) {
-                script.log(getClass(), "Still no reachable cook object after walking.");
-                return null;
-            }
-
-            List<RSObject> refreshedObjects = script.getObjectManager().getObjects(gameObject -> {
-                if (gameObject.getName() == null || gameObject.getActions() == null) return false;
-                return (Objects.equals(gameObject.getName(), "Range") || Objects.equals(gameObject.getName(), "Fire"))
-                        && gameObject.canReach();
-            });
-
-            return (RSObject) script.getUtils().getClosest(refreshedObjects);
-        }
-
         return closest;
     }
 
