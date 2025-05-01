@@ -28,7 +28,6 @@ import java.util.function.Predicate;
 public class dCannonballSmelter extends Script {
     public static final String[] BANK_NAMES = {"Bank", "Chest", "Bank booth", "Bank chest", "Grand Exchange booth"};
     public static final String[] BANK_ACTIONS = {"bank", "open", "use", "bank banker"};
-    public static final String[] FURNACE_ACTIONS = {"smelt"};
     public static final Predicate<RSObject> bankQuery = gameObject -> {
         if (gameObject.getName() == null || gameObject.getActions() == null) return false;
         if (Arrays.stream(BANK_NAMES).noneMatch(name -> name.equalsIgnoreCase(gameObject.getName()))) return false;
