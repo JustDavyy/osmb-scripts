@@ -21,7 +21,7 @@ import java.util.function.Predicate;
         name = "dCooker",
         description = "Cooks a wide variety of fish and other items at cookable objects.",
         skillCategory = SkillCategory.COOKING,
-        version = 1.0,
+        version = 1.1,
         author = "JustDavyy"
 )
 public class dCooker extends Script {
@@ -36,6 +36,7 @@ public class dCooker extends Script {
     };
     public static boolean setupDone = false;
     public static int cookingItemID;
+    public static int cookedItemID;
     private List<Task> tasks;
 
     public dCooker(Object scriptCore) {
@@ -66,7 +67,7 @@ public class dCooker extends Script {
 
     @Override
     public void onStart() {
-        log(getClass().getSimpleName(), "Starting dCooker v1.0");
+        log(getClass().getSimpleName(), "Starting dCooker v1.1");
 
         // Build and show UI
         ScriptUI ui = new ScriptUI(this);
@@ -74,6 +75,7 @@ public class dCooker extends Script {
         getStageController().show(scene, "Cooking Options", false);
 
         cookingItemID = ui.getSelectedItemId();
+        cookedItemID = ui.getSelectedCookedItemId();
 
         log(getClass().getSimpleName(), "We're cooking " + getItemManager().getItemName(cookingItemID) + " during this run, enjoy!");
 

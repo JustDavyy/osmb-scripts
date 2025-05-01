@@ -61,24 +61,29 @@ public class ProcessTask extends Task {
         };
 
         if (script.random(10) < 3) {
-            script.submitHumanTask(condition, 5000);
+            script.submitHumanTask(condition, script.random(4000, 6000));
         } else {
-            script.submitTask(condition, 5000);
+            script.submitTask(condition, script.random(4000, 6000));
         }
 
         DialogueType dialogueType = script.getWidgetManager().getDialogue().getDialogueType();
         if (dialogueType == DialogueType.ITEM_OPTION) {
-            boolean selected = script.getWidgetManager().getDialogue().selectItem(cookingItemID);
+            boolean selected = script.getWidgetManager().getDialogue().selectItem(cookingItemID)
+                    || script.getWidgetManager().getDialogue().selectItem(cookedItemID);
+
             if (!selected) {
                 script.log(getClass(), "Initial food selection failed, retrying...");
                 script.submitTask(() -> false, script.random(150, 300));
-                selected = script.getWidgetManager().getDialogue().selectItem(cookingItemID);
+
+                selected = script.getWidgetManager().getDialogue().selectItem(cookingItemID)
+                        || script.getWidgetManager().getDialogue().selectItem(cookedItemID);
             }
 
             if (!selected) {
                 script.log(getClass(), "Failed to select food item in dialogue after retry.");
                 return false;
             }
+
             script.log(getClass(), "Selected food to cook.");
 
             waitUntilFinishedCooking(cookingItemID);
@@ -145,10 +150,10 @@ public class ProcessTask extends Task {
 
         if (script.random(10) < 3) {
             script.log(getClass(), "Using human task to wait until cooking finishes.");
-            script.submitHumanTask(condition, 66000, true, false, true);
+            script.submitHumanTask(condition, script.random(66000, 70000), true, false, true);
         } else {
             script.log(getClass(), "Using regular task to wait until cooking finishes.");
-            script.submitTask(condition, 66000, true, false, true);
+            script.submitTask(condition, script.random(66000, 70000), true, false, true);
         }
     }
 

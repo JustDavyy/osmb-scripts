@@ -61,7 +61,7 @@ public class BankTask extends Task {
         if (amountNeeded == 0) {
             // banking complete
             script.getWidgetManager().getBank().close();
-            script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), 5000);
+            script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(4000, 6000));
         } else if (amountNeeded > 0) {
             // need to withdraw
             UIResultList<ItemSearchResult> itemBank = script.getItemManager().findAllOfItem(script.getWidgetManager().getBank(), cookingItemID);
@@ -149,6 +149,6 @@ public class BankTask extends Task {
             }
 
             return script.getWidgetManager().getBank().isVisible() || positionChangeTimer.get().timeElapsed() > 2000;
-        }, 15000, true, false, true);
+        }, script.random(14000, 16000), true, false, true);
     }
 }

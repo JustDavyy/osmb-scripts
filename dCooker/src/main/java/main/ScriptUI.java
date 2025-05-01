@@ -4,6 +4,7 @@ import com.osmb.api.ScriptCore;
 import com.osmb.api.item.ItemID;
 import com.osmb.api.script.Script;
 import com.osmb.api.javafx.JavaFXUtils;
+import data.CookingItem;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
@@ -18,47 +19,9 @@ public class ScriptUI {
     private static final String PREF_SELECTED_COOKING_ITEM = "dcooker_selected_item";
 
     private final Script script;
-    private ComboBox<Integer> cookingComboBox;
+    private ComboBox<CookingItem> cookingComboBox;
 
-    private static final Integer[] COOKING_OPTIONS = {
-            ItemID.RAW_SHRIMPS,
-            ItemID.SEAWEED,
-            ItemID.GIANT_SEAWEED,
-            ItemID.BREAD_DOUGH,
-            ItemID.RAW_CHICKEN,
-            ItemID.RAW_ANCHOVIES,
-            ItemID.RAW_SARDINE,
-            ItemID.RAW_HERRING,
-            ItemID.RAW_MACKEREL,
-            ItemID.UNCOOKED_BERRY_PIE,
-            ItemID.RAW_TROUT,
-            ItemID.RAW_COD,
-            ItemID.RAW_PIKE,
-            ItemID.UNCOOKED_MEAT_PIE,
-            ItemID.RAW_SALMON,
-            ItemID.UNCOOKED_STEW,
-            ItemID.RAW_TUNA,
-            ItemID.UNCOOKED_APPLE_PIE,
-            ItemID.RAW_KARAMBWAN,
-            ItemID.RAW_GARDEN_PIE,
-            ItemID.RAW_LOBSTER,
-            ItemID.RAW_BASS,
-            ItemID.RAW_SWORDFISH,
-            ItemID.RAW_FISH_PIE,
-            ItemID.UNCOOKED_BOTANICAL_PIE,
-            ItemID.UNCOOKED_MUSHROOM_PIE,
-            ItemID.UNCOOKED_CURRY,
-            ItemID.RAW_MONKFISH,
-            ItemID.RAW_ADMIRAL_PIE,
-            ItemID.UNCOOKED_DRAGONFRUIT_PIE,
-            ItemID.RAW_SHARK,
-            ItemID.RAW_SEA_TURTLE,
-            ItemID.RAW_ANGLERFISH,
-            ItemID.RAW_WILD_PIE,
-            ItemID.RAW_DARK_CRAB,
-            ItemID.RAW_MANTA_RAY,
-            ItemID.RAW_SUMMER_PIE
-    };
+    private static final CookingItem[] COOKING_ITEMS = CookingItem.values();
 
     public ScriptUI(Script script) {
         this.script = script;
@@ -73,11 +36,9 @@ public class ScriptUI {
 
         // Load saved item selection
         int savedItemId = prefs.getInt(PREF_SELECTED_COOKING_ITEM, ItemID.RAW_SHRIMPS);
-        for (Integer option : COOKING_OPTIONS) {
-            if (option.equals(savedItemId)) {
-                cookingComboBox.getSelectionModel().select(option);
-                break;
-            }
+        CookingItem savedItem = CookingItem.fromRawItemId(savedItemId);
+        if (savedItem != null) {
+            cookingComboBox.getSelectionModel().select(savedItem);
         }
 
         script.log("SAVESETTINGS", "Loaded selected cooking item ID from preferences: " + savedItemId);
@@ -85,10 +46,10 @@ public class ScriptUI {
         // Confirm button
         Button confirmButton = new Button("Confirm");
         confirmButton.setOnAction(event -> {
-            Integer selected = cookingComboBox.getSelectionModel().getSelectedItem();
+            CookingItem selected = cookingComboBox.getSelectionModel().getSelectedItem();
             if (selected != null) {
-                prefs.putInt(PREF_SELECTED_COOKING_ITEM, selected);
-                script.log("SAVESETTINGS", "Saved selected cooking item ID to preferences: " + selected);
+                prefs.putInt(PREF_SELECTED_COOKING_ITEM, selected.getRawItemId());
+                script.log("SAVESETTINGS", "Saved selected cooking item ID to preferences: " + selected.getRawItemId());
                 ((Stage) confirmButton.getScene().getWindow()).close();
             }
         });
@@ -99,35 +60,34 @@ public class ScriptUI {
         return scene;
     }
 
-    private ComboBox<Integer> createCookingComboBox(ScriptCore core) {
-        ComboBox<Integer> comboBox = new ComboBox<>();
+    private ComboBox<CookingItem> createCookingComboBox(ScriptCore core) {
+        ComboBox<CookingItem> comboBox = new ComboBox<>();
         comboBox.setConverter(new StringConverter<>() {
             @Override
-            public String toString(Integer itemId) {
-                return itemId != null ? core.getItemManager().getItemName(itemId) : "";
+            public String toString(CookingItem item) {
+                return item != null ? core.getItemManager().getItemName(item.getRawItemId()) : "";
             }
 
             @Override
-            public Integer fromString(String string) {
+            public CookingItem fromString(String string) {
                 return null;
             }
         });
 
         comboBox.setCellFactory(param -> createItemCell(core));
-        comboBox.setButtonCell(createItemCell(core)); // Shows icon + name when dropdown is closed
-
-        comboBox.getItems().addAll(COOKING_OPTIONS);
+        comboBox.setButtonCell(createItemCell(core));
+        comboBox.getItems().addAll(COOKING_ITEMS);
         return comboBox;
     }
 
-    private ListCell<Integer> createItemCell(ScriptCore core) {
+    private ListCell<CookingItem> createItemCell(ScriptCore core) {
         return new ListCell<>() {
             @Override
-            protected void updateItem(Integer itemId, boolean empty) {
-                super.updateItem(itemId, empty);
-                if (itemId != null && !empty) {
-                    String name = core.getItemManager().getItemName(itemId);
-                    ImageView imageView = JavaFXUtils.getItemImageView(core, itemId);
+            protected void updateItem(CookingItem item, boolean empty) {
+                super.updateItem(item, empty);
+                if (item != null && !empty) {
+                    String name = core.getItemManager().getItemName(item.getRawItemId());
+                    ImageView imageView = JavaFXUtils.getItemImageView(core, item.getRawItemId());
                     if (imageView != null) {
                         imageView.setFitWidth(16);
                         imageView.setFitHeight(16);
@@ -143,6 +103,12 @@ public class ScriptUI {
     }
 
     public int getSelectedItemId() {
-        return cookingComboBox.getSelectionModel().getSelectedItem();
+        CookingItem selected = cookingComboBox.getSelectionModel().getSelectedItem();
+        return selected != null ? selected.getRawItemId() : -1;
+    }
+
+    public int getSelectedCookedItemId() {
+        CookingItem selected = cookingComboBox.getSelectionModel().getSelectedItem();
+        return selected != null ? selected.getCookedItemId() : -1;
     }
 }
