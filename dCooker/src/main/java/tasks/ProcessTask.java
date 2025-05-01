@@ -88,9 +88,15 @@ public class ProcessTask extends Task {
 
             waitUntilFinishedCooking(cookingItemID);
 
-            int cookedNow = foodResults.size();
-            cookCount += cookedNow;
-            totalXpGained += cookedNow * getXpForFood(cookingItemID);
+            UIResultList<ItemSearchResult> cookedResults = script.getItemManager().findAllOfItem(script.getWidgetManager().getInventory(), cookedItemID);
+            if (cookedResults.isNotVisible()) {
+                script.log(getClass(), "No cooked fished could be located.");
+            } else {
+                int cookedNow = cookedResults.size();
+                cookCount += cookedNow;
+                totalXpGained += cookedNow * getXpForFood(cookingItemID);
+            }
+
             printStats();
         }
 
