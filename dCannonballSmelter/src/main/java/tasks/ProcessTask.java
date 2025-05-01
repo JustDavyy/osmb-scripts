@@ -1,0 +1,180 @@
+package tasks;
+
+import com.osmb.api.item.ItemID;
+import com.osmb.api.item.ItemSearchResult;
+import com.osmb.api.scene.RSObject;
+import com.osmb.api.script.Script;
+import com.osmb.api.ui.chatbox.dialogue.DialogueType;
+import com.osmb.api.utils.UIResultList;
+import com.osmb.api.utils.timing.Timer;
+import utils.Task;
+
+import java.util.List;
+import java.util.function.BooleanSupplier;
+
+public class ProcessTask extends Task {
+    private long startTime = 0;
+    private int smeltCount = 0;
+    private double totalXpGained = 0.0;
+
+    public ProcessTask(Script script) {
+        super(script);
+        this.startTime = System.currentTimeMillis();
+    }
+
+    @Override
+    public boolean activate() {
+        return true;
+    }
+
+    @Override
+    public boolean execute() {
+        UIResultList<ItemSearchResult> steelBarResults = script.getItemManager().findAllOfItem(script.getWidgetManager().getInventory(), ItemID.STEEL_BAR);
+        if (steelBarResults.isNotVisible()) {
+            script.log(getClass(), "Inventory not visible.");
+            return false;
+        }
+
+        if (!script.getItemManager().unSelectItemIfSelected()) {
+            return false;
+        }
+
+        RSObject furnace = getClosestFurnace();
+        if (furnace == null) {
+            script.log(getClass(), "No furnace found nearby.");
+            return false;
+        }
+
+        if (!furnace.interact("Smelt")) {
+            script.log(getClass(), "Failed to interact with furnace. Retrying...");
+            if (!furnace.interact("Smelt")) {
+                return false;
+            }
+        }
+
+        BooleanSupplier condition = () -> {
+            DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
+            return type == DialogueType.ITEM_OPTION;
+        };
+
+        if (script.random(10) < 3) {
+            script.submitHumanTask(condition, script.random(4000, 6000));
+        } else {
+            script.submitTask(condition, script.random(4000, 6000));
+        }
+
+        DialogueType dialogueType = script.getWidgetManager().getDialogue().getDialogueType();
+        if (dialogueType == DialogueType.ITEM_OPTION) {
+            boolean selected = script.getWidgetManager().getDialogue().selectItem(ItemID.CANNONBALL);
+            if (!selected) {
+                script.log(getClass(), "Initial cannonball selection failed, retrying...");
+                script.submitTask(() -> false, script.random(150, 300));
+                selected = script.getWidgetManager().getDialogue().selectItem(ItemID.CANNONBALL);
+            }
+
+            if (!selected) {
+                script.log(getClass(), "Failed to select cannonballs in dialogue after retry.");
+                return false;
+            }
+            script.log(getClass(), "Selected cannonballs to smelt.");
+
+            waitUntilFinishedSmelting(ItemID.STEEL_BAR);
+
+            int smeltedNow = steelBarResults.size();
+            smeltCount += smeltedNow;
+            totalXpGained += smeltedNow * getXpForCannonball();
+            printStats();
+        }
+
+        return false;
+    }
+
+    private RSObject getClosestFurnace() {
+        List<RSObject> objects = script.getObjectManager().getObjects(obj ->
+                obj.getName() != null &&
+                        (obj.getName().equalsIgnoreCase("Furnace") || obj.getName().equalsIgnoreCase("Clay forge")
+                      || obj.getName().equalsIgnoreCase("Lava forge") || obj.getName().equalsIgnoreCase("Volcanic Furnace")) &&
+                        obj.canReach()
+        );
+
+        if (objects.isEmpty()) {
+            script.log(ProcessTask.class, "No reachable furnaces found.");
+            return null;
+        }
+
+        return (RSObject) script.getUtils().getClosest(objects);
+    }
+
+    private void waitUntilFinishedSmelting(int... resources) {
+        Timer amountChangeTimer = new Timer();
+
+        BooleanSupplier condition = () -> {
+            // This is the level level up check
+            DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
+            if (type == DialogueType.TAP_HERE_TO_CONTINUE) {
+                script.log(getClass().getSimpleName(), "Dialogue detected, leveled up?");
+                script.submitTask(() -> false, script.random(1000, 3000));
+                return true;
+            }
+
+            // Force AFK during these checks if we're due a AFK
+            if (script.isDueToAFK()) {
+                script.log(getClass().getSimpleName(), "We are due to AFK during processing, forcing AFK now.");
+                script.forceAFK();
+            }
+
+            // Force break during these checks if we're due to break
+            if (script.isDueToBreak()) {
+                script.log(getClass().getSimpleName(), "We are due to break during processing, forcing break now.");
+                script.forceBreak();
+                return true;
+            }
+
+            // Force hop during these checks if we're due to hop
+            if (script.isDueToHop()) {
+                script.log(getClass().getSimpleName(), "We are due to hop during processing, forcing hop now.");
+                script.forceHop();
+                return true;
+            }
+
+            // A timer to timeout
+            if (amountChangeTimer.timeElapsed() > script.random(162500, 166000)) {
+                return true;
+            }
+
+            // Check if we ran out of items
+            for (int id : resources) {
+                UIResultList<ItemSearchResult> result = script.getItemManager().findAllOfItem(script.getWidgetManager().getInventory(), id);
+                if (result.isNotVisible()) return false;
+                if (result.isEmpty()) return true;
+            }
+
+            return false;
+        };
+
+        if (script.random(10) < 3) {
+            script.log(getClass(), "Using human task to wait until smelting finishes.");
+            script.submitHumanTask(condition, script.random(162500, 166000), true, false, true);
+        } else {
+            script.log(getClass(), "Using regular task to wait until smelting finishes.");
+            script.submitTask(condition, script.random(162500, 166000), true, false, true);
+        }
+    }
+
+    private void printStats() {
+        long elapsed = System.currentTimeMillis() - startTime;
+        int smeltsPerHour = (int) ((smeltCount * 3600000L) / elapsed);
+        int xpPerHour = (int) ((totalXpGained * 3600000L) / elapsed);
+        int ballsSmelted = smeltCount * 4;
+        int ballsPerHour = (int) ((ballsSmelted * 3600000L) / elapsed);
+
+        script.log("STATS", String.format(
+                "Cballs smelted: %,d | Smelts/hr: %,d | Cballs/hr: %,d | XP gained: %,d | XP/hr: %,d",
+                ballsSmelted, smeltsPerHour, ballsPerHour, (int) totalXpGained, xpPerHour
+        ));
+    }
+
+    private double getXpForCannonball() {
+        return 25.6;
+    }
+}

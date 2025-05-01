@@ -1,0 +1,34 @@
+package tasks;
+
+// GENERAL JAVA IMPORTS
+
+// OSMB SPECIFIC IMPORTS
+import com.osmb.api.ui.tabs.Tab;
+import com.osmb.api.script.Script;
+
+// OTHER CLASS IMPORTS
+import main.dCannonballSmelter;
+import utils.Task;
+import static main.dCannonballSmelter.*;
+
+
+public class Setup extends Task {
+    public Setup(Script script) {
+        super(script); // pass the script into the parent Task class
+    }
+
+    public boolean activate() {
+        return !setupDone;
+    }
+
+    public boolean execute() {
+        script.log("DEBUG", "We are now inside the Setup task logic");
+
+        script.log(dCannonballSmelter.class, "Opening inventory tab");
+        script.getWidgetManager().getTabManager().openTab(Tab.Type.INVENTORY);
+        script.submitTask(() -> false, script.random(500, 1250));
+
+        setupDone = true;
+        return false;
+    }
+}
