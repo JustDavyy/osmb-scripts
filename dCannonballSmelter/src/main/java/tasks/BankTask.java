@@ -46,6 +46,9 @@ public class BankTask extends Task {
         script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(5000, 7500));
 
         UIResult<ItemSearchResult> steelCheck = script.getItemManager().findItem(script.getWidgetManager().getInventory(), ItemID.STEEL_BAR);
+        if (steelCheck.isNotVisible()) {
+            return false;
+        }
         if (steelCheck.isNotFound()) {
             script.log(getClass(), "No steel bars in bank. Stopping script.");
             script.stop();

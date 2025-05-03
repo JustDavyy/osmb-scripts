@@ -67,8 +67,11 @@ public class FirstBank extends Task {
             }
         }
 
-        UIResult<ItemSearchResult> steelBarBank = script.getItemManager().findItem(script.getWidgetManager().getBank(), ItemID.STEEL_BAR);
-        if (steelBarBank.isNotFound()) {
+        UIResult<ItemSearchResult> steelCheck = script.getItemManager().findItem(script.getWidgetManager().getInventory(), ItemID.STEEL_BAR);
+        if (steelCheck.isNotVisible()) {
+            return false;
+        }
+        if (steelCheck.isNotFound()) {
             script.log(getClass(), "No steel bars in bank. Stopping script.");
             script.stop();
             return false;
