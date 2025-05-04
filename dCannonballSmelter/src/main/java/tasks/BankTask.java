@@ -41,6 +41,14 @@ public class BankTask extends Task {
             script.log(getClass(), "Skipping cannonball deposit (15% case).");
         }
 
+        UIResultList<ItemSearchResult> barsBank = script.getItemManager().findAllOfItem(script.getWidgetManager().getBank(), ItemID.STEEL_BAR);
+
+        if (barsBank.isNotFound()) {
+            script.log(getClass(), "Ran out of supplies. Stopping script.");
+            script.stop();
+            return false;
+        }
+
         script.getWidgetManager().getBank().withdraw(ItemID.STEEL_BAR, 27);
         script.getWidgetManager().getBank().close();
         script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(5000, 7500));
@@ -50,8 +58,7 @@ public class BankTask extends Task {
             return false;
         }
         if (steelCheck.isNotFound()) {
-            script.log(getClass(), "No steel bars in bank. Stopping script.");
-            script.stop();
+            script.log(getClass(), "No steel bars in inventory. Exiting banking logic.");
             return false;
         }
 
