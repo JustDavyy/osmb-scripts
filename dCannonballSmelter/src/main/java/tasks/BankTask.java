@@ -6,6 +6,7 @@ import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
 import com.osmb.api.utils.UIResult;
+import com.osmb.api.utils.UIResultList;
 import com.osmb.api.utils.timing.Timer;
 import utils.Task;
 
