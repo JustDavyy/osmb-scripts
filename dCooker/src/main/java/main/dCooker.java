@@ -25,7 +25,7 @@ import java.util.function.Predicate;
         author = "JustDavyy"
 )
 public class dCooker extends Script {
-    public static final String[] BANK_NAMES = {"Bank", "Chest", "Bank booth", "Bank chest", "Grand Exchange booth"};
+    public static final String[] BANK_NAMES = {"Bank", "Chest", "Bank booth", "Bank chest", "Grand Exchange booth", "Bank counter", "Bank table"};
     public static final String[] BANK_ACTIONS = {"bank", "open", "use", "bank banker"};
     public static final String[] COOKING_ACTIONS = {"cook"};
     public static final Predicate<RSObject> bankQuery = gameObject -> {

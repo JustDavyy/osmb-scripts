@@ -25,7 +25,7 @@ import com.osmb.api.script.Script;
         name = "dBattlestaffCrafter",
         description = "Attaches orbs to battlestaves for quick crafting experience",
         skillCategory = SkillCategory.CRAFTING,
-        version = 1.0,
+        version = 1.1,
         author = "JustDavyy"
 )
 
@@ -36,7 +36,7 @@ public class dBattlestaffCrafter extends Script {
 
     public static boolean shouldBank = false;
 
-    public static final String[] BANK_NAMES = {"Bank", "Chest", "Bank booth", "Bank chest", "Grand Exchange booth"};
+    public static final String[] BANK_NAMES = {"Bank", "Chest", "Bank booth", "Bank chest", "Grand Exchange booth", "Bank counter", "Bank table"};
     public static final String[] BANK_ACTIONS = {"bank", "open", "use"};
     public static final Predicate<RSObject> bankQuery = gameObject -> {
         if (gameObject.getName() == null || gameObject.getActions() == null) return false;
@@ -120,7 +120,7 @@ public class dBattlestaffCrafter extends Script {
 
     @Override
     public void onStart() {
-        log(getClass().getSimpleName(), "Starting dBattlestaffCrafter v1.0");
+        log(getClass().getSimpleName(), "Starting dBattlestaffCrafter v1.1");
 
         // Build and show UI
         ScriptUI ui = new ScriptUI(this);
