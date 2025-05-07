@@ -22,7 +22,7 @@ import com.osmb.api.ui.spellbook.StandardSpellbook;
         name = "dTeleporter",
         description = "Trains magic by continuously casting teleportation spells.",
         skillCategory = SkillCategory.MAGIC,
-        version = 1.0,
+        version = 1.1,
         author = "JustDavyy"
 )
 
@@ -56,7 +56,7 @@ public class dTeleporter extends Script {
 
     @Override
     public void onStart(){
-        log("INFO", "Starting dTeleporter v1.0");
+        log("INFO", "Starting dTeleporter v1.1");
 
         // Build and show our UI
         ScriptUI ui = new ScriptUI(this);
