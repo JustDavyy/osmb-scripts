@@ -21,7 +21,7 @@ import java.util.function.Predicate;
         name = "dCooker",
         description = "Cooks a wide variety of fish and other items at cookable objects.",
         skillCategory = SkillCategory.COOKING,
-        version = 1.1,
+        version = 1.2,
         author = "JustDavyy"
 )
 public class dCooker extends Script {
@@ -67,7 +67,7 @@ public class dCooker extends Script {
 
     @Override
     public void onStart() {
-        log(getClass().getSimpleName(), "Starting dCooker v1.1");
+        log(getClass().getSimpleName(), "Starting dCooker v1.2");
 
         // Build and show UI
         ScriptUI ui = new ScriptUI(this);

@@ -9,10 +9,6 @@ import com.osmb.api.script.Script;
 import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
 import com.osmb.api.shape.Polygon;
-import com.osmb.api.shape.Rectangle;
-import com.osmb.api.ui.component.chatbox.ChatboxComponent;
-import com.osmb.api.ui.component.chatbox.ChatboxTab;
-import com.osmb.api.ui.tabs.Tab;
 import com.osmb.api.utils.RandomUtils;
 import com.osmb.api.utils.UIResult;
 import com.osmb.api.utils.Utils;
@@ -29,7 +25,7 @@ public class dWyrmAgility extends Script {
     public int noMovementTimeout = RandomUtils.weightedRandom(6000, 9000);
     public static double xpGained = 0;
     public static int lapCount = 0;
-    private long startTime = System.currentTimeMillis();
+    private final long startTime = System.currentTimeMillis();
     private long lastStatsPrint = 0L;
 
 
@@ -258,15 +254,6 @@ public class dWyrmAgility extends Script {
             return new int[0];
         }
         return selectedCourse.regions();
-    }
-
-    public static int generateDelay(int minMillis, int maxMillis) {
-        if (maxMillis < minMillis) {
-            int temp = minMillis;
-            minMillis = maxMillis;
-            maxMillis = temp;
-        }
-        return minMillis + (int)(Math.random() * ((maxMillis - minMillis) + 1));
     }
 
     public void printStats() {

@@ -8,12 +8,10 @@ import static main.dTeleporter.*;
 // OSMB SPECIFIC IMPORTS
 import com.osmb.api.script.Script;
 import com.osmb.api.ui.spellbook.SpellNotFoundException;
-import com.osmb.api.ui.tabs.Spellbook;
-
 
 public class TeleportTask extends Task {
     private long lastTeleportTime = 0;
-    private long startTime = 0;
+    private final long startTime;
     private int teleportCount = 0;
 
     public TeleportTask(Script script) {
@@ -27,7 +25,7 @@ public class TeleportTask extends Task {
 
     public boolean execute() {
 
-        boolean success = false;
+        boolean success;
         try {
             success = script.getWidgetManager().getSpellbook().selectSpell(
                     spellToCast,
@@ -88,7 +86,16 @@ public class TeleportTask extends Task {
         };
     }
 
-    private static long getCooldownForSpell() {
-        return 1800;
+    private long getCooldownForSpell() {
+        // Randomized delay
+        int roll = script.random(100);
+
+        if (roll < 50) {
+            return script.random(1800, 1901);
+        } else if (roll < 90) {
+            return script.random(1850, 2001);
+        } else {
+            return script.random(1900, 2301);
+        }
     }
 }

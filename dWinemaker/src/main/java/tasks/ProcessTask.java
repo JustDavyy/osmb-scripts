@@ -1,10 +1,11 @@
 package tasks;
 
+import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.item.ItemID;
-import com.osmb.api.item.ItemSearchResult;
 import com.osmb.api.ui.chatbox.dialogue.DialogueType;
+
+import java.util.Set;
 import java.util.function.BooleanSupplier;
-import com.osmb.api.utils.UIResultList;
 import com.osmb.api.utils.timing.Timer;
 import com.osmb.api.script.Script;
 import main.dWinemaker;
@@ -13,9 +14,8 @@ import utils.Task;
 import static main.dWinemaker.*;
 
 public class ProcessTask extends Task {
-    private long startTime = 0;
+    private final long startTime;
     private int craftCount = 0;
-    private final int xpPerWine = 200;
 
     public ProcessTask(Script script) {
         super(script);
@@ -29,20 +29,24 @@ public class ProcessTask extends Task {
 
     @Override
     public boolean execute() {
-        UIResultList<ItemSearchResult> grapeResults = script.getItemManager().findAllOfItem(script.getWidgetManager().getInventory(), grapeID);
-        UIResultList<ItemSearchResult> jugResults = script.getItemManager().findAllOfItem(script.getWidgetManager().getInventory(), ItemID.JUG_OF_WATER);
+        ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(grapeID, ItemID.JUG_OF_WATER));
 
-        if (grapeResults.isNotFound() || jugResults.isNotFound()) {
+        if (inventorySnapshot == null) {
+            // Inventory not visible
+            return false;
+        }
+
+        if (!inventorySnapshot.contains(grapeID) || !inventorySnapshot.contains(ItemID.JUG_OF_WATER)) {
             script.log(dWinemaker.class, "Missing ingredients. Flagging bank.");
             shouldBank = true;
             return false;
         }
 
-        if (!script.getItemManager().unSelectItemIfSelected()) {
+        if (!script.getWidgetManager().getInventory().unSelectItemIfSelected()) {
             return false;
         }
 
-        boolean interacted = interactAndWaitForDialogue(grapeResults.getRandom(), jugResults.getRandom());
+        boolean interacted = interactAndWaitForDialogue(inventorySnapshot);
 
         if (!interacted) {
             script.log(dWinemaker.class, "Failed to interact with items.");
@@ -64,7 +68,7 @@ public class ProcessTask extends Task {
                 return false;
             }
             script.log(dWinemaker.class, "Selected wine to produce.");
-            waitUntilFinishedProducing(grapeID, ItemID.JUG_OF_WATER);
+            waitUntilFinishedProducing();
             craftCount += 14;
             printStats();
         }
@@ -72,30 +76,31 @@ public class ProcessTask extends Task {
         return false;
     }
 
-    private boolean interactAndWaitForDialogue(ItemSearchResult item1, ItemSearchResult item2) {
-        int rand = script.random(1);
-        ItemSearchResult first = rand == 0 ? item1 : item2;
-        ItemSearchResult second = rand == 0 ? item2 : item1;
+    private boolean interactAndWaitForDialogue(ItemGroupResult inventSnapshot) {
+        boolean firstIsGrape = script.random(2) == 0;
 
-        // First interaction
-        if (!first.interact()) {
+        int firstID = firstIsGrape ? grapeID : ItemID.JUG_OF_WATER;
+        int secondID = firstIsGrape ? ItemID.JUG_OF_WATER : grapeID;
+
+        // First interaction with retry
+        if (!inventSnapshot.getRandomItem(firstID).interact()) {
             script.log(getClass(), "First item interaction failed, retrying...");
-            if (!first.interact()) {
+            if (!inventSnapshot.getRandomItem(firstID).interact()) {
                 return false;
             }
         }
 
-        script.sleep(script.random(150, 300)); // slight delay
+        script.sleep(script.random(150, 300));
 
-        // Second interaction
-        if (!second.interact()) {
+        // Second interaction with retry
+        if (!inventSnapshot.getRandomItem(secondID).interact()) {
             script.log(getClass(), "Second item interaction failed, retrying...");
-            if (!second.interact()) {
+            if (!inventSnapshot.getRandomItem(secondID).interact()) {
                 return false;
             }
         }
 
-        // After both interactions succeed, wait for the dialogue
+        // Wait for dialogue
         boolean useHumanTask = script.random(10) < 3; // 30% chance
         BooleanSupplier condition = () -> {
             DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
@@ -103,11 +108,11 @@ public class ProcessTask extends Task {
         };
 
         return useHumanTask
-                ? script.submitHumanTask(condition, 3000)
-                : script.submitTask(condition, 3000);
+                ? script.submitHumanTask(condition, script.random(3000, 5000))
+                : script.submitTask(condition, script.random(3000, 5000));
     }
 
-    private void waitUntilFinishedProducing(int... resources) {
+    private void waitUntilFinishedProducing() {
         Timer amountChangeTimer = new Timer();
 
         BooleanSupplier condition = () -> {
@@ -121,23 +126,19 @@ public class ProcessTask extends Task {
                 return true;
             }
 
-            for (int id : resources) {
-                UIResultList<ItemSearchResult> result = script.getItemManager().findAllOfItem(script.getWidgetManager().getInventory(), id);
-                if (result.isNotVisible()) return false;
-                if (result.isEmpty()) return true;
-            }
-
-            return false;
+            ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(grapeID, ItemID.JUG_OF_WATER));
+            if (inventorySnapshot == null) {return false;}
+            return inventorySnapshot.isEmpty();
         };
 
         boolean useHumanTask = script.random(10) < 3; // 30% chance
 
         if (useHumanTask) {
             script.log(getClass(), "Using human task to wait until processing finishes.");
-            script.submitHumanTask(condition, 60000, true, false, true);
+            script.submitHumanTask(condition, script.random(60000, 62000));
         } else {
             script.log(getClass(), "Using regular task to wait until processing finishes.");
-            script.submitTask(condition, 60000, true, false, true);
+            script.submitTask(condition, script.random(60000, 62000));
         }
     }
 
@@ -145,6 +146,7 @@ public class ProcessTask extends Task {
         long elapsed = System.currentTimeMillis() - startTime;
         int winesPerHour = (int) ((craftCount * 3600000L) / elapsed);
 
+        int xpPerWine = 200;
         int totalXp = craftCount * xpPerWine;
         int xpPerHour = (int) ((totalXp * 3600000L) / elapsed);
 

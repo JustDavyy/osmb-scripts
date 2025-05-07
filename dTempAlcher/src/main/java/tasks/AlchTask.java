@@ -1,15 +1,17 @@
 package tasks;
 
+import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.script.Script;
 import com.osmb.api.shape.Rectangle;
 import com.osmb.api.ui.spellbook.SpellNotFoundException;
 import com.osmb.api.ui.spellbook.StandardSpellbook;
-import com.osmb.api.ui.tabs.Inventory;
 import com.osmb.api.ui.tabs.Spellbook;
 import com.osmb.api.ui.tabs.Tab;
 import com.osmb.api.utils.UIResult;
 import main.dTempAlcher;
 import utils.Task;
+
+import java.util.Collections;
 
 import static main.dTempAlcher.*;
 
@@ -39,9 +41,7 @@ public class AlchTask extends Task {
         if (!initializedSlotBounds) {
             script.log(dTempAlcher.class, "Opening inventory tab...");
             script.getWidgetManager().getTabManager().openTab(Tab.Type.INVENTORY);
-
-            Inventory inventory = script.getWidgetManager().getInventory();
-            slotBounds = script.getItemManager().getBoundsForSlot(alchSlotID, inventory);
+            slotBounds = script.getWidgetManager().getInventory().getBoundsForSlot(alchSlotID);
 
             if (slotBounds != null) {
                 initializedSlotBounds = true;
@@ -55,11 +55,13 @@ public class AlchTask extends Task {
 
         // If many alchs done, cache free slots (failsafe)
         if (alchCount > 2 && !slotsInitialized) {
-            var freeSlotsResult = script.getItemManager().getFreeSlots(script.getWidgetManager().getInventory());
-            if (!freeSlotsResult.isEmpty()) {
-                slotsFree = freeSlotsResult.size();
-                script.log("DEBUG", "Cached free inventory slots: " + slotsFree);
+            ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Collections.emptySet());
+            if (inventorySnapshot == null) {
+                // inventory not visible
+                return false;
             }
+            slotsFree = inventorySnapshot.getFreeSlots();
+            script.log("DEBUG", "Cached free inventory slots: " + slotsFree);
             slotsInitialized = true;
         }
 
@@ -70,25 +72,26 @@ public class AlchTask extends Task {
                     Spellbook.ResultType.CHANGE_TAB
             );
         } catch (SpellNotFoundException e) {
-            script.log(dTempAlcher.class, "Spell sprite not found for " + spellToCast.getName() + ". Stopping.");
+            script.log(getClass().getSimpleName(), "Spell sprite not found for " + spellToCast.getName() + ". Stopping.");
             script.stop();
             return false;
         }
 
         if (success) {
-            var currentFreeSlots = script.getItemManager().getFreeSlots(script.getWidgetManager().getInventory());
-            if (slotsInitialized && !currentFreeSlots.isEmpty() && currentFreeSlots.size() > slotsFree) {
+            ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Collections.emptySet());
+            if (inventorySnapshot == null) {return false;}
+            var currentFreeSlots = inventorySnapshot.getFreeSlots();
+            if (slotsInitialized && currentFreeSlots > slotsFree) {
                 script.log("FAILSAFE", "Inventory slots increased unexpectedly. Assuming out of items to alch.");
                 moveToNextSlotOrStop();
                 return false;
             }
 
-            long now = System.currentTimeMillis();
-            lastAlchTime = now;
+            lastAlchTime = System.currentTimeMillis();
             alchCount++;
 
             script.getFinger().tap(slotBounds.get().getBounds());
-            script.log(dTempAlcher.class, "Cast " + spellToCast.getName() + " on slot " + alchSlotID + ".");
+            script.log(getClass().getSimpleName(), "Cast " + spellToCast.getName() + " on slot " + alchSlotID + ".");
 
             printStats();
 

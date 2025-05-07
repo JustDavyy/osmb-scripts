@@ -34,11 +34,9 @@ public class ScriptUI {
     private ComboBox<String> selectionModeComboBox;
     private ImageView itemToAlchView;
     private ListView<Integer> multipleItemsView;
-    private Scene scene;
-    private Stage window;
 
     private int selectedItemID = ItemID.BANK_FILLER;
-    private ObservableList<Integer> multipleSelectedItemIDs = FXCollections.observableArrayList();
+    private final ObservableList<Integer> multipleSelectedItemIDs = FXCollections.observableArrayList();
 
     private VBox itemSelectionBox;
 
@@ -86,7 +84,7 @@ public class ScriptUI {
 
         root.getChildren().addAll(spellLabel, spellComboBox, modeLabel, selectionModeComboBox, itemSelectionBox, confirmButton);
 
-        scene = new Scene(root, 200, 400);
+        Scene scene = new Scene(root, 200, 400);
         scene.getStylesheets().add("style.css");
         return scene;
     }

@@ -1,15 +1,16 @@
 package tasks;
 
+import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.item.ItemID;
-import com.osmb.api.item.ItemSearchResult;
 import com.osmb.api.shape.Rectangle;
 import com.osmb.api.ui.component.chatbox.ChatboxComponent;
 import com.osmb.api.ui.component.chatbox.ChatboxTab;
 import com.osmb.api.ui.tabs.Tab;
-import com.osmb.api.utils.UIResult;
 import com.osmb.api.script.Script;
 import main.dPublicAlcher;
 import utils.Task;
+
+import java.util.Set;
 
 import static main.dPublicAlcher.*;
 
@@ -44,17 +45,17 @@ public class Setup extends Task {
 
     private void setupItem(int itemId) {
         itemName = script.getItemManager().getItemName(itemId);
-        UIResult<ItemSearchResult> alchItem = script.getItemManager().findItem(script.getWidgetManager().getInventory(), itemId);
+        ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(itemId));
 
-        if (alchItem.isNotFound()) {
+        if (inventorySnapshot == null || inventorySnapshot.isEmpty()) {
             script.log("FAIL", "Could not locate " + itemName + " to alch.");
             script.stop();
         } else {
-            int stack = alchItem.get().getStackAmount();
+            int stack = inventorySnapshot.getAmount(itemId);
             script.log("INFO", "Item " + itemName + " found, stack: " + stack);
             stackSize = stack;
             hasReqs = true;
-            itemRect = alchItem.get().getTappableBounds();
+            itemRect = inventorySnapshot.getItem(itemId).getTappableBounds();
         }
     }
 

@@ -1,13 +1,10 @@
 package main;
 
 // GENERAL JAVA IMPORTS
-import javafx.application.Platform;
 import javafx.scene.Scene;
-import javafx.scene.image.Image;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
-import javafx.stage.Stage;
 import tasks.BankTask;
 import tasks.ProcessTask;
 import tasks.Setup;

@@ -1,26 +1,24 @@
 package tasks;
 
+import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.item.ItemID;
-import com.osmb.api.item.ItemSearchResult;
 import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.scene.RSTile;
 import com.osmb.api.script.Script;
-import com.osmb.api.utils.Result;
-import com.osmb.api.utils.UIResultList;
 import com.osmb.api.utils.timing.Timer;
 import main.dCooker;
 import utils.Task;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static main.dCooker.cookingItemID;
 
 public class BankTask extends Task {
-
-    private UIResultList<ItemSearchResult> itemInventory;
+    ItemGroupResult inventorySnapshot;
 
     public BankTask(Script script) {
         super(script);
@@ -28,23 +26,19 @@ public class BankTask extends Task {
 
     @Override
     public boolean activate() {
-        // get inventory amount here, if true execute is processed right after, so no need to search again
-        itemInventory = script.getItemManager().findAllOfItem(script.getWidgetManager().getInventory(), cookingItemID);
-        if (!checkResult(itemInventory, true)) {
-            return true;
-        }
-        // execute the task if no food
-        return itemInventory.isEmpty() || script.getWidgetManager().getBank().isVisible();
+        inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(cookingItemID));
+        return inventorySnapshot == null || inventorySnapshot.isEmpty() || script.getWidgetManager().getBank().isVisible();
     }
 
     @Override
     public boolean execute() {
+        ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(cookingItemID));
         if (!script.getWidgetManager().getBank().isVisible()) {
             openBank();
             return false;
         }
 
-        if (!script.getWidgetManager().getBank().depositAll(new int[]{cookingItemID})) {
+        if (!script.getWidgetManager().getBank().depositAll(Set.of(cookingItemID))) {
             return false;
         }
         // work out our target amount
@@ -56,7 +50,7 @@ public class BankTask extends Task {
         // here we can simply work out how many we need to withdraw,
         // if the amount is below 0, it would also mean we have
         // too many and would want to deposit the absolute value of the negative result
-        int amountNeeded = targetAmount - itemInventory.size();
+        int amountNeeded = targetAmount - inventorySnapshot.getAmount(cookingItemID);
 
         if (amountNeeded == 0) {
             // banking complete
@@ -64,8 +58,10 @@ public class BankTask extends Task {
             script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(4000, 6000));
         } else if (amountNeeded > 0) {
             // need to withdraw
-            UIResultList<ItemSearchResult> itemBank = script.getItemManager().findAllOfItem(script.getWidgetManager().getBank(), cookingItemID);
-            if (!checkResult(itemBank, false)) {
+            ItemGroupResult bankSnapshot = script.getWidgetManager().getBank().search(Set.of(cookingItemID));
+            if (!bankSnapshot.contains(cookingItemID)) {
+                script.log(getClass(), "Ran out of food to cook. Stopping script.");
+                script.stop();
                 return false;
             }
             if (!script.getWidgetManager().getBank().withdraw(cookingItemID, targetAmount)) {
@@ -80,20 +76,6 @@ public class BankTask extends Task {
             }
         }
         return false;
-    }
-
-    private boolean checkResult(Result result, boolean inventory) {
-        if (result.isNotVisible()) {
-            return false;
-        }
-        if (result.isNotFound()) {
-            if (!inventory) {
-                script.log(getClass(), "Ran out of food to cook. Stopping script.");
-                script.stop();
-            }
-            return false;
-        }
-        return true;
     }
 
     private void openBank() {
@@ -149,6 +131,6 @@ public class BankTask extends Task {
             }
 
             return script.getWidgetManager().getBank().isVisible() || positionChangeTimer.get().timeElapsed() > 2000;
-        }, script.random(14000, 16000), true, false, true);
+        }, script.random(14000, 16000));
     }
 }

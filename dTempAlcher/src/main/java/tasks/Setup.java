@@ -1,14 +1,11 @@
 package tasks;
 
-import com.osmb.api.item.ItemID;
 import com.osmb.api.shape.Rectangle;
 import com.osmb.api.ui.component.chatbox.ChatboxComponent;
 import com.osmb.api.ui.component.chatbox.ChatboxTab;
 import com.osmb.api.ui.tabs.Tab;
-import com.osmb.api.utils.UIResult;
 import com.osmb.api.script.Script;
 
-import main.dTempAlcher;
 import utils.Task;
 
 import static main.dTempAlcher.*;
@@ -39,10 +36,10 @@ public class Setup extends Task {
             }
         }
 
-        script.log(dTempAlcher.class, "Opening inventory tab...");
+        script.log(getClass().getSimpleName(), "Opening inventory tab...");
         script.getWidgetManager().getTabManager().openTab(Tab.Type.INVENTORY);
 
-        script.log(dTempAlcher.class, "Closing chatbox if open...");
+        script.log(getClass().getSimpleName(), "Closing chatbox if open...");
         closeChatBox();
 
         setupDone = true;
@@ -56,7 +53,7 @@ public class Setup extends Task {
         if (chatboxComponent.isOpen() && script.getWidgetManager().getDialogue().getDialogueType() == null) {
             Rectangle chatBoxTabBounds = chatboxTab.getBounds();
             if (chatBoxTabBounds == null) {
-                script.log(dTempAlcher.class, "Chatbox bounds are null, cannot close chatbox.");
+                script.log(getClass().getSimpleName(), "Chatbox bounds are null, cannot close chatbox.");
                 return;
             }
             script.getFinger().tap(chatBoxTabBounds);

@@ -1,8 +1,6 @@
 package main;
 
 // GENERAL JAVA IMPORTS
-import com.osmb.api.shape.Rectangle;
-import com.osmb.api.utils.UIResult;
 import javafx.scene.Scene;
 
 import java.util.Arrays;

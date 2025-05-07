@@ -1,17 +1,17 @@
 package tasks;
 
+import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.item.ItemID;
-import com.osmb.api.item.ItemSearchResult;
 import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
-import com.osmb.api.utils.UIResultList;
 import com.osmb.api.utils.timing.Timer;
 import main.dWinemaker;
 import utils.Task;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static main.dWinemaker.*;
@@ -36,12 +36,16 @@ public class BankTask extends Task {
         }
 
         script.log(getClass(), "Depositing full inventory...");
-        script.getWidgetManager().getBank().depositAll(new int[0]);
+        script.getWidgetManager().getBank().depositAll(Set.of(0));
 
-        UIResultList<ItemSearchResult> grapesBank = script.getItemManager().findAllOfItem(script.getWidgetManager().getBank(), grapeID);
-        UIResultList<ItemSearchResult> jugsBank = script.getItemManager().findAllOfItem(script.getWidgetManager().getBank(), ItemID.JUG_OF_WATER);
+        ItemGroupResult bankSnapshot = script.getWidgetManager().getBank().search(Set.of(grapeID, ItemID.JUG_OF_WATER));
 
-        if (grapesBank.isNotFound() || jugsBank.isNotFound()) {
+        if (bankSnapshot == null) {
+            // Bank not visible
+            return false;
+        }
+
+        if (!bankSnapshot.contains(grapeID) || !bankSnapshot.contains(ItemID.JUG_OF_WATER)) {
             script.log(getClass(), "Ran out of supplies. Stopping script.");
             script.stop();
             return false;
@@ -93,7 +97,7 @@ public class BankTask extends Task {
             }
 
             return script.getWidgetManager().getBank().isVisible() || positionChangeTimer.get().timeElapsed() > 2000;
-        }, 15000, true, false, true);
+        }, 15000);
     }
 
 

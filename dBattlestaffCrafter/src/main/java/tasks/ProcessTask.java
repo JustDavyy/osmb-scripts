@@ -1,14 +1,15 @@
 package tasks;
 
+import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.item.ItemID;
 import com.osmb.api.item.ItemSearchResult;
 import com.osmb.api.ui.chatbox.dialogue.DialogueType;
-import com.osmb.api.utils.UIResultList;
 import com.osmb.api.utils.timing.Timer;
 import com.osmb.api.script.Script;
 import main.dBattlestaffCrafter;
 import utils.Task;
 
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 
 import static main.dBattlestaffCrafter.*;
@@ -16,6 +17,7 @@ import static main.dBattlestaffCrafter.*;
 public class ProcessTask extends Task {
     private long startTime = 0;
     private int craftCount = 0;
+    private ItemGroupResult inventorySnapshot;
 
     public ProcessTask(Script script) {
         super(script);
@@ -36,20 +38,19 @@ public class ProcessTask extends Task {
             return false;
         }
 
-        UIResultList<ItemSearchResult> orbResults = script.getItemManager().findAllOfItem(script.getWidgetManager().getInventory(), orbId);
-        UIResultList<ItemSearchResult> staffResults = script.getItemManager().findAllOfItem(script.getWidgetManager().getInventory(), ItemID.BATTLESTAFF);
+        inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(orbId, ItemID.BATTLESTAFF));
 
-        if (orbResults.isNotFound() || staffResults.isNotFound()) {
+        if (inventorySnapshot.contains(orbId) || inventorySnapshot.contains(ItemID.BATTLESTAFF)) {
             script.log(dBattlestaffCrafter.class, "Missing battlestaffs or orbs. Flagging bank.");
             shouldBank = true;
             return false;
         }
 
-        if (!script.getItemManager().unSelectItemIfSelected()) {
+        if (!script.getWidgetManager().getInventory().unSelectItemIfSelected()) {
             return false;
         }
 
-        boolean interacted = interactAndWaitForDialogue(orbResults.getRandom(), staffResults.getRandom());
+        boolean interacted = interactAndWaitForDialogue(inventorySnapshot.getRandomItem(orbId), inventorySnapshot.getRandomItem(ItemID.BATTLESTAFF));
 
         if (!interacted) {
             script.log(dBattlestaffCrafter.class, "Failed to interact with orb and staff.");
@@ -71,7 +72,7 @@ public class ProcessTask extends Task {
             }
             script.log(dBattlestaffCrafter.class, "Selected battlestaff to craft.");
 
-            waitUntilFinishedProducing(orbId, ItemID.BATTLESTAFF);
+            waitUntilFinishedProducing();
             craftCount += 14;
             printStats();
         }
@@ -106,7 +107,7 @@ public class ProcessTask extends Task {
                 : script.submitTask(condition, 3000);
     }
 
-    private void waitUntilFinishedProducing(int... resources) {
+    private void waitUntilFinishedProducing() {
         Timer amountChangeTimer = new Timer();
 
         BooleanSupplier condition = () -> {
@@ -120,21 +121,16 @@ public class ProcessTask extends Task {
                 return true;
             }
 
-            for (int id : resources) {
-                UIResultList<ItemSearchResult> result = script.getItemManager().findAllOfItem(script.getWidgetManager().getInventory(), id);
-                if (result.isNotVisible()) return false;
-                if (result.isEmpty()) return true;
-            }
-
-            return false;
+            inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(getOrbIdForStaff(staffID), ItemID.BATTLESTAFF));
+            return inventorySnapshot.isEmpty();
         };
 
         if (script.random(10) < 3) {
             script.log(getClass(), "Using human task to wait until crafting finishes.");
-            script.submitHumanTask(condition, 60000, true, false, true);
+            script.submitHumanTask(condition, 60000);
         } else {
             script.log(getClass(), "Using regular task to wait until crafting finishes.");
-            script.submitTask(condition, 60000, true, false, true);
+            script.submitTask(condition, 60000);
         }
     }
 

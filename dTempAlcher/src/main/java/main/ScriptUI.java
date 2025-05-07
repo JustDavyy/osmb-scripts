@@ -29,7 +29,7 @@ public class ScriptUI {
     private ComboBox<String> selectionModeComboBox;
     private TextField singleSlotField;
     private ListView<Integer> multipleSlotsView;
-    private ObservableList<Integer> multipleSelectedSlotIDs = FXCollections.observableArrayList();
+    private final ObservableList<Integer> multipleSelectedSlotIDs = FXCollections.observableArrayList();
 
     private VBox itemSelectionBox;
     private int selectedSlotID = 0;

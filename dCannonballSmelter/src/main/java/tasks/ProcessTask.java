@@ -1,15 +1,15 @@
 package tasks;
 
+import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.item.ItemID;
-import com.osmb.api.item.ItemSearchResult;
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
 import com.osmb.api.ui.chatbox.dialogue.DialogueType;
-import com.osmb.api.utils.UIResultList;
 import com.osmb.api.utils.timing.Timer;
 import utils.Task;
 
 import java.util.List;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 
 public class ProcessTask extends Task {
@@ -29,13 +29,13 @@ public class ProcessTask extends Task {
 
     @Override
     public boolean execute() {
-        UIResultList<ItemSearchResult> steelBarResults = script.getItemManager().findAllOfItem(script.getWidgetManager().getInventory(), ItemID.STEEL_BAR);
-        if (steelBarResults.isNotVisible()) {
+        ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(ItemID.STEEL_BAR));
+        if (inventorySnapshot == null) {
             script.log(getClass(), "Inventory not visible.");
             return false;
         }
 
-        if (!script.getItemManager().unSelectItemIfSelected()) {
+        if (!script.getWidgetManager().getInventory().unSelectItemIfSelected()) {
             return false;
         }
 
@@ -78,9 +78,9 @@ public class ProcessTask extends Task {
             }
             script.log(getClass(), "Selected cannonballs to smelt.");
 
-            waitUntilFinishedSmelting(ItemID.STEEL_BAR);
+            waitUntilFinishedSmelting();
 
-            int smeltedNow = steelBarResults.size();
+            int smeltedNow = inventorySnapshot.getAmount(ItemID.STEEL_BAR);
             smeltCount += smeltedNow;
             totalXpGained += smeltedNow * getXpForCannonball();
             printStats();
@@ -105,7 +105,7 @@ public class ProcessTask extends Task {
         return (RSObject) script.getUtils().getClosest(objects);
     }
 
-    private void waitUntilFinishedSmelting(int... resources) {
+    private void waitUntilFinishedSmelting() {
         Timer amountChangeTimer = new Timer();
 
         BooleanSupplier condition = () -> {
@@ -143,21 +143,17 @@ public class ProcessTask extends Task {
             }
 
             // Check if we ran out of items
-            for (int id : resources) {
-                UIResultList<ItemSearchResult> result = script.getItemManager().findAllOfItem(script.getWidgetManager().getInventory(), id);
-                if (result.isNotVisible()) return false;
-                if (result.isEmpty()) return true;
-            }
-
-            return false;
+            ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(ItemID.STEEL_BAR));
+            if (inventorySnapshot == null) {return false;}
+            return inventorySnapshot.isEmpty();
         };
 
         if (script.random(10) < 3) {
             script.log(getClass(), "Using human task to wait until smelting finishes.");
-            script.submitHumanTask(condition, script.random(162500, 166000), true, false, true);
+            script.submitHumanTask(condition, script.random(162500, 166000));
         } else {
             script.log(getClass(), "Using regular task to wait until smelting finishes.");
-            script.submitTask(condition, script.random(162500, 166000), true, false, true);
+            script.submitTask(condition, script.random(162500, 166000));
         }
     }
 

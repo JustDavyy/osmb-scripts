@@ -1,22 +1,18 @@
 package tasks;
 
+import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.item.ItemID;
-import com.osmb.api.item.ItemSearchResult;
 import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
-import com.osmb.api.scene.RSTile;
 import com.osmb.api.script.Script;
-import com.osmb.api.utils.Result;
-import com.osmb.api.utils.UIResult;
-import com.osmb.api.utils.UIResultList;
 import com.osmb.api.utils.timing.Timer;
 import main.dCannonballSmelter;
 import utils.Task;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BooleanSupplier;
 
 import static main.dCannonballSmelter.*;
 
@@ -26,6 +22,8 @@ public class FirstBank extends Task {
         super(script);
     }
 
+    private boolean hasMould = false;
+
     @Override
     public boolean activate() {
         return !bankSetupDone;
@@ -33,11 +31,17 @@ public class FirstBank extends Task {
 
     @Override
     public boolean execute() {
-        UIResult<ItemSearchResult> hasMould = script.getItemManager().findItem(script.getWidgetManager().getInventory(), ItemID.AMMO_MOULD, ItemID.DOUBLE_AMMO_MOULD);
+        ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(ItemID.AMMO_MOULD, ItemID.DOUBLE_AMMO_MOULD));
 
-        if (hasMould.isFound()) {
-            UIResult<ItemSearchResult> hasBars = script.getItemManager().findItem(script.getWidgetManager().getInventory(), ItemID.STEEL_BAR);
-            if (hasBars.isFound()) {
+        if (inventorySnapshot == null) {
+            // Inventory not visible
+            return false;
+        }
+
+        if (inventorySnapshot.containsAny(Set.of(ItemID.AMMO_MOULD, ItemID.DOUBLE_AMMO_MOULD))) {
+            hasMould = true;
+            inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(ItemID.STEEL_BAR));
+            if (inventorySnapshot.contains(ItemID.STEEL_BAR)) {
                 script.log(getClass().getSimpleName(), "We already have a mould and bars in our inventory, marking bank setup as done.");
                 bankSetupDone = true;
                 return false;
@@ -49,15 +53,16 @@ public class FirstBank extends Task {
             return false;
         }
 
-        if (hasMould.isNotFound()) {
-            script.getWidgetManager().getBank().depositAll(new int[]{ItemID.AMMO_MOULD, ItemID.DOUBLE_AMMO_MOULD});
+        ItemGroupResult bankSnapshot;
+        if (!hasMould) {
+            script.getWidgetManager().getBank().depositAll(Set.of(ItemID.AMMO_MOULD, ItemID.DOUBLE_AMMO_MOULD));
             script.submitTask(() -> false, script.random(300, 600));
-            UIResult<ItemSearchResult> doubleMould = script.getItemManager().findItem(script.getWidgetManager().getBank(), ItemID.DOUBLE_AMMO_MOULD);
-            if (doubleMould.isFound()) {
+            bankSnapshot = script.getWidgetManager().getBank().search(Set.of(ItemID.DOUBLE_AMMO_MOULD));
+            if (bankSnapshot.contains(ItemID.DOUBLE_AMMO_MOULD)) {
                 script.getWidgetManager().getBank().withdraw(ItemID.DOUBLE_AMMO_MOULD, 1);
             } else {
-                UIResult<ItemSearchResult> normalMould = script.getItemManager().findItem(script.getWidgetManager().getBank(), ItemID.AMMO_MOULD);
-                if (normalMould.isFound()) {
+                bankSnapshot = script.getWidgetManager().getBank().search(Set.of(ItemID.AMMO_MOULD));
+                if (bankSnapshot.contains(ItemID.AMMO_MOULD)) {
                     script.getWidgetManager().getBank().withdraw(ItemID.AMMO_MOULD, 1);
                 } else {
                     script.log(getClass(), "No ammo moulds available. Stopping script.");
@@ -67,9 +72,9 @@ public class FirstBank extends Task {
             }
         }
 
-        UIResultList<ItemSearchResult> barsBank = script.getItemManager().findAllOfItem(script.getWidgetManager().getBank(), ItemID.STEEL_BAR);
+        bankSnapshot = script.getWidgetManager().getBank().search(Set.of(ItemID.STEEL_BAR));
 
-        if (barsBank.isNotFound()) {
+        if (bankSnapshot.isEmpty()) {
             script.log(getClass(), "Ran out of supplies. Stopping script.");
             script.stop();
             return false;
@@ -79,10 +84,9 @@ public class FirstBank extends Task {
         script.getWidgetManager().getBank().close();
         script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(5000, 7500));
 
-        UIResult<ItemSearchResult> finalMould = script.getItemManager().findItem(script.getWidgetManager().getInventory(), ItemID.AMMO_MOULD, ItemID.DOUBLE_AMMO_MOULD);
-        UIResult<ItemSearchResult> finalSteel = script.getItemManager().findItem(script.getWidgetManager().getInventory(), ItemID.STEEL_BAR);
+        inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(ItemID.AMMO_MOULD, ItemID.DOUBLE_AMMO_MOULD, ItemID.STEEL_BAR));
 
-        if (finalMould.isFound() && finalSteel.isFound()) {
+        if (inventorySnapshot.containsAny(Set.of(ItemID.AMMO_MOULD, ItemID.DOUBLE_AMMO_MOULD)) && inventorySnapshot.contains(ItemID.STEEL_BAR)) {
             bankSetupDone = true;
             script.log(getClass(), "Bank setup completed successfully.");
         }
@@ -118,6 +122,6 @@ public class FirstBank extends Task {
             }
 
             return script.getWidgetManager().getBank().isVisible() || positionChangeTimer.get().timeElapsed() > 2000;
-        }, 15000, true, false, true);
+        }, 15000);
     }
 }

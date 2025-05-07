@@ -1,16 +1,16 @@
 package tasks;
 
+import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.item.ItemID;
-import com.osmb.api.item.ItemSearchResult;
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
 import com.osmb.api.ui.chatbox.dialogue.DialogueType;
-import com.osmb.api.utils.UIResultList;
 import com.osmb.api.utils.timing.Timer;
 import utils.Task;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 
 import static main.dCooker.*;
@@ -32,13 +32,13 @@ public class ProcessTask extends Task {
 
     @Override
     public boolean execute() {
-        UIResultList<ItemSearchResult> foodResults = script.getItemManager().findAllOfItem(script.getWidgetManager().getInventory(), cookingItemID);
-        if (foodResults.isNotVisible()) {
+        ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(cookingItemID));
+        if (inventorySnapshot == null) {
             script.log(getClass(), "Inventory not visible.");
             return false;
         }
 
-        if (!script.getItemManager().unSelectItemIfSelected()) {
+        if (!script.getWidgetManager().getInventory().unSelectItemIfSelected()) {
             return false;
         }
 
@@ -86,13 +86,13 @@ public class ProcessTask extends Task {
 
             script.log(getClass(), "Selected food to cook.");
 
-            waitUntilFinishedCooking(cookingItemID);
+            waitUntilFinishedCooking();
 
-            UIResultList<ItemSearchResult> cookedResults = script.getItemManager().findAllOfItem(script.getWidgetManager().getInventory(), cookedItemID);
-            if (cookedResults.isNotVisible()) {
-                script.log(getClass(), "No cooked fished could be located.");
+            inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(cookingItemID, cookedItemID));
+            if (inventorySnapshot == null || inventorySnapshot.isEmpty()) {
+                script.log(getClass(), "No fish to cook could be located.");
             } else {
-                int cookedNow = cookedResults.size();
+                int cookedNow = inventorySnapshot.getAmount(cookedItemID);
                 cookCount += cookedNow;
                 totalXpGained += cookedNow * getXpForFood(cookingItemID);
             }
@@ -129,7 +129,7 @@ public class ProcessTask extends Task {
         return closest;
     }
 
-    private void waitUntilFinishedCooking(int... resources) {
+    private void waitUntilFinishedCooking() {
         Timer amountChangeTimer = new Timer();
 
         BooleanSupplier condition = () -> {
@@ -145,21 +145,17 @@ public class ProcessTask extends Task {
                 return true;
             }
 
-            for (int id : resources) {
-                UIResultList<ItemSearchResult> result = script.getItemManager().findAllOfItem(script.getWidgetManager().getInventory(), id);
-                if (result.isNotVisible()) return false;
-                if (result.isEmpty()) return true;
-            }
-
-            return false;
+            ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(cookingItemID));
+            if (inventorySnapshot == null) {return false;}
+            return inventorySnapshot.isEmpty();
         };
 
         if (script.random(10) < 3) {
             script.log(getClass(), "Using human task to wait until cooking finishes.");
-            script.submitHumanTask(condition, script.random(66000, 70000), true, false, true);
+            script.submitHumanTask(condition, script.random(66000, 70000));
         } else {
             script.log(getClass(), "Using regular task to wait until cooking finishes.");
-            script.submitTask(condition, script.random(66000, 70000), true, false, true);
+            script.submitTask(condition, script.random(66000, 70000));
         }
     }
 

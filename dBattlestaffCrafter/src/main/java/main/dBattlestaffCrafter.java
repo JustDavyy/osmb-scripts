@@ -13,7 +13,6 @@ import tasks.Setup;
 import utils.Task;
 
 // OSMB SPECIFIC IMPORTS
-import com.osmb.api.item.ItemID;
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
@@ -25,7 +24,7 @@ import com.osmb.api.script.Script;
         name = "dBattlestaffCrafter",
         description = "Attaches orbs to battlestaves for quick crafting experience",
         skillCategory = SkillCategory.CRAFTING,
-        version = 1.1,
+        version = 1.2,
         author = "JustDavyy"
 )
 
@@ -120,7 +119,7 @@ public class dBattlestaffCrafter extends Script {
 
     @Override
     public void onStart() {
-        log(getClass().getSimpleName(), "Starting dBattlestaffCrafter v1.1");
+        log(getClass().getSimpleName(), "Starting dBattlestaffCrafter v1.2");
 
         // Build and show UI
         ScriptUI ui = new ScriptUI(this);

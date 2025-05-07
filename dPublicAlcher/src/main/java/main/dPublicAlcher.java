@@ -14,13 +14,12 @@ import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
 import com.osmb.api.script.Script;
 import com.osmb.api.ui.spellbook.StandardSpellbook;
-import javafx.collections.ObservableList;
 
 @ScriptDefinition(
         name = "dPublic Alcher",
         description = "Alchs items (both high & low) until out of items or runes.",
         skillCategory = SkillCategory.MAGIC,
-        version = 1.3,
+        version = 1.4,
         author = "JustDavyy"
 )
 public class dPublicAlcher extends Script {
@@ -54,7 +53,7 @@ public class dPublicAlcher extends Script {
 
     @Override
     public void onStart() {
-        log("INFO", "Starting dPublic Alcher v1.3");
+        log("INFO", "Starting dPublic Alcher v1.4");
 
         ScriptUI ui = new ScriptUI(this);
         Scene scene = ui.buildScene(this);

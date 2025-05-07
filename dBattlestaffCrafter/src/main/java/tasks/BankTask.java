@@ -1,5 +1,6 @@
 package tasks;
 
+import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.item.ItemID;
 import com.osmb.api.item.ItemSearchResult;
 import com.osmb.api.location.position.types.WorldPosition;
@@ -12,6 +13,7 @@ import utils.Task;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static main.dBattlestaffCrafter.*;
@@ -36,7 +38,7 @@ public class BankTask extends Task {
         }
 
         script.log(getClass(), "Depositing full inventory...");
-        script.getWidgetManager().getBank().depositAll(new int[0]);
+        script.getWidgetManager().getBank().depositAll(Set.of(0));
 
         // Determine the correct orb based on selected staff
         int orbId = getOrbIdForStaff(staffID);
@@ -47,10 +49,9 @@ public class BankTask extends Task {
         }
 
         // Check if we have both orbs and battlestaffs
-        UIResultList<ItemSearchResult> orbsBank = script.getItemManager().findAllOfItem(script.getWidgetManager().getBank(), orbId);
-        UIResultList<ItemSearchResult> battlestaffsBank = script.getItemManager().findAllOfItem(script.getWidgetManager().getBank(), ItemID.BATTLESTAFF);
+        ItemGroupResult bankSnapshot = script.getWidgetManager().getBank().search(Set.of(orbId, ItemID.BATTLESTAFF));
 
-        if (orbsBank.isNotFound() || battlestaffsBank.isNotFound()) {
+        if (bankSnapshot.contains(orbId) || bankSnapshot.contains(ItemID.BATTLESTAFF)) {
             script.log(getClass(), "Ran out of orbs or battlestaffs. Stopping script.");
             script.stop();
             return false;
@@ -102,7 +103,7 @@ public class BankTask extends Task {
             }
 
             return script.getWidgetManager().getBank().isVisible() || positionChangeTimer.get().timeElapsed() > 2000;
-        }, 15000, true, false, true);
+        }, 15000);
     }
 
     private void withdrawWithRetry(int itemID, int amount) {

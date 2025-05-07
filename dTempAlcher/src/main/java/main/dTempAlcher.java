@@ -1,7 +1,5 @@
 package main;
 
-import com.osmb.api.shape.Rectangle;
-import com.osmb.api.utils.UIResult;
 import javafx.scene.Scene;
 
 import java.util.Arrays;
@@ -15,13 +13,12 @@ import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
 import com.osmb.api.script.Script;
 import com.osmb.api.ui.spellbook.StandardSpellbook;
-import javafx.collections.ObservableList;
 
 @ScriptDefinition(
         name = "dTemp Alcher",
         description = "Used as a substitute from dPublic Alcher to allow noted items to be alched by choosing a slot ID to alch instead.",
         skillCategory = SkillCategory.MAGIC,
-        version = 1.3,
+        version = 1.4,
         author = "JustDavyy"
 )
 public class dTempAlcher extends Script {
@@ -29,7 +26,6 @@ public class dTempAlcher extends Script {
     public static StandardSpellbook spellToCast;
     public static int alchSlotID;
     public static boolean hasReqs = true;
-    public static UIResult<Rectangle> itemRect;
 
     public static boolean multipleSlotsMode = false;
     public static List<Integer> slotsToAlch;
@@ -50,7 +46,7 @@ public class dTempAlcher extends Script {
 
     @Override
     public void onStart() {
-        log("INFO", "Starting dTemp Alcher v1.3");
+        log("INFO", "Starting dTemp Alcher v1.4");
 
         ScriptUI ui = new ScriptUI(this);
         Scene scene = ui.buildScene(this);

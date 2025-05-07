@@ -1,12 +1,9 @@
 package main;
 
-// GENERAL JAVA IMPORTS
-
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
 import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
-import javafx.scene.Scene;
 import tasks.BankTask;
 import tasks.FirstBank;
 import tasks.ProcessTask;
@@ -22,7 +19,7 @@ import java.util.function.Predicate;
         name = "dCannonballSmelter",
         description = "Turns steel bars into cannonballs",
         skillCategory = SkillCategory.SMITHING,
-        version = 1.3,
+        version = 1.4,
         author = "JustDavyy"
 )
 public class dCannonballSmelter extends Script {
@@ -59,7 +56,7 @@ public class dCannonballSmelter extends Script {
 
     @Override
     public void onStart() {
-        log(getClass().getSimpleName(), "Starting dCannonballSmelter v1.3");
+        log(getClass().getSimpleName(), "Starting dCannonballSmelter v1.4");
 
         // Build task list
         tasks = Arrays.asList(
