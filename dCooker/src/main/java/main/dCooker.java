@@ -21,7 +21,7 @@ import java.util.function.Predicate;
         name = "dCooker",
         description = "Cooks a wide variety of fish and other items at cookable objects.",
         skillCategory = SkillCategory.COOKING,
-        version = 1.2,
+        version = 1.3,
         author = "JustDavyy"
 )
 public class dCooker extends Script {
@@ -37,6 +37,7 @@ public class dCooker extends Script {
     public static boolean setupDone = false;
     public static int cookingItemID;
     public static int cookedItemID;
+    public static String bankMethod;
     private List<Task> tasks;
 
     public dCooker(Object scriptCore) {
@@ -67,7 +68,7 @@ public class dCooker extends Script {
 
     @Override
     public void onStart() {
-        log(getClass().getSimpleName(), "Starting dCooker v1.2");
+        log(getClass().getSimpleName(), "Starting dCooker v1.3");
 
         // Build and show UI
         ScriptUI ui = new ScriptUI(this);
@@ -76,14 +77,16 @@ public class dCooker extends Script {
 
         cookingItemID = ui.getSelectedItemId();
         cookedItemID = ui.getSelectedCookedItemId();
+        bankMethod = ui.getSelectedBankMethod();
 
         log(getClass().getSimpleName(), "We're cooking " + getItemManager().getItemName(cookingItemID) + " during this run, enjoy!");
+        log(getClass().getSimpleName(), "Banking method: " + bankMethod);
 
         // Build task list
         tasks = Arrays.asList(
-                new BankTask(this),
                 new Setup(this),
-                new ProcessTask(this)
+                new ProcessTask(this),
+                new BankTask(this)
         );
     }
 

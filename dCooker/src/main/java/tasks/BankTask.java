@@ -10,15 +10,16 @@ import com.osmb.api.utils.timing.Timer;
 import main.dCooker;
 import utils.Task;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static main.dCooker.bankMethod;
 import static main.dCooker.cookingItemID;
 
 public class BankTask extends Task {
-    ItemGroupResult inventorySnapshot;
 
     public BankTask(Script script) {
         super(script);
@@ -26,8 +27,7 @@ public class BankTask extends Task {
 
     @Override
     public boolean activate() {
-        inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(cookingItemID));
-        return inventorySnapshot == null || inventorySnapshot.isEmpty() || script.getWidgetManager().getBank().isVisible();
+        return true;
     }
 
     @Override
@@ -68,11 +68,20 @@ public class BankTask extends Task {
                 script.log(getClass(), "Withdraw failed for item id: " + cookingItemID);
                 return false;
             }
+            script.getWidgetManager().getBank().close();
+            script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(4000, 6000));
         } else {
             // need to deposit...
-            if (!script.getWidgetManager().getBank().deposit(cookingItemID, Math.abs(targetAmount))) {
-                script.log(getClass(), "Withdraw failed for item id: " + cookingItemID);
-                return false;
+            if (bankMethod.equals("Deposit all")) {
+                if (!script.getWidgetManager().getBank().depositAll(Set.of(cookingItemID))) {
+                    script.log(getClass().getSimpleName(), "Deposit all action failed.");
+                    return false;
+                }
+            } else {
+                if (!script.getWidgetManager().getBank().deposit(cookingItemID, Math.abs(targetAmount))) {
+                    script.log(getClass().getSimpleName(), "Deposit item by item action failed.");
+                    return false;
+                }
             }
         }
         return false;

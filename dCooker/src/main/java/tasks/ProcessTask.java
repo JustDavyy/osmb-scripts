@@ -5,7 +5,9 @@ import com.osmb.api.item.ItemID;
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
 import com.osmb.api.ui.chatbox.dialogue.DialogueType;
+import com.osmb.api.ui.tabs.Tab;
 import com.osmb.api.utils.timing.Timer;
+import main.dCooker;
 import utils.Task;
 
 import java.util.List;
@@ -27,11 +29,23 @@ public class ProcessTask extends Task {
 
     @Override
     public boolean activate() {
-        return true;
+        ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(cookingItemID));
+        if (inventorySnapshot == null) {
+            script.log(getClass().getSimpleName(), "Inventory not visible.");
+            script.log(getClass().getSimpleName(), "Opening inventory tab");
+            script.getWidgetManager().getTabManager().openTab(Tab.Type.INVENTORY);
+            return false;
+        }
+
+        return inventorySnapshot.contains(cookingItemID);
     }
 
     @Override
     public boolean execute() {
+        if (!script.getWidgetManager().getInventory().unSelectItemIfSelected()) {
+            return false;
+        }
+
         ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(cookingItemID));
         if (inventorySnapshot == null) {
             script.log(getClass(), "Inventory not visible.");
@@ -147,7 +161,7 @@ public class ProcessTask extends Task {
 
             ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(cookingItemID));
             if (inventorySnapshot == null) {return false;}
-            return inventorySnapshot.isEmpty();
+            return !inventorySnapshot.contains(cookingItemID);
         };
 
         if (script.random(10) < 3) {

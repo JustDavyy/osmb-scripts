@@ -17,11 +17,14 @@ import java.util.prefs.Preferences;
 public class ScriptUI {
     private final Preferences prefs = Preferences.userNodeForPackage(ScriptUI.class);
     private static final String PREF_SELECTED_COOKING_ITEM = "dcooker_selected_item";
+    private static final String PREF_BANK_METHOD = "dcooker_bank_method";
 
     private final Script script;
     private ComboBox<CookingItem> cookingComboBox;
+    private ComboBox<String> bankMethodComboBox;
 
     private static final CookingItem[] COOKING_ITEMS = CookingItem.values();
+    private static final String[] BANK_METHOD_OPTIONS = {"Item by item", "Deposit all"};
 
     public ScriptUI(Script script) {
         this.script = script;
@@ -40,8 +43,15 @@ public class ScriptUI {
         if (savedItem != null) {
             cookingComboBox.getSelectionModel().select(savedItem);
         }
-
         script.log("SAVESETTINGS", "Loaded selected cooking item ID from preferences: " + savedItemId);
+
+        // Bank method UI
+        Label bankLabel = new Label("Bank method");
+        bankMethodComboBox = new ComboBox<>();
+        bankMethodComboBox.getItems().addAll(BANK_METHOD_OPTIONS);
+        String savedBankMethod = prefs.get(PREF_BANK_METHOD, BANK_METHOD_OPTIONS[0]);
+        bankMethodComboBox.getSelectionModel().select(savedBankMethod);
+        script.log("SAVESETTINGS", "Loaded bank method: " + savedBankMethod);
 
         // Confirm button
         Button confirmButton = new Button("Confirm");
@@ -49,12 +59,14 @@ public class ScriptUI {
             CookingItem selected = cookingComboBox.getSelectionModel().getSelectedItem();
             if (selected != null) {
                 prefs.putInt(PREF_SELECTED_COOKING_ITEM, selected.getRawItemId());
-                script.log("SAVESETTINGS", "Saved selected cooking item ID to preferences: " + selected.getRawItemId());
+                prefs.put(PREF_BANK_METHOD, bankMethodComboBox.getSelectionModel().getSelectedItem());
+                script.log("SAVESETTINGS", "Saved selected cooking item ID: " + selected.getRawItemId());
+                script.log("SAVESETTINGS", "Saved bank method: " + getSelectedBankMethod());
                 ((Stage) confirmButton.getScene().getWindow()).close();
             }
         });
 
-        root.getChildren().addAll(cookingLabel, cookingComboBox, confirmButton);
+        root.getChildren().addAll(cookingLabel, cookingComboBox, bankLabel, bankMethodComboBox, confirmButton);
         Scene scene = new Scene(root);
         scene.getStylesheets().add("style.css");
         return scene;
@@ -110,5 +122,9 @@ public class ScriptUI {
     public int getSelectedCookedItemId() {
         CookingItem selected = cookingComboBox.getSelectionModel().getSelectedItem();
         return selected != null ? selected.getCookedItemId() : -1;
+    }
+
+    public String getSelectedBankMethod() {
+        return bankMethodComboBox.getSelectionModel().getSelectedItem();
     }
 }
