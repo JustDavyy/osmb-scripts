@@ -164,13 +164,8 @@ public class ProcessTask extends Task {
             return !inventorySnapshot.contains(cookingItemID);
         };
 
-        if (script.random(10) < 3) {
-            script.log(getClass(), "Using human task to wait until cooking finishes.");
-            script.submitHumanTask(condition, script.random(66000, 70000));
-        } else {
-            script.log(getClass(), "Using regular task to wait until cooking finishes.");
-            script.submitTask(condition, script.random(66000, 70000));
-        }
+        script.log(getClass(), "Using human task to wait until cooking finishes.");
+        script.submitHumanTask(condition, script.random(66000, 70000));
     }
 
     private void printStats() {
