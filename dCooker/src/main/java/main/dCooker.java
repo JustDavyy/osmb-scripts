@@ -6,6 +6,9 @@ import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
 import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
+import data.CookingItem;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.scene.Scene;
 import tasks.BankTask;
 import tasks.ProcessTask;
@@ -21,7 +24,7 @@ import java.util.function.Predicate;
         name = "dCooker",
         description = "Cooks a wide variety of fish and other items at cookable objects.",
         skillCategory = SkillCategory.COOKING,
-        version = 1.3,
+        version = 1.4,
         author = "JustDavyy"
 )
 public class dCooker extends Script {
@@ -39,6 +42,10 @@ public class dCooker extends Script {
     public static int cookedItemID;
     public static String bankMethod;
     private List<Task> tasks;
+
+    public static boolean isMultipleMode = false;
+    public static ObservableList<Integer> selectedItemIDs = FXCollections.observableArrayList();
+    public static int selectedItemIndex = 0;
 
     public dCooker(Object scriptCore) {
         super(scriptCore);
@@ -68,21 +75,30 @@ public class dCooker extends Script {
 
     @Override
     public void onStart() {
-        log(getClass().getSimpleName(), "Starting dCooker v1.3");
+        log(getClass().getSimpleName(), "Starting dCooker v1.4");
 
-        // Build and show UI
         ScriptUI ui = new ScriptUI(this);
         Scene scene = ui.buildScene(this);
         getStageController().show(scene, "Cooking Options", false);
 
-        cookingItemID = ui.getSelectedItemId();
-        cookedItemID = ui.getSelectedCookedItemId();
+        isMultipleMode = ui.isMultipleSelectionMode();
+        selectedItemIDs = ui.getMultipleSelectedItemIds(); // ObservableList<Integer>
+        selectedItemIndex = 0;
+
+        if (isMultipleMode && !selectedItemIDs.isEmpty()) {
+            cookingItemID = selectedItemIDs.get(0);
+            assert CookingItem.fromRawItemId(cookingItemID) != null;
+            cookedItemID = CookingItem.fromRawItemId(cookingItemID).getCookedItemId();
+        } else {
+            cookingItemID = ui.getSelectedItemId();
+            cookedItemID = ui.getSelectedCookedItemId();
+        }
+
         bankMethod = ui.getSelectedBankMethod();
 
-        log(getClass().getSimpleName(), "We're cooking " + getItemManager().getItemName(cookingItemID) + " during this run, enjoy!");
+        log(getClass().getSimpleName(), "We're cooking: " + getItemManager().getItemName(cookingItemID));
         log(getClass().getSimpleName(), "Banking method: " + bankMethod);
 
-        // Build task list
         tasks = Arrays.asList(
                 new Setup(this),
                 new ProcessTask(this),

@@ -7,6 +7,7 @@ import com.osmb.api.scene.RSObject;
 import com.osmb.api.scene.RSTile;
 import com.osmb.api.script.Script;
 import com.osmb.api.utils.timing.Timer;
+import data.CookingItem;
 import main.dCooker;
 import utils.Task;
 
@@ -16,8 +17,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static main.dCooker.bankMethod;
-import static main.dCooker.cookingItemID;
+import static main.dCooker.*;
 
 public class BankTask extends Task {
 
@@ -41,37 +41,42 @@ public class BankTask extends Task {
         if (!script.getWidgetManager().getBank().depositAll(Set.of(cookingItemID))) {
             return false;
         }
-        // work out our target amount
+
         int targetAmount = script.getWidgetManager().getInventory().getGroupSize();
         if (cookingItemID == ItemID.GIANT_SEAWEED) {
             targetAmount /= 6;
         }
 
-        // here we can simply work out how many we need to withdraw,
-        // if the amount is below 0, it would also mean we have
-        // too many and would want to deposit the absolute value of the negative result
         int amountNeeded = targetAmount - inventorySnapshot.getAmount(cookingItemID);
 
         if (amountNeeded == 0) {
-            // banking complete
             script.getWidgetManager().getBank().close();
             script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(4000, 6000));
         } else if (amountNeeded > 0) {
-            // need to withdraw
             ItemGroupResult bankSnapshot = script.getWidgetManager().getBank().search(Set.of(cookingItemID));
             if (!bankSnapshot.contains(cookingItemID)) {
-                script.log(getClass(), "Ran out of food to cook. Stopping script.");
-                script.stop();
-                return false;
+                if (isMultipleMode && selectedItemIndex + 1 < selectedItemIDs.size()) {
+                    selectedItemIndex++;
+                    cookingItemID = selectedItemIDs.get(selectedItemIndex);
+                    assert CookingItem.fromRawItemId(cookingItemID) != null;
+                    cookedItemID = CookingItem.fromRawItemId(cookingItemID).getCookedItemId();
+                    script.log(getClass(), "Switching to next fish: " + script.getItemManager().getItemName(cookingItemID));
+                    return false;
+                } else {
+                    script.log(getClass(), "Out of all food to cook. Stopping.");
+                    script.stop();
+                    return false;
+                }
             }
+
             if (!script.getWidgetManager().getBank().withdraw(cookingItemID, targetAmount)) {
                 script.log(getClass(), "Withdraw failed for item id: " + cookingItemID);
                 return false;
             }
+
             script.getWidgetManager().getBank().close();
             script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(4000, 6000));
         } else {
-            // need to deposit...
             if (bankMethod.equals("Deposit all")) {
                 if (!script.getWidgetManager().getBank().depositAll(Set.of(cookingItemID))) {
                     script.log(getClass().getSimpleName(), "Deposit all action failed.");
