@@ -18,7 +18,7 @@ import com.osmb.api.ui.spellbook.StandardSpellbook;
         name = "dTemp Alcher",
         description = "Used as a substitute from dPublic Alcher to allow noted items to be alched by choosing a slot ID to alch instead.",
         skillCategory = SkillCategory.MAGIC,
-        version = 1.4,
+        version = 1.5,
         author = "JustDavyy"
 )
 public class dTempAlcher extends Script {
@@ -46,7 +46,7 @@ public class dTempAlcher extends Script {
 
     @Override
     public void onStart() {
-        log("INFO", "Starting dTemp Alcher v1.4");
+        log("INFO", "Starting dTemp Alcher v1.5");
 
         ScriptUI ui = new ScriptUI(this);
         Scene scene = ui.buildScene(this);

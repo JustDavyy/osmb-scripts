@@ -19,7 +19,7 @@ import com.osmb.api.ui.spellbook.StandardSpellbook;
         name = "dPublic Alcher",
         description = "Alchs items (both high & low) until out of items or runes.",
         skillCategory = SkillCategory.MAGIC,
-        version = 1.4,
+        version = 1.5,
         author = "JustDavyy"
 )
 public class dPublicAlcher extends Script {
@@ -53,7 +53,7 @@ public class dPublicAlcher extends Script {
 
     @Override
     public void onStart() {
-        log("INFO", "Starting dPublic Alcher v1.4");
+        log("INFO", "Starting dPublic Alcher v1.5");
 
         ScriptUI ui = new ScriptUI(this);
         Scene scene = ui.buildScene(this);

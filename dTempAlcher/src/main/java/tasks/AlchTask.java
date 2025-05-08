@@ -135,7 +135,25 @@ public class AlchTask extends Task {
         ));
     }
 
-    private static long getCooldownForSpell() {
-        return (spellToCast == StandardSpellbook.HIGH_LEVEL_ALCHEMY) ? 3000 : 1800;
+    private long getCooldownForSpell() {
+        int roll = script.random(100);
+
+        if (spellToCast == StandardSpellbook.HIGH_LEVEL_ALCHEMY) {
+            if (roll < 50) {
+                return script.random(3000, 3101);
+            } else if (roll < 90) {
+                return script.random(3050, 3201);
+            } else {
+                return script.random(3100, 3501);
+            }
+        } else {
+            if (roll < 50) {
+                return script.random(1800, 1901);
+            } else if (roll < 90) {
+                return script.random(1850, 2001);
+            } else {
+                return script.random(1900, 2301);
+            }
+        }
     }
 }
