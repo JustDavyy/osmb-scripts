@@ -116,7 +116,7 @@ public class ProcessTask extends Task {
             DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
             if (type == DialogueType.TAP_HERE_TO_CONTINUE) {
                 script.log(getClass().getSimpleName(), "Dialogue detected, leveled up?");
-                script.submitTask(() -> false, script.random(1000, 3000));
+                script.submitHumanTask(() -> false, script.random(1000, 3000));
                 return true;
             }
 
@@ -148,7 +148,7 @@ public class ProcessTask extends Task {
             // Check if we ran out of items
             ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(ItemID.STEEL_BAR));
             if (inventorySnapshot == null) {return false;}
-            return inventorySnapshot.isEmpty();
+            return !inventorySnapshot.contains(ItemID.STEEL_BAR);
         };
 
         script.log(getClass(), "Using human task to wait until smelting finishes.");
