@@ -22,11 +22,11 @@ public class Setup extends Task {
     }
 
     public boolean execute() {
-        script.log("DEBUG", "We are now inside the Setup task logic");
+        script.log(getClass().getSimpleName(), "We are now inside the Setup task logic");
 
-        script.log(dCannonballSmelter.class, "Opening inventory tab");
+        script.log(getClass().getSimpleName(), "Opening inventory tab");
         script.getWidgetManager().getTabManager().openTab(Tab.Type.INVENTORY);
-        script.submitTask(() -> false, script.random(500, 1250));
+        script.submitHumanTask(() -> false, script.random(500, 1250));
 
         setupDone = true;
         return false;

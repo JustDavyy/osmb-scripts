@@ -23,7 +23,7 @@ public class BankTask extends Task {
 
     @Override
     public boolean activate() {
-        return script.getWidgetManager().getInventory().search(Set.of(ItemID.STEEL_BAR)).isEmpty() || script.getWidgetManager().getBank().isVisible();
+        return true;
     }
 
     @Override
@@ -84,6 +84,6 @@ public class BankTask extends Task {
             }
 
             return script.getWidgetManager().getBank().isVisible() || positionChangeTimer.get().timeElapsed() > 2000;
-        }, 15000);
+        }, script.random(15000, 17000));
     }
 }

@@ -122,6 +122,6 @@ public class FirstBank extends Task {
             }
 
             return script.getWidgetManager().getBank().isVisible() || positionChangeTimer.get().timeElapsed() > 2000;
-        }, 15000);
+        }, script.random(15000, 17000));
     }
 }

@@ -19,7 +19,7 @@ import java.util.function.Predicate;
         name = "dCannonballSmelter",
         description = "Turns steel bars into cannonballs",
         skillCategory = SkillCategory.SMITHING,
-        version = 1.4,
+        version = 1.5,
         author = "JustDavyy"
 )
 public class dCannonballSmelter extends Script {
@@ -56,14 +56,14 @@ public class dCannonballSmelter extends Script {
 
     @Override
     public void onStart() {
-        log(getClass().getSimpleName(), "Starting dCannonballSmelter v1.4");
+        log(getClass().getSimpleName(), "Starting dCannonballSmelter v1.5");
 
         // Build task list
         tasks = Arrays.asList(
                 new Setup(this),
                 new FirstBank(this),
-                new BankTask(this),
-                new ProcessTask(this)
+                new ProcessTask(this),
+                new BankTask(this)
         );
     }
 

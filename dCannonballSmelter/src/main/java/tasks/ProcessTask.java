@@ -24,7 +24,14 @@ public class ProcessTask extends Task {
 
     @Override
     public boolean activate() {
-        return true;
+        ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(ItemID.AMMO_MOULD, ItemID.DOUBLE_AMMO_MOULD, ItemID.STEEL_BAR));
+
+        if (inventorySnapshot == null) {
+            // Inventory not visible
+            return false;
+        }
+
+        return inventorySnapshot.containsAny(Set.of(ItemID.AMMO_MOULD, ItemID.DOUBLE_AMMO_MOULD)) && inventorySnapshot.contains(ItemID.STEEL_BAR);
     }
 
     @Override
@@ -57,11 +64,7 @@ public class ProcessTask extends Task {
             return type == DialogueType.ITEM_OPTION;
         };
 
-        if (script.random(10) < 3) {
-            script.submitHumanTask(condition, script.random(4000, 6000));
-        } else {
-            script.submitTask(condition, script.random(4000, 6000));
-        }
+        script.submitHumanTask(condition, script.random(4000, 6000));
 
         DialogueType dialogueType = script.getWidgetManager().getDialogue().getDialogueType();
         if (dialogueType == DialogueType.ITEM_OPTION) {
@@ -148,13 +151,8 @@ public class ProcessTask extends Task {
             return inventorySnapshot.isEmpty();
         };
 
-        if (script.random(10) < 3) {
-            script.log(getClass(), "Using human task to wait until smelting finishes.");
-            script.submitHumanTask(condition, script.random(162500, 166000));
-        } else {
-            script.log(getClass(), "Using regular task to wait until smelting finishes.");
-            script.submitTask(condition, script.random(162500, 166000));
-        }
+        script.log(getClass(), "Using human task to wait until smelting finishes.");
+        script.submitHumanTask(condition, script.random(162500, 166000));
     }
 
     private void printStats() {
