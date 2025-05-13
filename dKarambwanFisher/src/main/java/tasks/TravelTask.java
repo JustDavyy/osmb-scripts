@@ -3,7 +3,6 @@ package tasks;
 import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.item.ItemID;
 import com.osmb.api.location.area.Area;
-import com.osmb.api.location.area.impl.PolyArea;
 import com.osmb.api.location.area.impl.RectangleArea;
 import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
@@ -82,6 +81,8 @@ public class TravelTask extends Task {
 
                 if (equipment.interact(equippedCloakId, menuOption)) {
                     script.log(getClass().getSimpleName(), "Teleporting using " + script.getItemManager().getItemName(equippedCloakId));
+
+                    script.submitHumanTask(() -> false, script.random(3500, 4500));
 
                     if (arrivedAtArea(destinationArea)) {
                         script.log(getClass().getSimpleName(), "Teleport was successful");
@@ -190,6 +191,8 @@ public class TravelTask extends Task {
             return false;
         }
 
+        script.submitTask(() -> false, script.random(4500, 5500));
+
         AtomicReference<Timer> positionChangeTimer = new AtomicReference<>(new Timer());
         AtomicReference<WorldPosition> previousPosition = new AtomicReference<>(null);
 
@@ -221,6 +224,8 @@ public class TravelTask extends Task {
                 return false;
             }
 
+            script.submitTask(() -> false, script.random(3500, 4500));
+
             // Interaction seems successful, wait till we arrive at the guild
             AtomicReference<Timer> positionChangeTimer = new AtomicReference<>(new Timer());
             AtomicReference<WorldPosition> previousPosition = new AtomicReference<>(null);
@@ -236,8 +241,7 @@ public class TravelTask extends Task {
                 return craftingGuildBankArea.contains(currentPos) || positionChangeTimer.get().timeElapsed() > 10000;
             }, script.random(14000, 16000));
         } else {
-            script.log(getClass().getSimpleName(), "It seems the crafting cape is not in our inventory? Stopping script!");
-            script.stop();
+            script.log(getClass().getSimpleName(), "It seems the crafting cape is not in our inventory? Re-polling script.");
             return false;
         }
 
@@ -258,6 +262,8 @@ public class TravelTask extends Task {
             script.log(getClass().getSimpleName(), "Failed to interact with fairy ring object.");
             return false;
         }
+
+        script.submitTask(() -> false, script.random(4500, 5500));
 
         // Reset afk timer
         switchTabTimer.reset(script.random(TimeUnit.MINUTES.toMillis(3), TimeUnit.MINUTES.toMillis(5)));
