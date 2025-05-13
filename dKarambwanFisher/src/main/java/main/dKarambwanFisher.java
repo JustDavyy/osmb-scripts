@@ -2,6 +2,7 @@ package main;
 
 import com.osmb.api.location.area.impl.PolyArea;
 import com.osmb.api.location.position.types.WorldPosition;
+import com.osmb.api.utils.timing.Stopwatch;
 import com.osmb.api.visual.drawing.Canvas;
 import javafx.scene.Scene;
 import tasks.FishingTask;
@@ -45,6 +46,8 @@ public class dKarambwanFisher extends Script {
     public static int caughtCount = 0;
     public static double totalXpGained = 0.0;
     public static String task = "N/A";
+    public static WorldPosition currentPos;
+    public static final Stopwatch switchTabTimer = new Stopwatch();
 
     private List<Task> tasks;
 
@@ -66,8 +69,8 @@ public class dKarambwanFisher extends Script {
 
     @Override
     public void onPaint(Canvas c) {
-        c.fillRect(5, 40, 220, 200, Color.BLACK.getRGB(), 0.7);
-        c.drawRect(5, 40, 220, 200, Color.BLACK.getRGB());
+        c.fillRect(5, 40, 220, 190, Color.BLACK.getRGB(), 0.7);
+        c.drawRect(5, 40, 220, 190, Color.BLACK.getRGB());
 
         long elapsed = System.currentTimeMillis() - startTime;
         int fishingXpGained = caughtCount * 50;
@@ -89,6 +92,7 @@ public class dKarambwanFisher extends Script {
         c.drawText("Current task: " + task, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
         c.drawText("Bank method: " + bankOption, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
         c.drawText("Travel method: " + fairyOption, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+        c.drawText("Script version: " + scriptVersion, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
     }
 
     @Override
@@ -104,14 +108,22 @@ public class dKarambwanFisher extends Script {
 
         log(getClass().getSimpleName(), "Bank option: " + bankOption + " | Fairy ring option: " + fairyOption);
 
-        String version = getLatestVersion("https://justdavyy.42web.io/dKarambwanFisher.txt?i=1");
+        String version = getLatestVersion("https://raw.githubusercontent.com/JustDavyy/osmb-scripts/main/dKarambwanFisher/src/main/java/main/dKarambwanFisher.java");
 
-        if (version.equals(scriptVersion)) {
-            log("SCRIPTVERSION", "You are running the latest script version: v" + scriptVersion);
+        if (version == null) {
+            log("SCRIPTVERSION", "⚠ Could not fetch the latest version from GitHub. Proceeding with local version: v" + scriptVersion);
         } else {
-            for (int i = 0; i < 10; i++) {
-                log("VERSIONERROR (" + i + "/10)", "You are NOT running the latest version of this script!\nYour version: v" + scriptVersion + "\nLatest version: v" + version);
-                submitTask(() -> false, random(750, 2000));
+            int comparison = compareVersions(scriptVersion, version);
+            if (comparison == 0) {
+                log("SCRIPTVERSION", "✅ You are running the latest script version: v" + scriptVersion);
+            } else if (comparison < 0) {
+                for (int i = 0; i < 10; i++) {
+                    log("VERSIONERROR (" + i + "/10)", "❌ You are NOT running the latest version of this script!\nYour version: v" + scriptVersion + "\nLatest version: v" + version);
+                    submitTask(() -> false, random(750, 2000));
+                }
+            } else {
+                log("SCRIPTVERSION", "✅ You are running a newer version (v" + scriptVersion + ") than the published one (v" + version + ").");
+                log("SCRIPTVERSION", "🙏 Thank you for testing a development build — your time and feedback are appreciated!");
             }
         }
 
@@ -136,28 +148,51 @@ public class dKarambwanFisher extends Script {
         return 0;
     }
 
-    public static String getLatestVersion(String urlString) {
+    public String getLatestVersion(String urlString) {
         try {
             URL url = new URL(urlString);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
+            connection.setConnectTimeout(3000);
+            connection.setReadTimeout(3000);
+
+            int responseCode = connection.getResponseCode();
+
+            if (responseCode != 200) {
+                return null;
+            }
 
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     line = line.trim();
                     if (line.startsWith("version")) {
-                        // e.g. version = 1.0,
                         String[] parts = line.split("=");
                         if (parts.length == 2) {
-                            return parts[1].replace(",", "").trim();
+                            String version = parts[1].replace(",", "").trim();
+                            return version;
                         }
                     }
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log("VERSIONCHECK", "Exception occurred while fetching version from GitHub.");
         }
-        return "Unknown";
+
+        return null;
+    }
+
+    public static int compareVersions(String v1, String v2) {
+        String[] parts1 = v1.split("\\.");
+        String[] parts2 = v2.split("\\.");
+
+        int length = Math.max(parts1.length, parts2.length);
+        for (int i = 0; i < length; i++) {
+            int num1 = i < parts1.length ? Integer.parseInt(parts1[i]) : 0;
+            int num2 = i < parts2.length ? Integer.parseInt(parts2[i]) : 0;
+            if (num1 < num2) return -1;
+            if (num1 > num2) return 1;
+        }
+        return 0; // Equal
     }
 }
