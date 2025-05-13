@@ -22,8 +22,10 @@ public class Setup extends Task {
     }
 
     public boolean execute() {
+        task = getClass().getSimpleName();
         script.log("DEBUG", "We are now inside the Setup task logic");
 
+        task = "Open Inventory";
         script.log(dCooker.class, "Opening inventory tab");
         script.getWidgetManager().getTabManager().openTab(Tab.Type.INVENTORY);
 

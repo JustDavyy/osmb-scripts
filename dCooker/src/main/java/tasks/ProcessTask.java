@@ -18,13 +18,9 @@ import java.util.function.BooleanSupplier;
 import static main.dCooker.*;
 
 public class ProcessTask extends Task {
-    private long startTime = 0;
-    private int cookCount = 0;
-    private double totalXpGained = 0.0;
 
     public ProcessTask(Script script) {
         super(script);
-        this.startTime = System.currentTimeMillis();
     }
 
     @Override
@@ -42,6 +38,7 @@ public class ProcessTask extends Task {
 
     @Override
     public boolean execute() {
+        task = getClass().getSimpleName();
         if (!script.getWidgetManager().getInventory().unSelectItemIfSelected()) {
             return false;
         }
@@ -56,12 +53,14 @@ public class ProcessTask extends Task {
             return false;
         }
 
+        task = "Find cooking object";
         RSObject cookObject = getClosestCookObject();
         if (cookObject == null) {
             script.log(getClass(), "No cookable object found nearby (range/fire/clay oven).");
             return false;
         }
 
+        task = "Interact with object";
         if (!cookObject.interact(COOKING_ACTIONS)) {
             script.log(getClass(), "Failed to interact with cooking object. Retrying...");
             if (!cookObject.interact(COOKING_ACTIONS)) {
@@ -69,6 +68,7 @@ public class ProcessTask extends Task {
             }
         }
 
+        task = "Start cooking action";
         BooleanSupplier condition = () -> {
             DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
             return type == DialogueType.ITEM_OPTION;
@@ -144,6 +144,7 @@ public class ProcessTask extends Task {
     }
 
     private void waitUntilFinishedCooking() {
+        task = "Wait until cooking finish";
         Timer amountChangeTimer = new Timer();
 
         BooleanSupplier condition = () -> {
@@ -174,7 +175,7 @@ public class ProcessTask extends Task {
         int xpPerHour = (int) ((totalXpGained * 3600000L) / elapsed);
 
         script.log("STATS", String.format(
-                "Food cooked: %,d | Food/hr: %,d | XP gained: %,d | XP/hr: %,d\nXP is estimated, burning is not taken into consideration!",
+                "Food cooked: %,d | Food/hr: %,d | XP gained: %,d | XP/hr: %,d\n",
                 cookCount, cooksPerHour, (int) totalXpGained, xpPerHour
         ));
     }

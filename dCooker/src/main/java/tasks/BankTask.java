@@ -32,14 +32,24 @@ public class BankTask extends Task {
 
     @Override
     public boolean execute() {
+        task = getClass().getSimpleName();
         ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(cookingItemID));
         if (!script.getWidgetManager().getBank().isVisible()) {
             openBank();
             return false;
         }
 
-        if (!script.getWidgetManager().getBank().depositAll(Set.of(cookingItemID))) {
-            return false;
+        task = "Deposit items";
+        if (bankMethod.equals("Deposit all")) {
+            if (!script.getWidgetManager().getBank().depositAll(Collections.emptySet())) {
+                script.log(getClass().getSimpleName(), "Deposit all action failed.");
+                return false;
+            }
+        } else {
+            if (!script.getWidgetManager().getBank().depositAll(Set.of(cookingItemID))) {
+                script.log(getClass().getSimpleName(), "Deposit item by item action failed.");
+                return false;
+            }
         }
 
         int targetAmount = script.getWidgetManager().getInventory().getGroupSize();
@@ -50,6 +60,7 @@ public class BankTask extends Task {
         int amountNeeded = targetAmount - inventorySnapshot.getAmount(cookingItemID);
 
         if (amountNeeded == 0) {
+            task = "Close bank";
             script.getWidgetManager().getBank().close();
             script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(4000, 6000));
         } else if (amountNeeded > 0) {
@@ -78,7 +89,7 @@ public class BankTask extends Task {
             script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(4000, 6000));
         } else {
             if (bankMethod.equals("Deposit all")) {
-                if (!script.getWidgetManager().getBank().depositAll(Set.of(cookingItemID))) {
+                if (!script.getWidgetManager().getBank().depositAll(Collections.emptySet())) {
                     script.log(getClass().getSimpleName(), "Deposit all action failed.");
                     return false;
                 }
@@ -94,6 +105,7 @@ public class BankTask extends Task {
 
     private void openBank() {
         script.log(getClass(), "Searching for a bank...");
+        task = "Open bank";
 
         if (script.getWorldPosition() != null && script.getWorldPosition().getRegionID() == 12109) {
             // We are in 12109, use the NPC tile
