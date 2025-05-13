@@ -77,11 +77,19 @@ public class TravelTask extends Task {
             if (fairyOption.equals("Quest cape") || fairyOption.equals("Ardougne cloak")) {
                 task = "Use cape teleport";
                 Equipment equipment = script.getWidgetManager().getEquipment();
-                if (equipment.interact(equippedCloakId, "Teleport")) {
+                String menuOption = fairyOption.equals("Ardougne cloak") ? "Kandarin Monastery" : "Teleport";
+                Area destinationArea = fairyOption.equals("Ardougne cloak") ? monasteryArea : legendsArea;
+
+                if (equipment.interact(equippedCloakId, menuOption)) {
                     script.log(getClass().getSimpleName(), "Teleporting using " + script.getItemManager().getItemName(equippedCloakId));
-                    doneBanking = false;
-                    script.log(getClass().getSimpleName(),"Marked banking flag to false.");
+
+                    if (arrivedAtArea(destinationArea)) {
+                        script.log(getClass().getSimpleName(), "Teleport was successful");
+                        doneBanking = false;
+                        script.log(getClass().getSimpleName(), "Marked banking flag to false.");
+                    }
                 }
+
                 return false;
             } else {
                 script.log(getClass().getSimpleName(), "Not using an equipped teleport cape during this run...");
@@ -148,6 +156,24 @@ public class TravelTask extends Task {
         }
 
         return false;
+    }
+
+    private boolean arrivedAtArea(Area destination) {
+        AtomicReference<Timer> positionChangeTimer = new AtomicReference<>(new Timer());
+        AtomicReference<WorldPosition> previousPosition = new AtomicReference<>(null);
+
+        script.submitHumanTask(() -> {
+            currentPos = script.getWorldPosition();
+            if (currentPos == null) return false;
+
+            if (!Objects.equals(currentPos, previousPosition.get())) {
+                positionChangeTimer.get().reset();
+                previousPosition.set(currentPos);
+            }
+
+            return destination.contains(currentPos) || positionChangeTimer.get().timeElapsed() > 10000;
+        }, script.random(14000, 16000));
+        return destination.contains(currentPos);
     }
 
     private boolean handleFishingFairyRing() {

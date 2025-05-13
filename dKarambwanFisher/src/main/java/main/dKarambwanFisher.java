@@ -40,7 +40,7 @@ public class dKarambwanFisher extends Script {
     public static boolean setupDone = false;
     public static String bankOption;
     public static String fairyOption;
-    public static boolean doneBanking = false;
+    public static boolean doneBanking = true;
     public static boolean usingBarrel = false;
     private static final java.awt.Font ARIEL = java.awt.Font.getFont("Ariel");
     public static int caughtCount = 0;
