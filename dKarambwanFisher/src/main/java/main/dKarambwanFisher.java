@@ -12,10 +12,11 @@ import tasks.Setup;
 import utils.Task;
 
 import java.awt.*;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.awt.image.BufferedImage;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Arrays;
@@ -25,15 +26,17 @@ import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
 import com.osmb.api.script.Script;
 
+import javax.imageio.ImageIO;
+
 @ScriptDefinition(
         name = "dKarambwanFisher",
         description = "Fishes and banks karambwans",
         skillCategory = SkillCategory.FISHING,
-        version = 1.2,
+        version = 1.3,
         author = "JustDavyy"
 )
 public class dKarambwanFisher extends Script {
-    public static String scriptVersion = "1.2";
+    public static String scriptVersion = "1.3";
     public static final PolyArea fishingArea = new PolyArea(List.of(new WorldPosition(2896, 3119, 0),new WorldPosition(2894, 3118, 0),new WorldPosition(2893, 3116, 0),new WorldPosition(2894, 3115, 0),new WorldPosition(2895, 3114, 0),new WorldPosition(2895, 3113, 0),new WorldPosition(2895, 3112, 0),new WorldPosition(2895, 3110, 0),new WorldPosition(2897, 3109, 0),new WorldPosition(2898, 3108, 0),new WorldPosition(2899, 3107, 0),new WorldPosition(2900, 3106, 0),new WorldPosition(2909, 3106, 0),new WorldPosition(2912, 3108, 0),new WorldPosition(2916, 3111, 0),new WorldPosition(2914, 3115, 0),new WorldPosition(2914, 3116, 0),new WorldPosition(2913, 3117, 0),new WorldPosition(2913, 3118, 0),new WorldPosition(2911, 3118, 0),new WorldPosition(2910, 3117, 0),new WorldPosition(2909, 3116, 0),new WorldPosition(2908, 3115, 0),new WorldPosition(2907, 3115, 0),new WorldPosition(2906, 3116, 0),new WorldPosition(2905, 3117, 0),new WorldPosition(2904, 3118, 0),new WorldPosition(2903, 3119, 0),new WorldPosition(2901, 3119, 0),new WorldPosition(2900, 3119, 0),new WorldPosition(2899, 3118, 0),new WorldPosition(2897, 3119, 0),new WorldPosition(2898, 3118, 0)));
     public static int equippedCloakId = -1;
     public static int teleportCapeId = -1;
@@ -48,6 +51,14 @@ public class dKarambwanFisher extends Script {
     public static String task = "N/A";
     public static WorldPosition currentPos;
     public static final Stopwatch switchTabTimer = new Stopwatch();
+
+    private static final Stopwatch webhookTimer = new Stopwatch();
+    private static String webhookUrl = "";
+    private static boolean webhookEnabled = false;
+    private static boolean webhookShowUser = false;
+    private static boolean webhookShowStats = false;
+    private static int webhookIntervalMinutes = 5;
+    private static String user = "";
 
     private List<Task> tasks;
 
@@ -127,6 +138,20 @@ public class dKarambwanFisher extends Script {
             }
         }
 
+        webhookEnabled = ui.isWebhookEnabled();
+        webhookUrl = ui.getWebhookUrl();
+        webhookIntervalMinutes = ui.getWebhookInterval();
+        if (webhookEnabled) {
+            log("WEBHOOK", "Webhook enabled: " + true + " | Interval: " + webhookIntervalMinutes + " min.");
+            // Initialize the timer with the interval (in milliseconds)
+            webhookTimer.reset(webhookIntervalMinutes * 60_000L);
+            // Get username for webhook purposes
+            user = getWidgetManager().getChatbox().getUsername();
+            // See what to show in the webhook
+            webhookShowUser = ui.isUsernameIncluded();
+            webhookShowStats = ui.isStatsIncluded();
+        }
+
         tasks = Arrays.asList(
                 new Setup(this),
                 new TravelTask(this),
@@ -137,6 +162,11 @@ public class dKarambwanFisher extends Script {
 
     @Override
     public int poll() {
+        if (webhookEnabled && webhookTimer.hasFinished()) {
+            sendWebhook();
+            webhookTimer.reset(webhookIntervalMinutes * 60_000L);
+        }
+
         if (tasks != null) {
             for (Task task : tasks) {
                 if (task.activate()) {
@@ -193,6 +223,124 @@ public class dKarambwanFisher extends Script {
             if (num1 < num2) return -1;
             if (num1 > num2) return 1;
         }
-        return 0; // Equal
+        return 0;
+    }
+
+    private void sendWebhook() {
+        ByteArrayOutputStream baos = null;
+
+        try {
+            if (webhookUrl == null || webhookUrl.isEmpty()) {
+                log("WEBHOOK", "⚠ Webhook URL is empty. Skipping send.");
+                return;
+            }
+
+            com.osmb.api.visual.image.Image screenImage = getScreen().getImage();
+            BufferedImage bufferedImage = screenImage.toBufferedImage();
+
+            baos = new ByteArrayOutputStream();
+            ImageIO.write(bufferedImage, "png", baos);
+            byte[] imageBytes = baos.toByteArray();
+
+            String boundary = "----WebhookBoundary" + System.currentTimeMillis();
+            URL url = new URL(webhookUrl);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
+            connection.setRequestMethod("POST");
+            connection.setDoOutput(true);
+            connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+
+            long elapsed = System.currentTimeMillis() - startTime;
+            int fishingXpGained = caughtCount * 50;
+            int cookingXpBanked = caughtCount * 190;
+            int caughtPerHour = elapsed > 0 ? (int) ((caughtCount * 3600000L) / elapsed) : 0;
+            int xpPerHour = elapsed > 0 ? (int) ((fishingXpGained * 3600000L) / elapsed) : 0;
+            String formattedRuntime = formatDuration(elapsed);
+
+            DecimalFormat formatter = new DecimalFormat("#,###");
+            DecimalFormatSymbols symbols = new DecimalFormatSymbols();
+            symbols.setGroupingSeparator('.');
+            formatter.setDecimalFormatSymbols(symbols);
+
+            String usernameDisplay = webhookShowUser && user != null && !user.isEmpty() ? escapeJson(user) : "anonymous";
+
+            StringBuilder payloadBuilder = new StringBuilder();
+            payloadBuilder.append("{")
+                    .append("\"embeds\": [{")
+                    .append("\"title\": \"\\uD83D\\uDCCA dKarambwanFisher Stats - ").append(usernameDisplay).append("\",")
+                    .append("\"color\": 4620980,");
+
+            if (webhookShowStats) {
+                payloadBuilder.append("\"fields\": [")
+                        .append("{\"name\": \"Karambwans caught\", \"value\": \"").append(formatter.format(caughtCount)).append("\", \"inline\": true},")
+                        .append("{\"name\": \"Karambwans per hour\", \"value\": \"").append(formatter.format(caughtPerHour)).append("\", \"inline\": true},")
+                        .append("{\"name\": \"Script version\", \"value\": \"").append(escapeJson(scriptVersion)).append("\", \"inline\": true},")
+                        .append("{\"name\": \"XP Gained\", \"value\": \"").append(formatter.format(fishingXpGained)).append("\", \"inline\": true},")
+                        .append("{\"name\": \"XP per hour\", \"value\": \"").append(formatter.format(xpPerHour)).append("\", \"inline\": true},")
+                        .append("{\"name\": \"Cooking XP banked\", \"value\": \"").append(formatter.format(cookingXpBanked)).append("\", \"inline\": true},")
+                        .append("{\"name\": \"Current task\", \"value\": \"").append(escapeJson(task)).append("\", \"inline\": true},")
+                        .append("{\"name\": \"Methods\", \"value\": \"Bank: ").append(escapeJson(bankOption))
+                        .append("\\nTravel: ").append(escapeJson(fairyOption)).append("\", \"inline\": true},")
+                        .append("{\"name\": \"Runtime\", \"value\": \"").append(formattedRuntime).append("\", \"inline\": true}")
+                        .append("],");
+            } else {
+                payloadBuilder.append("\"description\": \"Current task: ").append(escapeJson(task)).append("\",");
+            }
+
+            payloadBuilder.append("\"image\": {\"url\": \"attachment://screen.png\"}")
+                    .append("}]")
+                    .append("}");
+
+            String payloadJson = payloadBuilder.toString();
+
+            try (OutputStream output = connection.getOutputStream()) {
+                output.write(("--" + boundary + "\r\n").getBytes());
+                output.write("Content-Disposition: form-data; name=\"payload_json\"\r\n\r\n".getBytes());
+                output.write(payloadJson.getBytes(StandardCharsets.UTF_8));
+                output.write("\r\n".getBytes());
+
+                output.write(("--" + boundary + "\r\n").getBytes());
+                output.write("Content-Disposition: form-data; name=\"file\"; filename=\"screen.png\"\r\n".getBytes());
+                output.write("Content-Type: image/png\r\n\r\n".getBytes());
+                output.write(imageBytes);
+                output.write("\r\n".getBytes());
+
+                output.write(("--" + boundary + "--\r\n").getBytes());
+                output.flush();
+            }
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode == 204 || responseCode == 200) {
+                log("WEBHOOK", "✅ Webhook with screenshot sent successfully.");
+            } else {
+                log("WEBHOOK", "⚠ Failed to send webhook. HTTP " + responseCode);
+            }
+
+        } catch (Exception e) {
+            log("WEBHOOK", "❌ Error sending webhook: " + e.getMessage());
+        } finally {
+            try {
+                if (baos != null) baos.close();
+            } catch (IOException ignore) {}
+            baos = null;
+        }
+    }
+
+    private String escapeJson(String text) {
+        return text.replace("\"", "\\\"").replace("\n", "\\n");
+    }
+
+    private String formatDuration(long millis) {
+        long seconds = millis / 1000;
+        long days = seconds / 86400;
+        long hours = (seconds % 86400) / 3600;
+        long minutes = (seconds % 3600) / 60;
+        long secs = seconds % 60;
+
+        if (days > 0) {
+            return String.format("%02d:%02d:%02d:%02d", days, hours, minutes, secs);
+        } else {
+            return String.format("%02d:%02d:%02d", hours, minutes, secs);
+        }
     }
 }
