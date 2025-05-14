@@ -21,6 +21,7 @@ public class BankingTask extends Task {
 
     private long startTime = 0;
     private ItemGroupResult inventorySnapshot;
+    private int missingKarambwanjiCount = 0;
 
     public static final String[] BANK_NAMES = {"Bank", "Chest", "Bank booth", "Bank chest", "Grand Exchange booth", "Bank counter", "Bank table"};
     public static final String[] BANK_ACTIONS = {"bank", "open", "use", "bank banker"};
@@ -40,6 +41,21 @@ public class BankingTask extends Task {
     public boolean execute() {
         task = getClass().getSimpleName();
         inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(ItemID.RAW_KARAMBWANJI, ItemID.KARAMBWAN_VESSEL, ItemID.KARAMBWAN_VESSEL_3159, ItemID.RAW_KARAMBWAN, ItemID.FISH_BARREL, ItemID.OPEN_FISH_BARREL, ItemID.CRAFTING_CAPE, ItemID.CRAFTING_CAPET));
+
+        if (!inventorySnapshot.contains(ItemID.RAW_KARAMBWANJI)) {
+            missingKarambwanjiCount++;
+            script.log(getClass().getSimpleName(), "❌ Missing Karambwanji (" + missingKarambwanjiCount + "/3)");
+
+            if (missingKarambwanjiCount >= 3) {
+                script.log(getClass().getSimpleName(), "‼ Karambwanji missing 3 times in a row. Stopping script...");
+                script.stop();
+            }
+
+            return false;
+        } else {
+            missingKarambwanjiCount = 0; // Reset counter if found
+        }
+
         if (!script.getWidgetManager().getBank().isVisible()) {
             openBank();
             return false;
