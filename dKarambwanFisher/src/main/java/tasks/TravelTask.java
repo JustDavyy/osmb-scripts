@@ -27,6 +27,7 @@ public class TravelTask extends Task {
     private final Area legendsFairyArea = new RectangleArea(2736, 3347, 7, 7, 0);
     private final Area monasteryArea = new RectangleArea(2584, 3219, 87, 24, 0);
     private final Area monasteryFairyArea = new RectangleArea(2653, 3226, 10, 9, 0);
+    private final WorldPosition fishingFairyRing = new WorldPosition(2900, 3111, 0);
 
     public static final String[] FAIRY_NAMES = {"Fairy ring"};
     public static final String[] FAIRY_ACTIONS = {"zanaris", "configure"};
@@ -47,6 +48,15 @@ public class TravelTask extends Task {
         inventorySnapshot = script.getWidgetManager().getInventory().search(Collections.emptySet());
         if (inventorySnapshot == null) {
             script.log(getClass().getSimpleName(), "Inventory not visible.");
+            return false;
+        }
+
+        if (script.getWorldPosition().equals(fishingFairyRing)) {
+            script.log(getClass().getSimpleName(), "We're on the fishing fairy ring, don't run travel task!");
+            if (inventorySnapshot.isFull()) {
+                script.log(getClass().getSimpleName(), "On the other hand, our inventory seems to be full? Still activate!");
+                return true;
+            }
             return false;
         }
 
@@ -191,6 +201,7 @@ public class TravelTask extends Task {
             return false;
         }
 
+        doneBanking = false;
         script.submitTask(() -> false, script.random(4500, 5500));
 
         AtomicReference<Timer> positionChangeTimer = new AtomicReference<>(new Timer());
@@ -224,6 +235,7 @@ public class TravelTask extends Task {
                 return false;
             }
 
+            doneBanking = false;
             script.submitTask(() -> false, script.random(3500, 4500));
 
             // Interaction seems successful, wait till we arrive at the guild
@@ -263,6 +275,7 @@ public class TravelTask extends Task {
             return false;
         }
 
+        doneBanking = false;
         script.submitTask(() -> false, script.random(4500, 5500));
 
         // Reset afk timer
