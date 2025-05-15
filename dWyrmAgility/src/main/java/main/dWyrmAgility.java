@@ -431,18 +431,28 @@ public class dWyrmAgility extends Script {
                 }
                 log("UPDATE", "✅ Downloaded: " + out.getName());
                 stop();
+            } else {
+                log("SCRIPTVERSION", "✅ You are on the latest version (v" + scriptVersion + ").");
             }
         } catch (Exception e) {
             log("UPDATE", "❌ Error updating: " + e.getMessage());
         }
     }
 
-    private String getLatestVersion(String rawUrl) {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new URL(rawUrl).openStream()))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.trim().startsWith("version")) {
-                    return line.split("=")[1].replace(",", "").trim();
+    private String getLatestVersion(String url) {
+        try {
+            HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+            c.setRequestMethod("GET");
+            c.setConnectTimeout(3000);
+            c.setReadTimeout(3000);
+            if (c.getResponseCode() != 200) return null;
+
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream()))) {
+                String l;
+                while ((l = r.readLine()) != null) {
+                    if (l.trim().startsWith("version")) {
+                        return l.split("=")[1].replace(",", "").trim();
+                    }
                 }
             }
         } catch (Exception ignored) {}
