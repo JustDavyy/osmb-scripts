@@ -17,8 +17,6 @@ import static main.dTempAlcher.*;
 
 public class AlchTask extends Task {
     private long lastAlchTime = 0;
-    private long startTime = 0;
-    private int alchCount = 0;
 
     private boolean initializedSlotBounds = false;
     private UIResult<Rectangle> slotBounds;
@@ -28,7 +26,6 @@ public class AlchTask extends Task {
 
     public AlchTask(Script script) {
         super(script);
-        this.startTime = System.currentTimeMillis();
     }
 
     @Override
@@ -38,6 +35,7 @@ public class AlchTask extends Task {
 
     @Override
     public boolean execute() {
+        task = getClass().getSimpleName();
         if (!initializedSlotBounds) {
             script.log(dTempAlcher.class, "Opening inventory tab...");
             script.getWidgetManager().getTabManager().openTab(Tab.Type.INVENTORY);
@@ -67,6 +65,7 @@ public class AlchTask extends Task {
 
         boolean success = false;
         try {
+            task = "Cast spell";
             success = script.getWidgetManager().getSpellbook().selectSpell(
                     spellToCast,
                     Spellbook.ResultType.CHANGE_TAB
@@ -87,9 +86,11 @@ public class AlchTask extends Task {
                 return false;
             }
 
+            task = "Update stats";
             lastAlchTime = System.currentTimeMillis();
             alchCount++;
 
+            task = "Tap item";
             script.getFinger().tap(slotBounds.get().getBounds());
             script.log(getClass().getSimpleName(), "Cast " + spellToCast.getName() + " on slot " + alchSlotID + ".");
 
@@ -108,20 +109,24 @@ public class AlchTask extends Task {
             currentSlotIndex++;
             if (currentSlotIndex < slotsToAlch.size()) {
                 alchSlotID = slotsToAlch.get(currentSlotIndex);
+                task = "Switch alch slot " + alchSlotID;
                 script.log("INFO", "Switching to next slot: " + alchSlotID + ". Remaining: " + (slotsToAlch.size() - currentSlotIndex));
                 initializedSlotBounds = false;
                 slotsInitialized = false;
             } else {
+                task = "Stop script";
                 script.log("FINISH", "Finished alching all selected slots. Stopping script.");
                 script.stop();
             }
         } else {
+            task = "Stop script";
             script.log("FINISH", "Finished alching (single slot mode). Stopping script.");
             script.stop();
         }
     }
 
     private void printStats() {
+        task = "Print stats";
         long elapsed = System.currentTimeMillis() - startTime;
         int alchsPerHour = (int) ((alchCount * 3600000L) / elapsed);
 

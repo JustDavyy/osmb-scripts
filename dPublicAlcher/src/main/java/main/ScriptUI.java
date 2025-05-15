@@ -28,6 +28,17 @@ public class ScriptUI {
     private static final String PREF_SELECTED_ITEM_ID = "dpublicalcher_selected_item_id";
     private static final String PREF_SELECTED_MULTIPLE_ITEMS = "dpublicalcher_selected_multiple_item_ids";
     private static final String PREF_SELECTION_MODE = "dpublicalcher_selection_mode";
+    private static final String PREF_WEBHOOK_ENABLED = "dpublicalcher_webhook_enabled";
+    private static final String PREF_WEBHOOK_URL = "dpublicalcher_webhook_url";
+    private static final String PREF_WEBHOOK_INTERVAL = "dpublicalcher_webhook_interval";
+    private static final String PREF_WEBHOOK_INCLUDE_USER = "dpublicalcher_webhook_include_user";
+    private static final String PREF_WEBHOOK_INCLUDE_STATS = "dpublicalcher_webhook_include_stats";
+
+    private CheckBox webhookEnabledCheckBox;
+    private TextField webhookUrlField;
+    private ComboBox<Integer> webhookIntervalComboBox;
+    private CheckBox includeUsernameCheckBox;
+    private CheckBox includeStatsCheckBox;
 
     private final Script script;
     private ComboBox<StandardSpellbook> spellComboBox;
@@ -50,41 +61,85 @@ public class ScriptUI {
     }
 
     public Scene buildScene(ScriptCore core) {
-        VBox root = new VBox();
-        root.setSpacing(10);
-        root.setStyle("-fx-background-color: #636E72; -fx-padding: 15; -fx-alignment: center");
+        TabPane tabPane = new TabPane();
+
+        // === Main Tab ===
+        VBox mainBox = new VBox(10);
+        mainBox.setStyle("-fx-background-color: #636E72; -fx-padding: 15; -fx-alignment: center");
 
         Label spellLabel = new Label("Choose spell to cast");
         spellComboBox = new ComboBox<>();
         spellComboBox.getItems().addAll(ALCHEMY_SPELLS);
-
-        String savedSpell = prefs.get(PREF_SELECTED_SPELL, StandardSpellbook.HIGH_LEVEL_ALCHEMY.name());
-        spellComboBox.getSelectionModel().select(StandardSpellbook.valueOf(savedSpell));
-
-        script.log("SAVESETTINGS", "Loaded saved spell from preferences: " + savedSpell);
+        spellComboBox.getSelectionModel().select(StandardSpellbook.valueOf(prefs.get(PREF_SELECTED_SPELL, StandardSpellbook.HIGH_LEVEL_ALCHEMY.name())));
 
         Label modeLabel = new Label("Selection mode");
         selectionModeComboBox = new ComboBox<>();
         selectionModeComboBox.getItems().addAll("Single Item", "Multiple Items");
+        selectionModeComboBox.getSelectionModel().select(prefs.get(PREF_SELECTION_MODE, "Single Item"));
 
-        String savedMode = prefs.get(PREF_SELECTION_MODE, "Single Item");
-        selectionModeComboBox.getSelectionModel().select(savedMode);
-        script.log("SAVESETTINGS", "Loaded selection mode: " + savedMode);
-
-        itemSelectionBox = new VBox();
-        itemSelectionBox.setSpacing(8);
+        itemSelectionBox = new VBox(8);
         itemSelectionBox.setStyle("-fx-alignment: center");
-
         updateItemSelectionUI(core);
-
         selectionModeComboBox.setOnAction(e -> updateItemSelectionUI(core));
 
+        mainBox.getChildren().addAll(spellLabel, spellComboBox, modeLabel, selectionModeComboBox, itemSelectionBox);
+        Tab mainTab = new Tab("Main", mainBox);
+        mainTab.setClosable(false);
+
+        // === Webhook Tab ===
+        VBox webhookBox = new VBox(10);
+        webhookBox.setStyle("-fx-background-color: #636E72; -fx-padding: 15; -fx-alignment: center");
+
+        webhookEnabledCheckBox = new CheckBox("Enable Webhooks");
+        webhookEnabledCheckBox.setSelected(prefs.getBoolean(PREF_WEBHOOK_ENABLED, false));
+
+        webhookUrlField = new TextField(prefs.get(PREF_WEBHOOK_URL, ""));
+        webhookUrlField.setPromptText("Enter Webhook URL...");
+        webhookUrlField.setDisable(!webhookEnabledCheckBox.isSelected());
+
+        webhookIntervalComboBox = new ComboBox<>();
+        for (int i = 1; i <= 15; i++) webhookIntervalComboBox.getItems().add(i);
+        webhookIntervalComboBox.getSelectionModel().select(Integer.valueOf(prefs.getInt(PREF_WEBHOOK_INTERVAL, 5)) - 1);
+        webhookIntervalComboBox.setDisable(!webhookEnabledCheckBox.isSelected());
+
+        includeUsernameCheckBox = new CheckBox("Include Username");
+        includeUsernameCheckBox.setSelected(prefs.getBoolean(PREF_WEBHOOK_INCLUDE_USER, true));
+        includeUsernameCheckBox.setDisable(!webhookEnabledCheckBox.isSelected());
+
+        includeStatsCheckBox = new CheckBox("Include Stats");
+        includeStatsCheckBox.setSelected(prefs.getBoolean(PREF_WEBHOOK_INCLUDE_STATS, true));
+        includeStatsCheckBox.setDisable(!webhookEnabledCheckBox.isSelected());
+
+        webhookEnabledCheckBox.setOnAction(e -> {
+            boolean enabled = webhookEnabledCheckBox.isSelected();
+            webhookUrlField.setDisable(!enabled);
+            webhookIntervalComboBox.setDisable(!enabled);
+            includeUsernameCheckBox.setDisable(!enabled);
+            includeStatsCheckBox.setDisable(!enabled);
+        });
+
+        webhookBox.getChildren().addAll(
+                webhookEnabledCheckBox,
+                webhookUrlField,
+                new Label("Send interval (minutes)"),
+                webhookIntervalComboBox,
+                includeUsernameCheckBox,
+                includeStatsCheckBox
+        );
+        Tab webhookTab = new Tab("Webhooks", webhookBox);
+        webhookTab.setClosable(false);
+
+        // === Final Scene Setup ===
         Button confirmButton = new Button("Confirm");
         confirmButton.setOnAction(event -> saveSettings());
 
-        root.getChildren().addAll(spellLabel, spellComboBox, modeLabel, selectionModeComboBox, itemSelectionBox, confirmButton);
+        VBox layout = new VBox(tabPane, confirmButton);
+        layout.setSpacing(10);
+        layout.setStyle("-fx-background-color: #2d3436; -fx-padding: 10;");
 
-        Scene scene = new Scene(root, 200, 400);
+        tabPane.getTabs().addAll(mainTab, webhookTab);
+
+        Scene scene = new Scene(layout, 300, 420);
         scene.getStylesheets().add("style.css");
         return scene;
     }
@@ -215,6 +270,12 @@ public class ScriptUI {
             script.log("SAVESETTINGS", "Saved selected single item ID: " + selectedItemID);
         }
 
+        prefs.putBoolean(PREF_WEBHOOK_ENABLED, isWebhookEnabled());
+        prefs.put(PREF_WEBHOOK_URL, getWebhookUrl());
+        prefs.putInt(PREF_WEBHOOK_INTERVAL, getWebhookInterval());
+        prefs.putBoolean(PREF_WEBHOOK_INCLUDE_USER, isUsernameIncluded());
+        prefs.putBoolean(PREF_WEBHOOK_INCLUDE_STATS, isStatsIncluded());
+
         ((Stage) itemSelectionBox.getScene().getWindow()).close();
     }
 
@@ -232,5 +293,27 @@ public class ScriptUI {
 
     public boolean isMultipleSelectionMode() {
         return selectionModeComboBox.getSelectionModel().getSelectedItem().equals("Multiple Items");
+    }
+
+    public boolean isWebhookEnabled() {
+        return webhookEnabledCheckBox != null && webhookEnabledCheckBox.isSelected();
+    }
+
+    public String getWebhookUrl() {
+        return webhookUrlField != null ? webhookUrlField.getText().trim() : "";
+    }
+
+    public int getWebhookInterval() {
+        return webhookIntervalComboBox != null && webhookIntervalComboBox.getValue() != null
+                ? webhookIntervalComboBox.getValue()
+                : 5;
+    }
+
+    public boolean isUsernameIncluded() {
+        return includeUsernameCheckBox != null && includeUsernameCheckBox.isSelected();
+    }
+
+    public boolean isStatsIncluded() {
+        return includeStatsCheckBox != null && includeStatsCheckBox.isSelected();
     }
 }

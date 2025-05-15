@@ -1,7 +1,6 @@
 package tasks;
 
 import com.osmb.api.ui.spellbook.StandardSpellbook;
-import main.dPublicAlcher;
 import utils.Task;
 
 import static main.dPublicAlcher.*;
@@ -12,12 +11,9 @@ import com.osmb.api.ui.tabs.Spellbook;
 
 public class AlchTask extends Task {
     private long lastAlchTime = 0;
-    private long startTime = 0;
-    private int alchCount = 0;
 
     public AlchTask(Script script) {
         super(script);
-        this.startTime = System.currentTimeMillis();
     }
 
     public boolean activate() {
@@ -25,6 +21,8 @@ public class AlchTask extends Task {
     }
 
     public boolean execute() {
+        task = getClass().getSimpleName();
+        task = "Get stack size";
         if (stackSize == 0) {
             if (multipleItemsMode && (currentItemIndex + 1) < itemsToAlch.size()) {
                 currentItemIndex++;
@@ -34,19 +32,20 @@ public class AlchTask extends Task {
                 setupDone = false;
                 return false;
             } else {
-                script.log(dPublicAlcher.class, "We are out of items to alch, stopping script...");
+                script.log(getClass().getSimpleName(), "We are out of items to alch, stopping script...");
                 script.stop();
             }
         }
 
         boolean success = false;
+        task = "Cast spell";
         try {
             success = script.getWidgetManager().getSpellbook().selectSpell(
                     spellToCast,
                     Spellbook.ResultType.CHANGE_TAB
             );
         } catch (SpellNotFoundException e) {
-            script.log(dPublicAlcher.class, "Spell sprite not found for " + spellToCast.getName() + ". Stopping script...");
+            script.log(getClass().getSimpleName(), "Spell sprite not found for " + spellToCast.getName() + ". Stopping script...");
             script.stop();
             return false;
         }
@@ -56,14 +55,17 @@ public class AlchTask extends Task {
             long timeSinceLastAlch = now - lastAlchTime;
             script.log("DEBUG", "Time since last alch: " + timeSinceLastAlch + "ms");
 
+            task = "Update counts";
             lastAlchTime = System.currentTimeMillis();
             alchCount++;
             stackSize--;
 
+            task = "Tap item";
             script.getFinger().tap(itemRect.get().getBounds());
-            script.log(dPublicAlcher.class, "Cast " + spellToCast.getName() + " on " + itemName);
+            script.log(getClass().getSimpleName(), "Cast " + spellToCast.getName() + " on " + itemName);
 
             printStats();
+            task = "Wait for cooldown";
             script.submitTask(() -> (System.currentTimeMillis() - lastAlchTime) >= getCooldownForSpell(), (int) (getCooldownForSpell() + 1000));
         } else {
             script.log("WARN", "Failed to cast " + spellToCast.getName() + " on " + itemName);
@@ -73,6 +75,7 @@ public class AlchTask extends Task {
     }
 
     private void printStats() {
+        task = "Print stats";
         long elapsed = System.currentTimeMillis() - startTime;
         int alchsPerHour = (int) ((alchCount * 3600000L) / elapsed);
 
