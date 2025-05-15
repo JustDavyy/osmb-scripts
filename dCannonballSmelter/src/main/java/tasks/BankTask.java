@@ -38,7 +38,15 @@ public class BankTask extends Task {
         if (depositCannonballs) {
             task = "Deposit cannonballs";
             script.log(getClass(), "Depositing cannonballs (85% case).");
-            script.getWidgetManager().getBank().depositAll(Set.of(ItemID.AMMO_MOULD, ItemID.DOUBLE_AMMO_MOULD));
+            if (!script.getWidgetManager().getBank().depositAll(Set.of(ItemID.AMMO_MOULD, ItemID.DOUBLE_AMMO_MOULD))) {
+                ItemGroupResult bankSnapshot = script.getWidgetManager().getBank().search(Set.of(ItemID.STEEL_BAR));
+
+                if (bankSnapshot.isEmpty()) {
+                    script.log(getClass(), "Ran out of supplies. Stopping script.");
+                    script.stop();
+                    return false;
+                }
+            }
         } else {
             task = "Skip deposit";
             script.log(getClass(), "Skipping cannonball deposit (15% case).");
