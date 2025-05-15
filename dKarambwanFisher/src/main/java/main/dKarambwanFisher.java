@@ -32,11 +32,11 @@ import javax.imageio.ImageIO;
         name = "dKarambwanFisher",
         description = "Fishes and banks karambwans",
         skillCategory = SkillCategory.FISHING,
-        version = 1.5,
+        version = 1.6,
         author = "JustDavyy"
 )
 public class dKarambwanFisher extends Script {
-    public static String scriptVersion = "1.5";
+    public static String scriptVersion = "1.6";
     public static final PolyArea fishingArea = new PolyArea(List.of(new WorldPosition(2896, 3119, 0),new WorldPosition(2894, 3118, 0),new WorldPosition(2893, 3116, 0),new WorldPosition(2894, 3115, 0),new WorldPosition(2895, 3114, 0),new WorldPosition(2895, 3113, 0),new WorldPosition(2895, 3112, 0),new WorldPosition(2895, 3110, 0),new WorldPosition(2897, 3109, 0),new WorldPosition(2898, 3108, 0),new WorldPosition(2899, 3107, 0),new WorldPosition(2900, 3106, 0),new WorldPosition(2909, 3106, 0),new WorldPosition(2912, 3108, 0),new WorldPosition(2916, 3111, 0),new WorldPosition(2914, 3115, 0),new WorldPosition(2914, 3116, 0),new WorldPosition(2913, 3117, 0),new WorldPosition(2913, 3118, 0),new WorldPosition(2911, 3118, 0),new WorldPosition(2910, 3117, 0),new WorldPosition(2909, 3116, 0),new WorldPosition(2908, 3115, 0),new WorldPosition(2907, 3115, 0),new WorldPosition(2906, 3116, 0),new WorldPosition(2905, 3117, 0),new WorldPosition(2904, 3118, 0),new WorldPosition(2903, 3119, 0),new WorldPosition(2901, 3119, 0),new WorldPosition(2900, 3119, 0),new WorldPosition(2899, 3118, 0),new WorldPosition(2897, 3119, 0),new WorldPosition(2898, 3118, 0)));
     public static int equippedCloakId = -1;
     public static int teleportCapeId = -1;
@@ -128,10 +128,55 @@ public class dKarambwanFisher extends Script {
             if (comparison == 0) {
                 log("SCRIPTVERSION", "✅ You are running the latest script version: v" + scriptVersion);
             } else if (comparison < 0) {
-                for (int i = 0; i < 10; i++) {
-                    log("VERSIONERROR (" + i + "/10)", "❌ You are NOT running the latest version of this script!\nYour version: v" + scriptVersion + "\nLatest version: v" + version);
-                    submitTask(() -> false, random(750, 2000));
+                log("VERSIONERROR", "❌ You are NOT running the latest version of this script!\nYour version: v" + scriptVersion + "\nLatest version: v" + version);
+
+                try {
+                    String userHome = System.getProperty("user.home");
+                    File scriptsDir = new File(userHome + File.separator + ".osmb" + File.separator + "Scripts");
+
+                    if (!scriptsDir.exists()) scriptsDir.mkdirs();
+
+                    // === Clean up old versions ===
+                    File[] oldFiles = scriptsDir.listFiles((dir, name) ->
+                            name.equals("dKarambwanFisher.jar") || name.matches("dKarambwanFisher-\\d+(\\.\\d+)+\\.jar")
+                    );
+
+                    if (oldFiles != null) {
+                        for (File old : oldFiles) {
+                            if (old.delete()) {
+                                log("SCRIPTDOWNLOAD", "🗑 Removed old version: " + old.getName());
+                            } else {
+                                log("SCRIPTDOWNLOAD", "⚠ Failed to delete old version: " + old.getName());
+                            }
+                        }
+                    }
+
+                    // === Download new version ===
+                    String fileUrl = "https://raw.githubusercontent.com/JustDavyy/osmb-scripts/main/dKarambwanFisher/jar/dKarambwanFisher.jar";
+                    String newFileName = "dKarambwanFisher-" + version + ".jar";
+                    File newFile = new File(scriptsDir, newFileName);
+
+                    log("SCRIPTDOWNLOAD", "⬇ Downloading new version: " + newFileName);
+
+                    try (InputStream in = new URL(fileUrl).openStream();
+                         FileOutputStream fos = new FileOutputStream(newFile)) {
+
+                        byte[] buffer = new byte[4096];
+                        int bytesRead;
+                        while ((bytesRead = in.read(buffer)) != -1) {
+                            fos.write(buffer, 0, bytesRead);
+                        }
+                    }
+
+                    log("SCRIPTDOWNLOAD", "✅ Downloaded to: " + newFile.getAbsolutePath());
+                    log("SCRIPTDOWNLOAD", "New version has been downloaded, please re-start the script to run the latest version, we'll now terminate this script.");
+                    stop();
+                    return;
+                } catch (Exception e) {
+                    log("SCRIPTDOWNLOAD", "❌ Failed to download updated script: " + e.getMessage());
+                    log(getClass().getSimpleName(), "New version download failed, we'll continue with the old version for now.");
                 }
+
             } else {
                 log("SCRIPTVERSION", "✅ You are running a newer version (v" + scriptVersion + ") than the published one (v" + version + ").");
                 log("SCRIPTVERSION", "🙏 Thank you for testing a development build — your time and feedback are appreciated!");
