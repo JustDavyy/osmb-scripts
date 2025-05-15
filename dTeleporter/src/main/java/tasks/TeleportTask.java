@@ -11,12 +11,9 @@ import com.osmb.api.ui.spellbook.SpellNotFoundException;
 
 public class TeleportTask extends Task {
     private long lastTeleportTime = 0;
-    private final long startTime;
-    private int teleportCount = 0;
 
     public TeleportTask(Script script) {
         super(script);
-        this.startTime = System.currentTimeMillis();
     }
 
     public boolean activate() {
@@ -24,9 +21,11 @@ public class TeleportTask extends Task {
     }
 
     public boolean execute() {
+        task = getClass().getSimpleName();
 
         boolean success;
         try {
+            task = "Cast spell";
             success = script.getWidgetManager().getSpellbook().selectSpell(
                     spellToCast,
                     null
@@ -42,6 +41,7 @@ public class TeleportTask extends Task {
             long timeSinceLastTeleport = now - lastTeleportTime;
             script.log("DEBUG", "Time since last teleport: " + timeSinceLastTeleport + "ms");
 
+            task = "Update stats";
             lastTeleportTime = System.currentTimeMillis();
             teleportCount++;
 
@@ -49,6 +49,7 @@ public class TeleportTask extends Task {
             printStats();
 
             // Schedule next task attempt after cooldown
+            task = "Schedule next cast";
             script.submitTask(() -> (System.currentTimeMillis() - lastTeleportTime) >= getCooldownForSpell(), (int) (getCooldownForSpell() + 1000));
         } else {
             script.log("WARN", "Failed to cast " + spellToCast.getName());
@@ -58,6 +59,7 @@ public class TeleportTask extends Task {
     }
 
     private void printStats() {
+        task = "Print stats";
         // Teleports per hour
         long elapsed = System.currentTimeMillis() - startTime;
         int teleportsPerHour = (int) ((teleportCount * 3600000L) / elapsed);

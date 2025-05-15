@@ -21,11 +21,14 @@ public class Setup extends Task {
     }
 
     public boolean execute() {
+        task = getClass().getSimpleName();
         script.log("DEBUG", "We are now inside the Setup task logic");
 
+        task = "Open magic tab";
         script.log(getClass().getSimpleName(), "Opening magic tab");
         script.getWidgetManager().getTabManager().openTab(Tab.Type.SPELLBOOK);
 
+        task = "Update flags";
         setupDone = true;
         return false;
     }
