@@ -8,6 +8,8 @@ import main.Course;
 import main.ObstacleHandleResponse;
 import main.dWyrmAgility;
 
+import static main.dWyrmAgility.task;
+
 public class WyrmBasic implements Course {
 
     private final dWyrmAgility core;
@@ -37,6 +39,7 @@ public class WyrmBasic implements Course {
         WorldPosition position = core.getWorldPosition();
 
         if (AREA_1.contains(position)) {
+            task = "Obstacle 2";
             ObstacleHandleResponse response = main.dWyrmAgility.handleObstacle(core, "tightrope", "cross", AREA_2, 35000);
             if (response == ObstacleHandleResponse.SUCCESS) {
                 main.dWyrmAgility.xpGained += 74.4;
@@ -46,6 +49,7 @@ public class WyrmBasic implements Course {
             }
             return 0;
         } else if (AREA_2.contains(position)) {
+            task = "Obstacle 3";
             core.noMovementTimeout = RandomUtils.weightedRandom(3000, 5000); // override just for this run
             ObstacleHandleResponse response = main.dWyrmAgility.handleObstacle(core, "tightrope", "cross", OBS3_END_POS, 35000);
             if (response == ObstacleHandleResponse.SUCCESS) {
@@ -56,6 +60,7 @@ public class WyrmBasic implements Course {
             }
             return 0;
         } else if (AREA_3.contains(position)) {
+            task = "Obstacle 4";
             ObstacleHandleResponse response = main.dWyrmAgility.handleObstacle(core, "rope", "climb", OBS4_END_POS, 25000);
             if (response == ObstacleHandleResponse.SUCCESS) {
                 main.dWyrmAgility.xpGained += 74.4;
@@ -65,6 +70,7 @@ public class WyrmBasic implements Course {
             }
             return 0;
         } else if (AREA_4.contains(position)) {
+            task = "Obstacle 5";
             ObstacleHandleResponse response = main.dWyrmAgility.handleObstacle(core, "ladder", "climb", AREA_5, 15000);
             if (response == ObstacleHandleResponse.SUCCESS) {
                 main.dWyrmAgility.xpGained += 37.2;
@@ -74,6 +80,7 @@ public class WyrmBasic implements Course {
             }
             return 0;
         } else if (AREA_5.contains(position)) {
+            task = "Obstacle 6";
             ObstacleHandleResponse response = main.dWyrmAgility.handleObstacle(core, "zipline", "slide", COURSE_END_POS, 1, false, 15000);
             if (response == ObstacleHandleResponse.SUCCESS) {
                 main.dWyrmAgility.xpGained += 243.7;
@@ -84,6 +91,7 @@ public class WyrmBasic implements Course {
             }
             return 0;
         } else {
+            task = "Obstacle 1";
             ObstacleHandleResponse handleResponse = main.dWyrmAgility.handleObstacle(
                     core,
                     "ladder",

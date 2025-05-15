@@ -13,13 +13,30 @@ import com.osmb.api.utils.RandomUtils;
 import com.osmb.api.utils.UIResult;
 import com.osmb.api.utils.Utils;
 import com.osmb.api.utils.timing.Timer;
+import com.osmb.api.visual.drawing.Canvas;
 import javafx.scene.Scene;
 
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
-@ScriptDefinition(name = "dWyrmAgility", author = "JustDavyy", version = 1.2, description = "Does the Wyrm basic or advanced agility course.", skillCategory = SkillCategory.AGILITY)
+@ScriptDefinition(
+        name = "dWyrmAgility",
+        author = "JustDavyy",
+        version = 1.3,
+        description = "Does the Wyrm basic or advanced agility course.",
+        skillCategory = SkillCategory.AGILITY
+)
 public class dWyrmAgility extends Script {
+    public static final String scriptVersion = "1.3";
     private Course selectedCourse;
     private int nextRunActivate;
     public int noMovementTimeout = RandomUtils.weightedRandom(6000, 9000);
@@ -28,8 +45,18 @@ public class dWyrmAgility extends Script {
     private final long startTime = System.currentTimeMillis();
     private long lastStatsPrint = 0L;
 
+    // Webhook config
+    private static boolean webhookEnabled = false;
+    private static boolean webhookShowUser = false;
+    private static boolean webhookShowStats = false;
+    private static String webhookUrl = "";
+    private static int webhookIntervalMinutes = 5;
+    private static long lastWebhookSent = 0;
+    private static String user = "";
 
-    // to handle the osrs glitch where the position doesn't update
+    public static String task = "Initialize";
+    private final Font font = Font.getFont("Ariel");
+
     private int failThreshold = random(4, 6);
     private int failCount = 0;
 
@@ -194,17 +221,27 @@ public class dWyrmAgility extends Script {
 
     @Override
     public void onStart() {
-
         UI ui = new UI();
         Scene scene = ui.buildScene(this);
         getStageController().show(scene, "dWyrmAgility Settings", false);
 
-        // set the selected course
         this.selectedCourse = ui.selectedCourse();
         this.nextRunActivate = random(30, 70);
 
-        // Close tabs if they are open
-        getWidgetManager().getTabManager().closeContainer();
+        webhookEnabled = ui.isWebhookEnabled();
+        webhookUrl = ui.getWebhookUrl();
+        webhookIntervalMinutes = ui.getWebhookInterval();
+        webhookShowUser = ui.isUsernameIncluded();
+        webhookShowStats = ui.isStatsIncluded();
+
+        if (webhookEnabled) {
+            user = getWidgetManager().getChatbox().getUsername();
+            log("WEBHOOK", "✅ Webhook enabled. Interval: " + webhookIntervalMinutes + "min. Username: " + user);
+            lastWebhookSent = System.currentTimeMillis();
+            sendWebhook();
+        }
+
+        checkForUpdates();
     }
 
     @Override
@@ -216,12 +253,16 @@ public class dWyrmAgility extends Script {
     @Override
     public int poll() {
         if (failCount > failThreshold) {
-            log(dWyrmAgility.class, "Failed object multiple times. Relogging.");
+            log("ERROR", "Failed object multiple times. Relogging.");
             getWidgetManager().getLogoutTab().logout();
             return 0;
         }
 
-        // Print stats if it's been 30+ seconds since last print
+        if (webhookEnabled && System.currentTimeMillis() - lastWebhookSent >= webhookIntervalMinutes * 60_000L) {
+            sendWebhook();
+            lastWebhookSent = System.currentTimeMillis();
+        }
+
         long now = System.currentTimeMillis();
         if (now - lastStatsPrint >= 30000) {
             printStats();
@@ -230,21 +271,16 @@ public class dWyrmAgility extends Script {
 
         UIResult<Boolean> runEnabled = getWidgetManager().getMinimapOrbs().isRunEnabled();
         if (runEnabled.isFound()) {
-            UIResult<Integer> runEnergyOpt = getWidgetManager().getMinimapOrbs().getRunEnergy();
-            int runEnergy = runEnergyOpt.orElse(-1);
+            int runEnergy = getWidgetManager().getMinimapOrbs().getRunEnergy().orElse(-1);
             if (!runEnabled.get() && runEnergy > nextRunActivate) {
-                log(getClass().getSimpleName(), "Enabling run");
-                if (!getWidgetManager().getMinimapOrbs().setRun(true)) {
-                    return 0;
-                }
+                log("RUN", "Enabling run");
+                getWidgetManager().getMinimapOrbs().setRun(true);
                 nextRunActivate = random(30, 70);
             }
         }
-        WorldPosition position = getWorldPosition();
-        if (position == null) {
-            log(getClass().getSimpleName(), "Position is null.");
-            return 0;
-        }
+
+        WorldPosition pos = getWorldPosition();
+        if (pos == null) return 0;
         return selectedCourse.poll(this);
     }
 
@@ -254,6 +290,29 @@ public class dWyrmAgility extends Script {
             return new int[0];
         }
         return selectedCourse.regions();
+    }
+
+    @Override
+    public void onPaint(Canvas c) {
+        long elapsed = System.currentTimeMillis() - startTime;
+        int xpPerHour = (int) ((xpGained * 3600000L) / elapsed);
+        int lapsPerHour = (int) ((lapCount * 3600000L) / elapsed);
+
+        DecimalFormat f = new DecimalFormat("#,###");
+        DecimalFormatSymbols s = new DecimalFormatSymbols();
+        s.setGroupingSeparator('.');
+        f.setDecimalFormatSymbols(s);
+
+        int y = 40;
+        c.fillRect(5, y, 220, 120, Color.BLACK.getRGB(), 0.75f);
+        c.drawRect(5, y, 220, 120, Color.BLACK.getRGB());
+
+        c.drawText("XP gained: " + f.format(xpGained), 10, y += 20, Color.WHITE.getRGB(), font);
+        c.drawText("XP/hr: " + f.format(xpPerHour), 10, y += 20, Color.WHITE.getRGB(), font);
+        c.drawText("Laps done: " + f.format(lapCount), 10, y += 20, Color.WHITE.getRGB(), font);
+        c.drawText("Laps/hr: " + f.format(lapsPerHour), 10, y += 20, Color.WHITE.getRGB(), font);
+        c.drawText("Task: " + task, 10, y += 20, Color.WHITE.getRGB(), font);
+        c.drawText("Version: " + scriptVersion, 10, y += 20, Color.WHITE.getRGB(), font);
     }
 
     public void printStats() {
@@ -267,5 +326,137 @@ public class dWyrmAgility extends Script {
                 "XP gained: %,.1f | XP/hr: %,d | Laps done: %,d | Laps/hr: %,d",
                 xpGained, xpPerHour, lapCount, lapsPerHour
         ));
+    }
+
+    private void sendWebhook() {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            BufferedImage img = getScreen().getImage().toBufferedImage();
+            ImageIO.write(img, "png", baos);
+            byte[] imageBytes = baos.toByteArray();
+
+            long elapsed = System.currentTimeMillis() - startTime;
+            String runtime = formatRuntime(elapsed);
+            int xpPerHour = (int) ((xpGained * 3600000L) / elapsed);
+            int lapsPerHour = (int) ((lapCount * 3600000L) / elapsed);
+
+            DecimalFormat f = new DecimalFormat("#,###");
+            DecimalFormatSymbols s = new DecimalFormatSymbols();
+            s.setGroupingSeparator('.');
+            f.setDecimalFormatSymbols(s);
+
+            StringBuilder json = new StringBuilder();
+            json.append("{\"embeds\":[{")
+                    .append("\"title\":\"📊 dWyrmAgility Stats - ").append(webhookShowUser && user != null ? escapeJson(user) : "anonymous").append("\",")
+                    .append("\"color\":15844367,");
+
+            if (webhookShowStats) {
+                json.append("\"fields\":[")
+                        .append("{\"name\":\"XP Gained\",\"value\":\"").append(f.format(xpGained)).append("\",\"inline\":true},")
+                        .append("{\"name\":\"XP/hr\",\"value\":\"").append(f.format(xpPerHour)).append("\",\"inline\":true},")
+                        .append("{\"name\":\"Laps Done\",\"value\":\"").append(f.format(lapCount)).append("\",\"inline\":true},")
+                        .append("{\"name\":\"Laps/hr\",\"value\":\"").append(f.format(lapsPerHour)).append("\",\"inline\":true},")
+                        .append("{\"name\":\"Task\",\"value\":\"").append(escapeJson(task)).append("\",\"inline\":true},")
+                        .append("{\"name\":\"Runtime\",\"value\":\"").append(runtime).append("\",\"inline\":true},")
+                        .append("{\"name\":\"Version\",\"value\":\"").append(scriptVersion).append("\",\"inline\":true}")
+                        .append("],");
+            } else {
+                json.append("\"description\":\"Currently on task: ").append(escapeJson(task)).append("\",");
+            }
+
+            json.append("\"image\":{\"url\":\"attachment://screen.png\"}}]}");
+
+            String boundary = "----Boundary" + System.currentTimeMillis();
+            HttpURLConnection conn = (HttpURLConnection) new URL(webhookUrl).openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+
+            try (OutputStream out = conn.getOutputStream()) {
+                out.write(("--" + boundary + "\r\n").getBytes());
+                out.write("Content-Disposition: form-data; name=\"payload_json\"\r\n\r\n".getBytes());
+                out.write(json.toString().getBytes(StandardCharsets.UTF_8));
+                out.write("\r\n".getBytes());
+
+                out.write(("--" + boundary + "\r\n").getBytes());
+                out.write("Content-Disposition: form-data; name=\"file\"; filename=\"screen.png\"\r\n".getBytes());
+                out.write("Content-Type: image/png\r\n\r\n".getBytes());
+                out.write(imageBytes);
+                out.write("\r\n".getBytes());
+
+                out.write(("--" + boundary + "--\r\n").getBytes());
+            }
+
+            int code = conn.getResponseCode();
+            log("WEBHOOK", (code == 200 || code == 204) ? "✅ Sent webhook successfully." : "⚠ Failed to send webhook: HTTP " + code);
+        } catch (Exception e) {
+            log("WEBHOOK", "❌ Error sending webhook: " + e.getMessage());
+        }
+    }
+
+    private String escapeJson(String text) {
+        return text == null ? "" : text.replace("\"", "\\\"").replace("\n", "\\n");
+    }
+
+    private String formatRuntime(long ms) {
+        long s = ms / 1000;
+        long h = (s % 86400) / 3600;
+        long m = (s % 3600) / 60;
+        long sec = s % 60;
+        return String.format("%02d:%02d:%02d", h, m, sec);
+    }
+
+    private void checkForUpdates() {
+        try {
+            String urlRaw = "https://raw.githubusercontent.com/JustDavyy/osmb-scripts/main/dWyrmAgility/src/main/java/main/dWyrmAgility.java";
+            String latest = getLatestVersion(urlRaw);
+            if (latest == null) {
+                log("UPDATE", "⚠ Could not fetch latest version info.");
+                return;
+            }
+            if (compareVersions(scriptVersion, latest) < 0) {
+                log("UPDATE", "⏬ New version v" + latest + " found! Updating...");
+                File dir = new File(System.getProperty("user.home") + File.separator + ".osmb" + File.separator + "Scripts");
+                if (!dir.exists()) dir.mkdirs();
+
+                for (File f : dir.listFiles((d, n) -> n.startsWith("dWyrmAgility"))) {
+                    if (f.delete()) log("UPDATE", "🗑 Deleted old: " + f.getName());
+                }
+
+                File out = new File(dir, "dWyrmAgility-" + latest + ".jar");
+                URL jarUrl = new URL("https://raw.githubusercontent.com/JustDavyy/osmb-scripts/main/dWyrmAgility/jar/dWyrmAgility.jar");
+                try (InputStream in = jarUrl.openStream(); FileOutputStream fos = new FileOutputStream(out)) {
+                    byte[] buf = new byte[4096];
+                    int n;
+                    while ((n = in.read(buf)) != -1) fos.write(buf, 0, n);
+                }
+                log("UPDATE", "✅ Downloaded: " + out.getName());
+                stop();
+            }
+        } catch (Exception e) {
+            log("UPDATE", "❌ Error updating: " + e.getMessage());
+        }
+    }
+
+    private String getLatestVersion(String rawUrl) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new URL(rawUrl).openStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.trim().startsWith("version")) {
+                    return line.split("=")[1].replace(",", "").trim();
+                }
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private int compareVersions(String v1, String v2) {
+        String[] a = v1.split("\\.");
+        String[] b = v2.split("\\.");
+        for (int i = 0; i < Math.max(a.length, b.length); i++) {
+            int n1 = i < a.length ? Integer.parseInt(a[i]) : 0;
+            int n2 = i < b.length ? Integer.parseInt(b[i]) : 0;
+            if (n1 != n2) return Integer.compare(n1, n2);
+        }
+        return 0;
     }
 }
