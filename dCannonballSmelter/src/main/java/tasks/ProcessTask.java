@@ -12,10 +12,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 
+import static main.dCannonballSmelter.*;
+
 public class ProcessTask extends Task {
-    private long startTime = 0;
-    private int smeltCount = 0;
-    private double totalXpGained = 0.0;
+    private final long startTime;
 
     public ProcessTask(Script script) {
         super(script);
@@ -36,6 +36,7 @@ public class ProcessTask extends Task {
 
     @Override
     public boolean execute() {
+        task = getClass().getSimpleName();
         ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(ItemID.STEEL_BAR));
         if (inventorySnapshot == null) {
             script.log(getClass(), "Inventory not visible.");
@@ -46,12 +47,14 @@ public class ProcessTask extends Task {
             return false;
         }
 
+        task = "Get furnace object";
         RSObject furnace = getClosestFurnace();
         if (furnace == null) {
             script.log(getClass(), "No furnace found nearby.");
             return false;
         }
 
+        task = "Interact furnace object";
         if (!furnace.interact("Smelt")) {
             script.log(getClass(), "Failed to interact with furnace. Retrying...");
             if (!furnace.interact("Smelt")) {
@@ -64,12 +67,14 @@ public class ProcessTask extends Task {
             return type == DialogueType.ITEM_OPTION;
         };
 
+        task = "Wait for dialogue";
         script.submitHumanTask(condition, script.random(4000, 6000));
 
         DialogueType dialogueType = script.getWidgetManager().getDialogue().getDialogueType();
         if (dialogueType == DialogueType.ITEM_OPTION) {
             boolean selected = script.getWidgetManager().getDialogue().selectItem(ItemID.CANNONBALL);
             if (!selected) {
+                task = "Retry interaction";
                 script.log(getClass(), "Initial cannonball selection failed, retrying...");
                 script.submitTask(() -> false, script.random(150, 300));
                 selected = script.getWidgetManager().getDialogue().selectItem(ItemID.CANNONBALL);
@@ -81,8 +86,10 @@ public class ProcessTask extends Task {
             }
             script.log(getClass(), "Selected cannonballs to smelt.");
 
+            task = "Wait until finished";
             waitUntilFinishedSmelting();
 
+            task = "Update stats";
             int smeltedNow = inventorySnapshot.getAmount(ItemID.STEEL_BAR);
             smeltCount += smeltedNow;
             totalXpGained += smeltedNow * getXpForCannonball();
@@ -156,6 +163,7 @@ public class ProcessTask extends Task {
     }
 
     private void printStats() {
+        task = "Print stats";
         long elapsed = System.currentTimeMillis() - startTime;
         int smeltsPerHour = (int) ((smeltCount * 3600000L) / elapsed);
         int xpPerHour = (int) ((totalXpGained * 3600000L) / elapsed);

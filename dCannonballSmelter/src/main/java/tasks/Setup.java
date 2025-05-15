@@ -22,8 +22,10 @@ public class Setup extends Task {
     }
 
     public boolean execute() {
+        task = getClass().getSimpleName();
         script.log(getClass().getSimpleName(), "We are now inside the Setup task logic");
 
+        task = "Open inventory";
         script.log(getClass().getSimpleName(), "Opening inventory tab");
         script.getWidgetManager().getTabManager().openTab(Tab.Type.INVENTORY);
         script.submitHumanTask(() -> false, script.random(500, 1250));

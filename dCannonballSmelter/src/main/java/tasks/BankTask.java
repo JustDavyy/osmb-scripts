@@ -28,6 +28,7 @@ public class BankTask extends Task {
 
     @Override
     public boolean execute() {
+        task = getClass().getSimpleName();
         if (!script.getWidgetManager().getBank().isVisible()) {
             openBank();
             return false;
@@ -35,9 +36,11 @@ public class BankTask extends Task {
 
         boolean depositCannonballs = script.random(100) < 85;
         if (depositCannonballs) {
+            task = "Deposit cannonballs";
             script.log(getClass(), "Depositing cannonballs (85% case).");
             script.getWidgetManager().getBank().depositAll(Set.of(ItemID.AMMO_MOULD, ItemID.DOUBLE_AMMO_MOULD));
         } else {
+            task = "Skip deposit";
             script.log(getClass(), "Skipping cannonball deposit (15% case).");
         }
 
@@ -49,10 +52,13 @@ public class BankTask extends Task {
             return false;
         }
 
+        task = "Withdraw bars";
         script.getWidgetManager().getBank().withdraw(ItemID.STEEL_BAR, 27);
+        task = "Close bank";
         script.getWidgetManager().getBank().close();
         script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(5000, 7500));
 
+        task = "Check inventory";
         ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(ItemID.STEEL_BAR));
         if (inventorySnapshot.isEmpty()) {
             script.log(getClass(), "No steel bars in inventory. Exiting banking logic.");
@@ -63,6 +69,7 @@ public class BankTask extends Task {
     }
 
     private void openBank() {
+        task = "Open bank";
         script.log(getClass(), "Opening bank...");
 
         List<RSObject> banksFound = script.getObjectManager().getObjects(bankQuery);
@@ -74,6 +81,7 @@ public class BankTask extends Task {
         AtomicReference<Timer> positionChangeTimer = new AtomicReference<>(new Timer());
         AtomicReference<WorldPosition> previousPosition = new AtomicReference<>(null);
 
+        task = "Wait for open bank";
         script.submitTask(() -> {
             WorldPosition current = script.getWorldPosition();
             if (current == null) return false;
