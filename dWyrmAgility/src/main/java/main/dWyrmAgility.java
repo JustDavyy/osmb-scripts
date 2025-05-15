@@ -304,8 +304,8 @@ public class dWyrmAgility extends Script {
         f.setDecimalFormatSymbols(s);
 
         int y = 40;
-        c.fillRect(5, y, 220, 120, Color.BLACK.getRGB(), 0.75f);
-        c.drawRect(5, y, 220, 120, Color.BLACK.getRGB());
+        c.fillRect(5, y, 220, 130, Color.BLACK.getRGB(), 0.75f);
+        c.drawRect(5, y, 220, 130, Color.BLACK.getRGB());
 
         c.drawText("XP gained: " + f.format(xpGained), 10, y += 20, Color.WHITE.getRGB(), font);
         c.drawText("XP/hr: " + f.format(xpPerHour), 10, y += 20, Color.WHITE.getRGB(), font);
