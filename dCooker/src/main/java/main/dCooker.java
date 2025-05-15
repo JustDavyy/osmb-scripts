@@ -6,6 +6,7 @@ import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
 import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
+import com.osmb.api.utils.timing.Stopwatch;
 import com.osmb.api.visual.drawing.Canvas;
 import data.CookingItem;
 import javafx.collections.FXCollections;
@@ -16,11 +17,13 @@ import tasks.ProcessTask;
 import tasks.Setup;
 import utils.Task;
 
+import javax.imageio.ImageIO;
 import java.awt.*;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.awt.image.BufferedImage;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Arrays;
@@ -32,11 +35,11 @@ import java.util.function.Predicate;
         name = "dCooker",
         description = "Cooks a wide variety of fish and other items at cookable objects.",
         skillCategory = SkillCategory.COOKING,
-        version = 1.5,
+        version = 1.6,
         author = "JustDavyy"
 )
 public class dCooker extends Script {
-    public static String scriptVersion = "1.5";
+    public static String scriptVersion = "1.6";
     public static final String[] BANK_NAMES = {"Bank", "Chest", "Bank booth", "Bank chest", "Grand Exchange booth", "Bank counter", "Bank table"};
     public static final String[] BANK_ACTIONS = {"bank", "open", "use", "bank banker"};
     public static final String[] COOKING_ACTIONS = {"cook"};
@@ -56,6 +59,15 @@ public class dCooker extends Script {
     public static int cookedItemID;
     public static String bankMethod;
     private List<Task> tasks;
+
+    // Webhook stuff
+    private static final Stopwatch webhookTimer = new Stopwatch();
+    private static String webhookUrl = "";
+    private static boolean webhookEnabled = false;
+    private static boolean webhookShowUser = false;
+    private static boolean webhookShowStats = false;
+    private static int webhookIntervalMinutes = 5;
+    private static String user = "";
 
     public static boolean isMultipleMode = false;
     public static ObservableList<Integer> selectedItemIDs = FXCollections.observableArrayList();
@@ -131,6 +143,18 @@ public class dCooker extends Script {
         Scene scene = ui.buildScene(this);
         getStageController().show(scene, "Cooking Options", false);
 
+        // Load webhook options
+        webhookEnabled = ui.isWebhookEnabled();
+        webhookUrl = ui.getWebhookUrl();
+        webhookIntervalMinutes = ui.getWebhookInterval();
+        webhookShowUser = ui.isUsernameIncluded();
+        webhookShowStats = ui.isStatsIncluded();
+
+        if (webhookEnabled) {
+            user = getWidgetManager().getChatbox().getUsername();
+            webhookTimer.reset(webhookIntervalMinutes * 60_000L);
+        }
+
         isMultipleMode = ui.isMultipleSelectionMode();
         selectedItemIDs = ui.getMultipleSelectedItemIds(); // ObservableList<Integer>
         selectedItemIndex = 0;
@@ -158,13 +182,40 @@ public class dCooker extends Script {
             if (comparison == 0) {
                 log("SCRIPTVERSION", "✅ You are running the latest script version: v" + scriptVersion);
             } else if (comparison < 0) {
-                for (int i = 0; i < 10; i++) {
-                    log("VERSIONERROR (" + i + "/10)", "❌ You are NOT running the latest version of this script!\nYour version: v" + scriptVersion + "\nLatest version: v" + version);
-                    submitTask(() -> false, random(750, 2000));
+                log("VERSIONERROR", "❌ You are NOT running the latest version of this script!\nYour version: v" + scriptVersion + "\nLatest version: v" + version);
+
+                try {
+                    String userHome = System.getProperty("user.home");
+                    File scriptsDir = new File(userHome + File.separator + ".osmb" + File.separator + "Scripts");
+                    if (!scriptsDir.exists()) scriptsDir.mkdirs();
+
+                    // Delete old versions
+                    File[] oldFiles = scriptsDir.listFiles((dir, name) ->
+                            name.equals("dCooker.jar") || name.matches("dCooker-\\d+(\\.\\d+)+\\.jar"));
+                    if (oldFiles != null) {
+                        for (File f : oldFiles) f.delete();
+                    }
+
+                    String downloadUrl = "https://raw.githubusercontent.com/JustDavyy/osmb-scripts/main/dCooker/jar/dCooker.jar";
+                    File newFile = new File(scriptsDir, "dCooker-" + version + ".jar");
+
+                    try (InputStream in = new URL(downloadUrl).openStream();
+                         FileOutputStream out = new FileOutputStream(newFile)) {
+                        byte[] buf = new byte[4096];
+                        int len;
+                        while ((len = in.read(buf)) != -1) out.write(buf, 0, len);
+                    }
+
+                    log("SCRIPTDOWNLOAD", "✅ Downloaded new version to: " + newFile.getAbsolutePath());
+                    stop();
+                    return;
+
+                } catch (Exception e) {
+                    log("SCRIPTDOWNLOAD", "❌ Failed to update script: " + e.getMessage());
                 }
+
             } else {
-                log("SCRIPTVERSION", "✅ You are running a newer version (v" + scriptVersion + ") than the published one (v" + version + ").");
-                log("SCRIPTVERSION", "🙏 Thank you for testing a development build — your time and feedback are appreciated!");
+                log("SCRIPTVERSION", "✅ You are running a newer version than GitHub: v" + scriptVersion);
             }
         }
 
@@ -182,6 +233,11 @@ public class dCooker extends Script {
 
     @Override
     public int poll() {
+        if (webhookEnabled && webhookTimer.hasFinished()) {
+            sendWebhook();
+            webhookTimer.reset(webhookIntervalMinutes * 60_000L);
+        }
+
         if (tasks != null) {
             for (Task task : tasks) {
                 if (task.activate()) {
@@ -240,5 +296,93 @@ public class dCooker extends Script {
             if (num1 > num2) return 1;
         }
         return 0; // Equal
+    }
+
+    private void sendWebhook() {
+        ByteArrayOutputStream baos = null;
+
+        try {
+            if (webhookUrl == null || webhookUrl.isEmpty()) return;
+
+            com.osmb.api.visual.image.Image screenImage = getScreen().getImage();
+            BufferedImage bufferedImage = screenImage.toBufferedImage();
+
+            baos = new ByteArrayOutputStream();
+            ImageIO.write(bufferedImage, "png", baos);
+            byte[] imageBytes = baos.toByteArray();
+
+            String boundary = "----WebhookBoundary" + System.currentTimeMillis();
+            HttpURLConnection conn = (HttpURLConnection) new URL(webhookUrl).openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+
+            long elapsed = System.currentTimeMillis() - startTime;
+            int cooksPerHour = (int) ((cookCount * 3600000L) / elapsed);
+            int xpPerHour = (int) ((totalXpGained * 3600000L) / elapsed);
+            String formattedRuntime = formatDuration(elapsed);
+            DecimalFormatSymbols symbols = new DecimalFormatSymbols(); symbols.setGroupingSeparator('.');
+            DecimalFormat formatter = new DecimalFormat("#,###"); formatter.setDecimalFormatSymbols(symbols);
+
+            StringBuilder payload = new StringBuilder();
+            payload.append("{\"embeds\": [{");
+            payload.append("\"title\": \"\\uD83D\\uDCCA dCooker Stats - ")
+                    .append(webhookShowUser && user != null ? escapeJson(user) : "anonymous").append("\",");
+            payload.append("\"color\": 4620980,");
+
+            if (webhookShowStats) {
+                payload.append("\"fields\": [")
+                        .append("{\"name\": \"Food Cooked\", \"value\": \"").append(formatter.format(cookCount)).append("\", \"inline\": true},")
+                        .append("{\"name\": \"Cooked/hr\", \"value\": \"").append(formatter.format(cooksPerHour)).append("\", \"inline\": true},")
+                        .append("{\"name\": \"Script version\", \"value\": \"").append(scriptVersion).append("\", \"inline\": true},")
+                        .append("{\"name\": \"XP Gained\", \"value\": \"").append(formatter.format(totalXpGained)).append("\", \"inline\": true},")
+                        .append("{\"name\": \"XP/hr\", \"value\": \"").append(formatter.format(xpPerHour)).append("\", \"inline\": true},")
+                        .append("{\"name\": \"Task\", \"value\": \"").append(escapeJson(task)).append("\", \"inline\": true},")
+                        .append("{\"name\": \"Bank Method\", \"value\": \"").append(escapeJson(bankMethod)).append("\", \"inline\": true},")
+                        .append("{\"name\": \"Runtime\", \"value\": \"").append(formattedRuntime).append("\", \"inline\": true}")
+                        .append("],");
+            } else {
+                payload.append("\"description\": \"Task: ").append(escapeJson(task)).append("\",");
+            }
+
+            payload.append("\"image\": {\"url\": \"attachment://screen.png\"}}]}");
+
+            try (OutputStream out = conn.getOutputStream()) {
+                out.write(("--" + boundary + "\r\n").getBytes());
+                out.write("Content-Disposition: form-data; name=\"payload_json\"\r\n\r\n".getBytes());
+                out.write(payload.toString().getBytes(StandardCharsets.UTF_8));
+                out.write("\r\n".getBytes());
+
+                out.write(("--" + boundary + "\r\n").getBytes());
+                out.write("Content-Disposition: form-data; name=\"file\"; filename=\"screen.png\"\r\n".getBytes());
+                out.write("Content-Type: image/png\r\n\r\n".getBytes());
+                out.write(imageBytes);
+                out.write("\r\n".getBytes());
+
+                out.write(("--" + boundary + "--\r\n").getBytes());
+                out.flush();
+            }
+
+            int response = conn.getResponseCode();
+            log("WEBHOOK", response == 204 || response == 200 ? "✅ Sent webhook" : "⚠ Failed with HTTP " + response);
+
+        } catch (Exception e) {
+            log("WEBHOOK", "❌ Failed to send webhook: " + e.getMessage());
+        } finally {
+            try { if (baos != null) baos.close(); } catch (IOException ignored) {}
+        }
+    }
+
+    private String escapeJson(String text) {
+        return text.replace("\"", "\\\"").replace("\n", "\\n");
+    }
+
+    private String formatDuration(long millis) {
+        long seconds = millis / 1000;
+        long d = seconds / 86400;
+        long h = (seconds % 86400) / 3600;
+        long m = (seconds % 3600) / 60;
+        long s = seconds % 60;
+        return d > 0 ? String.format("%02d:%02d:%02d:%02d", d, h, m, s) : String.format("%02d:%02d:%02d", h, m, s);
     }
 }

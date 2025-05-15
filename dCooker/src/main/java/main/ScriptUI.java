@@ -27,6 +27,11 @@ public class ScriptUI {
     private static final String PREF_SELECTED_ITEM = "dcooker_selected_item";
     private static final String PREF_SELECTED_MULTIPLE_ITEMS = "dcooker_selected_multiple_items";
     private static final String PREF_BANK_METHOD = "dcooker_bank_method";
+    private static final String PREF_WEBHOOK_ENABLED = "dcooker_webhook_enabled";
+    private static final String PREF_WEBHOOK_URL = "dcooker_webhook_url";
+    private static final String PREF_WEBHOOK_INTERVAL = "dcooker_webhook_interval";
+    private static final String PREF_WEBHOOK_INCLUDE_USER = "dcooker_webhook_include_user";
+    private static final String PREF_WEBHOOK_INCLUDE_STATS = "dcooker_webhook_include_stats";
 
     private final Script script;
     private ComboBox<String> selectionModeComboBox;
@@ -38,6 +43,13 @@ public class ScriptUI {
 
     private VBox itemSelectionBox;
 
+    // Webhook UI
+    private CheckBox webhookEnabledCheckBox;
+    private TextField webhookUrlField;
+    private ComboBox<Integer> webhookIntervalComboBox;
+    private CheckBox includeUsernameCheckBox;
+    private CheckBox includeStatsCheckBox;
+
     private static final String[] BANK_METHOD_OPTIONS = {"Item by item", "Deposit all"};
 
     public ScriptUI(Script script) {
@@ -45,58 +57,110 @@ public class ScriptUI {
     }
 
     public Scene buildScene(ScriptCore core) {
-        VBox root = new VBox();
-        root.setStyle("-fx-background-color: #636E72; -fx-padding: 15; -fx-spacing: 10; -fx-alignment: center");
+        TabPane tabPane = new TabPane();
 
-        // Mode selection
+        // === Main Tab ===
+        VBox mainBox = new VBox(10);
+        mainBox.setStyle("-fx-background-color: #636E72; -fx-padding: 15; -fx-alignment: center");
+
         Label modeLabel = new Label("Selection mode");
         selectionModeComboBox = new ComboBox<>();
         selectionModeComboBox.getItems().addAll("Single Item", "Multiple Items");
-        String savedMode = prefs.get(PREF_SELECTION_MODE, "Single Item");
-        selectionModeComboBox.getSelectionModel().select(savedMode);
-        script.log("SAVESETTINGS", "Loaded selection mode: " + savedMode);
+        selectionModeComboBox.getSelectionModel().select(prefs.get(PREF_SELECTION_MODE, "Single Item"));
 
-        // Item selection UI
-        itemSelectionBox = new VBox();
-        itemSelectionBox.setSpacing(8);
+        itemSelectionBox = new VBox(8);
         itemSelectionBox.setStyle("-fx-alignment: center");
         updateItemSelectionUI(core);
         selectionModeComboBox.setOnAction(e -> updateItemSelectionUI(core));
 
-        // Bank method
         Label bankLabel = new Label("Bank method");
         bankMethodComboBox = new ComboBox<>();
         bankMethodComboBox.getItems().addAll(BANK_METHOD_OPTIONS);
-        String savedBankMethod = prefs.get(PREF_BANK_METHOD, BANK_METHOD_OPTIONS[0]);
-        bankMethodComboBox.getSelectionModel().select(savedBankMethod);
+        bankMethodComboBox.getSelectionModel().select(prefs.get(PREF_BANK_METHOD, BANK_METHOD_OPTIONS[0]));
+
+        mainBox.getChildren().addAll(modeLabel, selectionModeComboBox, itemSelectionBox, bankLabel, bankMethodComboBox);
+        Tab mainTab = new Tab("Main", mainBox);
+        mainTab.setClosable(false);
+
+        // === Webhook Tab ===
+        VBox webhookBox = new VBox(10);
+        webhookBox.setStyle("-fx-background-color: #636E72; -fx-padding: 15; -fx-alignment: center");
+
+        webhookEnabledCheckBox = new CheckBox("Enable Webhooks");
+        webhookEnabledCheckBox.setSelected(prefs.getBoolean(PREF_WEBHOOK_ENABLED, false));
+
+        webhookUrlField = new TextField(prefs.get(PREF_WEBHOOK_URL, ""));
+        webhookUrlField.setPromptText("Enter Webhook URL...");
+        webhookUrlField.setDisable(!webhookEnabledCheckBox.isSelected());
+
+        webhookIntervalComboBox = new ComboBox<>();
+        for (int i = 1; i <= 15; i++) webhookIntervalComboBox.getItems().add(i);
+        webhookIntervalComboBox.getSelectionModel().select(Integer.valueOf(prefs.getInt(PREF_WEBHOOK_INTERVAL, 5)) - 1);
+        webhookIntervalComboBox.setDisable(!webhookEnabledCheckBox.isSelected());
+
+        includeUsernameCheckBox = new CheckBox("Include Username in Webhook");
+        includeUsernameCheckBox.setSelected(prefs.getBoolean(PREF_WEBHOOK_INCLUDE_USER, true));
+        includeUsernameCheckBox.setDisable(!webhookEnabledCheckBox.isSelected());
+
+        includeStatsCheckBox = new CheckBox("Include Script Stats in Webhook");
+        includeStatsCheckBox.setSelected(prefs.getBoolean(PREF_WEBHOOK_INCLUDE_STATS, true));
+        includeStatsCheckBox.setDisable(!webhookEnabledCheckBox.isSelected());
+
+        webhookEnabledCheckBox.setOnAction(e -> {
+            boolean enabled = webhookEnabledCheckBox.isSelected();
+            webhookUrlField.setDisable(!enabled);
+            webhookIntervalComboBox.setDisable(!enabled);
+            includeUsernameCheckBox.setDisable(!enabled);
+            includeStatsCheckBox.setDisable(!enabled);
+        });
+
+        webhookBox.getChildren().addAll(
+                webhookEnabledCheckBox,
+                webhookUrlField,
+                new Label("Send interval (minutes)"),
+                webhookIntervalComboBox,
+                includeUsernameCheckBox,
+                includeStatsCheckBox
+        );
+        Tab webhookTab = new Tab("Webhooks", webhookBox);
+        webhookTab.setClosable(false);
 
         // Confirm button
         Button confirmButton = new Button("Confirm");
-        confirmButton.setOnAction(event -> {
-            prefs.put(PREF_SELECTION_MODE, selectionModeComboBox.getSelectionModel().getSelectedItem());
-            prefs.put(PREF_BANK_METHOD, bankMethodComboBox.getSelectionModel().getSelectedItem());
+        confirmButton.setOnAction(e -> saveSettings());
 
-            if (isMultipleSelectionMode()) {
-                String joined = multipleItemIds.stream()
-                        .map(String::valueOf)
-                        .collect(Collectors.joining(","));
-                prefs.put(PREF_SELECTED_MULTIPLE_ITEMS, joined);
-                script.log("SAVESETTINGS", "Saved multiple cooking item IDs: " + joined);
-            } else {
-                CookingItem selected = singleItemComboBox.getSelectionModel().getSelectedItem();
-                if (selected != null) {
-                    prefs.putInt(PREF_SELECTED_ITEM, selected.getRawItemId());
-                    script.log("SAVESETTINGS", "Saved single cooking item ID: " + selected.getRawItemId());
-                }
-            }
+        VBox layout = new VBox(tabPane, confirmButton);
+        layout.setSpacing(10);
+        layout.setStyle("-fx-background-color: #2d3436; -fx-padding: 10;");
 
-            ((Stage) confirmButton.getScene().getWindow()).close();
-        });
-
-        root.getChildren().addAll(modeLabel, selectionModeComboBox, itemSelectionBox, bankLabel, bankMethodComboBox, confirmButton);
-        Scene scene = new Scene(root, 250, 400);
+        tabPane.getTabs().addAll(mainTab, webhookTab);
+        Scene scene = new Scene(layout, 300, 380);
         scene.getStylesheets().add("style.css");
         return scene;
+    }
+
+    private void saveSettings() {
+        prefs.put(PREF_SELECTION_MODE, selectionModeComboBox.getSelectionModel().getSelectedItem());
+        prefs.put(PREF_BANK_METHOD, bankMethodComboBox.getSelectionModel().getSelectedItem());
+        prefs.putBoolean(PREF_WEBHOOK_ENABLED, isWebhookEnabled());
+        prefs.put(PREF_WEBHOOK_URL, getWebhookUrl());
+        prefs.putInt(PREF_WEBHOOK_INTERVAL, getWebhookInterval());
+        prefs.putBoolean(PREF_WEBHOOK_INCLUDE_USER, isUsernameIncluded());
+        prefs.putBoolean(PREF_WEBHOOK_INCLUDE_STATS, isStatsIncluded());
+
+        if (isMultipleSelectionMode()) {
+            String joined = multipleItemIds.stream().map(String::valueOf).collect(Collectors.joining(","));
+            prefs.put(PREF_SELECTED_MULTIPLE_ITEMS, joined);
+            script.log("SAVESETTINGS", "Saved multiple cooking item IDs: " + joined);
+        } else {
+            CookingItem selected = singleItemComboBox.getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                prefs.putInt(PREF_SELECTED_ITEM, selected.getRawItemId());
+                script.log("SAVESETTINGS", "Saved single cooking item ID: " + selected.getRawItemId());
+            }
+        }
+
+        ((Stage) bankMethodComboBox.getScene().getWindow()).close();
     }
 
     private void updateItemSelectionUI(ScriptCore core) {
@@ -239,5 +303,27 @@ public class ScriptUI {
 
     public String getSelectedBankMethod() {
         return bankMethodComboBox.getSelectionModel().getSelectedItem();
+    }
+
+    public boolean isWebhookEnabled() {
+        return webhookEnabledCheckBox != null && webhookEnabledCheckBox.isSelected();
+    }
+
+    public String getWebhookUrl() {
+        return webhookUrlField != null ? webhookUrlField.getText().trim() : "";
+    }
+
+    public int getWebhookInterval() {
+        return webhookIntervalComboBox != null && webhookIntervalComboBox.getValue() != null
+                ? webhookIntervalComboBox.getValue()
+                : 5;
+    }
+
+    public boolean isUsernameIncluded() {
+        return includeUsernameCheckBox != null && includeUsernameCheckBox.isSelected();
+    }
+
+    public boolean isStatsIncluded() {
+        return includeStatsCheckBox != null && includeStatsCheckBox.isSelected();
     }
 }
