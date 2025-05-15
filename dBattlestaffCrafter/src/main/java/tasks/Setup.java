@@ -1,19 +1,14 @@
 package tasks;
 
-// GENERAL JAVA IMPORTS
-
-// OSMB SPECIFIC IMPORTS
-import com.osmb.api.shape.Rectangle;
-import com.osmb.api.ui.component.chatbox.ChatboxComponent;
-import com.osmb.api.ui.component.chatbox.ChatboxTab;
+import com.osmb.api.item.ItemGroupResult;
+import com.osmb.api.item.ItemID;
 import com.osmb.api.ui.tabs.Tab;
 import com.osmb.api.script.Script;
-
-// OTHER CLASS IMPORTS
-import main.dBattlestaffCrafter;
 import utils.Task;
-import static main.dBattlestaffCrafter.*;
 
+import java.util.Set;
+
+import static main.dBattlestaffCrafter.*;
 
 public class Setup extends Task {
     public Setup(Script script) {
@@ -25,34 +20,20 @@ public class Setup extends Task {
     }
 
     public boolean execute() {
+        task = getClass().getSimpleName();
         script.log("DEBUG", "We are now inside the Setup task logic");
 
-        script.log(dBattlestaffCrafter.class, "Opening inventory tab");
+        task = "Open inventory";
+        script.log(getClass().getSimpleName(), "Opening inventory tab");
         script.getWidgetManager().getTabManager().openTab(Tab.Type.INVENTORY);
 
-        script.log(dBattlestaffCrafter.class, "Closing chatbox (if open)");
-        closeChatBox();
+        ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(ItemID.AIR_ORB, ItemID.WATER_ORB, ItemID.EARTH_ORB, ItemID.FIRE_ORB, ItemID.BATTLESTAFF));
 
+        task = "Check items";
+        shouldBank = !inventorySnapshot.containsAny(ItemID.AIR_ORB, ItemID.WATER_ORB, ItemID.EARTH_ORB, ItemID.FIRE_ORB) && !inventorySnapshot.contains(ItemID.BATTLESTAFF);
+
+        task = "Set flags";
         setupDone = true;
-        hasReqs = true;
-        shouldBank = true;
         return false;
-    }
-
-    public void closeChatBox() {
-        // tab which resembles the little button
-        ChatboxTab chatboxTab = (ChatboxTab) script.getWidgetManager().getComponent(ChatboxTab.class);
-        // resembles the rectangle chatbox what opens/closes when clicking the chatbox tab
-        ChatboxComponent chatboxComponent = (ChatboxComponent) script.getWidgetManager().getComponent(ChatboxComponent.class);
-        if(chatboxComponent.isOpen()) {
-            Rectangle chatBoxTabBounds = chatboxTab.getBounds();
-            if(chatBoxTabBounds == null) {
-                script.log(dBattlestaffCrafter.class, "Chatbox bounds are null, cannot close Chatbox.");
-                return;
-            }
-            script.getFinger().tap(chatBoxTabBounds);
-
-            script.submitTask(() -> !chatboxComponent.isOpen(), 4000);
-        }
     }
 }

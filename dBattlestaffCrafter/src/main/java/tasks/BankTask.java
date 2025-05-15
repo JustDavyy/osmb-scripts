@@ -2,15 +2,14 @@ package tasks;
 
 import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.item.ItemID;
-import com.osmb.api.item.ItemSearchResult;
 import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
-import com.osmb.api.utils.UIResultList;
 import com.osmb.api.utils.timing.Timer;
 import main.dBattlestaffCrafter;
 import utils.Task;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -32,18 +31,20 @@ public class BankTask extends Task {
 
     @Override
     public boolean execute() {
+        task = getClass().getSimpleName();
         if (!script.getWidgetManager().getBank().isVisible()) {
             openBank();
             return false;
         }
 
-        script.log(getClass(), "Depositing full inventory...");
-        script.getWidgetManager().getBank().depositAll(Set.of(0));
+        task = "Deposit items";
+        script.log(getClass().getSimpleName(), "Depositing full inventory...");
+        script.getWidgetManager().getBank().depositAll(Collections.emptySet());
 
         // Determine the correct orb based on selected staff
         int orbId = getOrbIdForStaff(staffID);
         if (orbId == -1) {
-            script.log(getClass(), "Unknown orb for staff: " + staffID + ", stopping script.");
+            script.log(getClass().getSimpleName(), "Unknown orb for staff: " + staffID + ", stopping script.");
             script.stop();
             return false;
         }
@@ -51,8 +52,8 @@ public class BankTask extends Task {
         // Check if we have both orbs and battlestaffs
         ItemGroupResult bankSnapshot = script.getWidgetManager().getBank().search(Set.of(orbId, ItemID.BATTLESTAFF));
 
-        if (bankSnapshot.contains(orbId) || bankSnapshot.contains(ItemID.BATTLESTAFF)) {
-            script.log(getClass(), "Ran out of orbs or battlestaffs. Stopping script.");
+        if (!bankSnapshot.contains(orbId) || !bankSnapshot.contains(ItemID.BATTLESTAFF)) {
+            script.log(getClass().getSimpleName(), "Ran out of orbs or battlestaffs. Stopping script.");
             script.stop();
             return false;
         }
@@ -60,6 +61,7 @@ public class BankTask extends Task {
         boolean randomOrder = script.random(2) == 0;
         int targetAmount = 14;
 
+        task = "Withdraw items";
         if (randomOrder) {
             withdrawWithRetry(orbId, targetAmount);
             withdrawWithRetry(ItemID.BATTLESTAFF, targetAmount);
@@ -68,6 +70,7 @@ public class BankTask extends Task {
             withdrawWithRetry(orbId, targetAmount);
         }
 
+        task = "Close bank";
         closeBankWithRetry();
         script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), 5000);
         shouldBank = false;
@@ -76,23 +79,25 @@ public class BankTask extends Task {
     }
 
     private void openBank() {
-        script.log(getClass(), "Searching for a bank...");
+        task = "Open bank";
+        script.log(getClass().getSimpleName(), "Searching for a bank...");
 
         List<RSObject> banksFound = script.getObjectManager().getObjects(dBattlestaffCrafter.bankQuery);
         if (banksFound.isEmpty()) {
-            script.log(getClass(), "No bank objects found.");
+            script.log(getClass().getSimpleName(), "No bank objects found.");
             return;
         }
 
         RSObject bank = (RSObject) script.getUtils().getClosest(banksFound);
         if (!bank.interact(dBattlestaffCrafter.BANK_ACTIONS)) {
-            script.log(getClass(), "Failed to interact with bank object.");
+            script.log(getClass().getSimpleName(), "Failed to interact with bank object.");
             return;
         }
 
         AtomicReference<Timer> positionChangeTimer = new AtomicReference<>(new Timer());
         AtomicReference<WorldPosition> previousPosition = new AtomicReference<>(null);
 
+        task = "Wait for open bank";
         script.submitTask(() -> {
             WorldPosition current = script.getWorldPosition();
             if (current == null) return false;
@@ -108,14 +113,14 @@ public class BankTask extends Task {
 
     private void withdrawWithRetry(int itemID, int amount) {
         if (!script.getWidgetManager().getBank().withdraw(itemID, amount)) {
-            script.log(getClass(), "Withdraw failed for " + itemID + ", retrying...");
+            script.log(getClass().getSimpleName(), "Withdraw failed for " + itemID + ", retrying...");
             script.getWidgetManager().getBank().withdraw(itemID, amount);
         }
     }
 
     private void closeBankWithRetry() {
         if (!script.getWidgetManager().getBank().close()) {
-            script.log(getClass(), "Bank close failed, retrying...");
+            script.log(getClass().getSimpleName(), "Bank close failed, retrying...");
             script.getWidgetManager().getBank().close();
         }
     }
