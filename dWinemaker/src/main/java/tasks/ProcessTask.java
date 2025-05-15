@@ -8,14 +8,12 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 import com.osmb.api.utils.timing.Timer;
 import com.osmb.api.script.Script;
-import main.dWinemaker;
 import utils.Task;
 
 import static main.dWinemaker.*;
 
 public class ProcessTask extends Task {
     private final long startTime;
-    private int craftCount = 0;
 
     public ProcessTask(Script script) {
         super(script);
@@ -29,6 +27,7 @@ public class ProcessTask extends Task {
 
     @Override
     public boolean execute() {
+        task = getClass().getSimpleName();
         ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(grapeID, ItemID.JUG_OF_WATER));
 
         if (inventorySnapshot == null) {
@@ -36,8 +35,10 @@ public class ProcessTask extends Task {
             return false;
         }
 
+        task = "Check inventory";
         if (!inventorySnapshot.contains(grapeID) || !inventorySnapshot.contains(ItemID.JUG_OF_WATER)) {
-            script.log(dWinemaker.class, "Missing ingredients. Flagging bank.");
+            script.log(getClass().getSimpleName(), "Missing ingredients. Flagging bank.");
+            task = "Flag bank";
             shouldBank = true;
             return false;
         }
@@ -49,26 +50,28 @@ public class ProcessTask extends Task {
         boolean interacted = interactAndWaitForDialogue(inventorySnapshot);
 
         if (!interacted) {
-            script.log(dWinemaker.class, "Failed to interact with items.");
+            script.log(getClass().getSimpleName(), "Failed to interact with items.");
             return false;
         }
 
+        task = "Select dialogue item";
         // Dialogue opened - select item to produce
         DialogueType dialogueType = script.getWidgetManager().getDialogue().getDialogueType();
         if (dialogueType == DialogueType.ITEM_OPTION) {
-            boolean selected = script.getWidgetManager().getDialogue().selectItem(ItemID.JUG_OF_WINE, grapeID);
+            boolean selected = script.getWidgetManager().getDialogue().selectItem(ItemID.JUG_OF_WINE, grapeID, ItemID.WINE_OF_ZAMORAK, ItemID.UNFERMENTED_WINE, ItemID.UNFERMENTED_WINE_1996, ItemID.ZAMORAKS_UNFERMENTED_WINE);
             if (!selected) {
-                script.log(dWinemaker.class, "Initial selection failed, retrying...");
+                script.log(getClass().getSimpleName(), "Initial selection failed, retrying...");
                 script.sleep(script.random(150, 300)); // slight delay before retry
-                selected = script.getWidgetManager().getDialogue().selectItem(ItemID.JUG_OF_WINE, grapeID);
+                selected = script.getWidgetManager().getDialogue().selectItem(ItemID.JUG_OF_WINE, grapeID, ItemID.WINE_OF_ZAMORAK, ItemID.UNFERMENTED_WINE, ItemID.UNFERMENTED_WINE_1996, ItemID.ZAMORAKS_UNFERMENTED_WINE);
             }
 
             if (!selected) {
-                script.log(dWinemaker.class, "Failed to select wine in dialogue after retry.");
+                script.log(getClass().getSimpleName(), "Failed to select wine in dialogue after retry.");
                 return false;
             }
-            script.log(dWinemaker.class, "Selected wine to produce.");
+            script.log(getClass().getSimpleName(), "Selected wine to produce.");
             waitUntilFinishedProducing();
+            task = "Update stats";
             craftCount += 14;
             printStats();
         }
@@ -82,6 +85,7 @@ public class ProcessTask extends Task {
         int firstID = firstIsGrape ? grapeID : ItemID.JUG_OF_WATER;
         int secondID = firstIsGrape ? ItemID.JUG_OF_WATER : grapeID;
 
+        task = "Interact with item 1";
         // First interaction with retry
         if (!inventSnapshot.getRandomItem(firstID).interact()) {
             script.log(getClass(), "First item interaction failed, retrying...");
@@ -100,6 +104,7 @@ public class ProcessTask extends Task {
             }
         }
 
+        task = "Interact with item 2";
         // Wait for dialogue
         boolean useHumanTask = script.random(10) < 3; // 30% chance
         BooleanSupplier condition = () -> {
@@ -107,6 +112,7 @@ public class ProcessTask extends Task {
             return type == DialogueType.ITEM_OPTION;
         };
 
+        task = "Wait for dialogue";
         return useHumanTask
                 ? script.submitHumanTask(condition, script.random(3000, 5000))
                 : script.submitTask(condition, script.random(3000, 5000));
@@ -128,21 +134,23 @@ public class ProcessTask extends Task {
 
             ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(grapeID, ItemID.JUG_OF_WATER));
             if (inventorySnapshot == null) {return false;}
-            return inventorySnapshot.isEmpty();
+            return !inventorySnapshot.containsAny(grapeID, ItemID.JUG_OF_WATER);
         };
 
         boolean useHumanTask = script.random(10) < 3; // 30% chance
 
+        task = "Checking wait condition";
         if (useHumanTask) {
             script.log(getClass(), "Using human task to wait until processing finishes.");
-            script.submitHumanTask(condition, script.random(60000, 62000));
+            script.submitHumanTask(condition, script.random(18000, 20000));
         } else {
             script.log(getClass(), "Using regular task to wait until processing finishes.");
-            script.submitTask(condition, script.random(60000, 62000));
+            script.submitTask(condition, script.random(18000, 20000));
         }
     }
 
     private void printStats() {
+        task = "Print stats";
         long elapsed = System.currentTimeMillis() - startTime;
         int winesPerHour = (int) ((craftCount * 3600000L) / elapsed);
 

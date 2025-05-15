@@ -9,6 +9,7 @@ import com.osmb.api.utils.timing.Timer;
 import main.dWinemaker;
 import utils.Task;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -30,14 +31,17 @@ public class BankTask extends Task {
 
     @Override
     public boolean execute() {
+        task = getClass().getSimpleName();
         if (!script.getWidgetManager().getBank().isVisible()) {
             openBank();
             return false;
         }
 
+        task = "Deposit inventory";
         script.log(getClass(), "Depositing full inventory...");
-        script.getWidgetManager().getBank().depositAll(Set.of(0));
+        script.getWidgetManager().getBank().depositAll(Collections.emptySet());
 
+        task = "Get bank snapshot";
         ItemGroupResult bankSnapshot = script.getWidgetManager().getBank().search(Set.of(grapeID, ItemID.JUG_OF_WATER));
 
         if (bankSnapshot == null) {
@@ -45,6 +49,7 @@ public class BankTask extends Task {
             return false;
         }
 
+        task = "Check bank items";
         if (!bankSnapshot.contains(grapeID) || !bankSnapshot.contains(ItemID.JUG_OF_WATER)) {
             script.log(getClass(), "Ran out of supplies. Stopping script.");
             script.stop();
@@ -54,6 +59,7 @@ public class BankTask extends Task {
         boolean randomOrder = script.random(2) == 0;
         int targetAmount = 14;
 
+        task = "Withdraw items";
         if (randomOrder) {
             withdrawWithRetry(grapeID, targetAmount);
             withdrawWithRetry(ItemID.JUG_OF_WATER, targetAmount);
@@ -62,6 +68,7 @@ public class BankTask extends Task {
             withdrawWithRetry(grapeID, targetAmount);
         }
 
+        task = "Close bank";
         closeBankWithRetry();
         script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), 5000);
         shouldBank = false;
@@ -70,6 +77,7 @@ public class BankTask extends Task {
     }
 
     private void openBank() {
+        task = "Open bank";
         script.log(getClass(), "Searching for a bank...");
 
         List<RSObject> banksFound = script.getObjectManager().getObjects(dWinemaker.bankQuery);

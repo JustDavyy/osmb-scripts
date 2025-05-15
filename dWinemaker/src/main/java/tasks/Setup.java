@@ -3,9 +3,6 @@ package tasks;
 // GENERAL JAVA IMPORTS
 
 // OSMB SPECIFIC IMPORTS
-import com.osmb.api.shape.Rectangle;
-import com.osmb.api.ui.component.chatbox.ChatboxComponent;
-import com.osmb.api.ui.component.chatbox.ChatboxTab;
 import com.osmb.api.ui.tabs.Tab;
 import com.osmb.api.script.Script;
 
@@ -25,11 +22,13 @@ public class Setup extends Task {
     }
 
     public boolean execute() {
-        script.log("DEBUG", "We are now inside the Setup task logic");
+        task = getClass().getSimpleName();
 
+        task = "Open inventory";
         script.log(dWinemaker.class, "Opening inventory tab");
         script.getWidgetManager().getTabManager().openTab(Tab.Type.INVENTORY);
 
+        task = "Update flags";
         setupDone = true;
         hasReqs = true;
         shouldBank = true;
