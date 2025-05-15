@@ -75,7 +75,7 @@ public class BankingTask extends Task {
         }
 
         task = "Deposit karambwans";
-        if (!script.getWidgetManager().getBank().depositAll(Set.of(ItemID.RAW_KARAMBWANJI, ItemID.KARAMBWAN_VESSEL, ItemID.KARAMBWAN_VESSEL_3159, ItemID.FISH_BARREL, ItemID.OPEN_FISH_BARREL, ItemID.CRAFTING_CAPE, ItemID.CRAFTING_CAPET))) {
+        if (!script.getWidgetManager().getBank().depositAll(Set.of(ItemID.RAW_KARAMBWANJI, ItemID.KARAMBWAN_VESSEL, ItemID.KARAMBWAN_VESSEL_3159, ItemID.FISH_BARREL, ItemID.OPEN_FISH_BARREL, ItemID.CRAFTING_CAPE, ItemID.CRAFTING_CAPET, ItemID.SPIRIT_FLAKES))) {
             return false;
         }
 
