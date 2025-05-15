@@ -35,11 +35,11 @@ import java.util.function.Predicate;
         name = "dCooker",
         description = "Cooks a wide variety of fish and other items at cookable objects.",
         skillCategory = SkillCategory.COOKING,
-        version = 1.6,
+        version = 1.7,
         author = "JustDavyy"
 )
 public class dCooker extends Script {
-    public static String scriptVersion = "1.6";
+    public static String scriptVersion = "1.7";
     public static final String[] BANK_NAMES = {"Bank", "Chest", "Bank booth", "Bank chest", "Grand Exchange booth", "Bank counter", "Bank table"};
     public static final String[] BANK_ACTIONS = {"bank", "open", "use", "bank banker"};
     public static final String[] COOKING_ACTIONS = {"cook"};
@@ -53,6 +53,8 @@ public class dCooker extends Script {
     private static final java.awt.Font ARIEL = java.awt.Font.getFont("Ariel");
     public static String task = "N/A";
     public static int cookCount = 0;
+    public static int burnCount = 0;
+    public static int totalCookCount = 0;
     public static double totalXpGained = 0.0;
     public static boolean setupDone = false;
     public static int cookingItemID;
@@ -101,30 +103,36 @@ public class dCooker extends Script {
 
     @Override
     public void onPaint(Canvas c) {
-        c.fillRect(5, 40, 220, 170, Color.BLACK.getRGB(), 0.85);
-        c.drawRect(5, 40, 220, 170, Color.BLACK.getRGB());
+        c.fillRect(5, 40, 220, 190, Color.BLACK.getRGB(), 0.85f);
+        c.drawRect(5, 40, 220, 190, Color.BLACK.getRGB());
 
         long elapsed = System.currentTimeMillis() - startTime;
-        int cooksPerHour = (int) ((cookCount * 3600000L) / elapsed);
+
+        int totalCooked = cookCount + burnCount;
+        int totalPerHour = (int) ((totalCooked * 3600000L) / elapsed);
         int xpPerHour = (int) ((totalXpGained * 3600000L) / elapsed);
 
-        DecimalFormat formatter = new DecimalFormat("#,###");
-        DecimalFormatSymbols symbols = new DecimalFormatSymbols();
-        symbols.setGroupingSeparator('.');
-        formatter.setDecimalFormatSymbols(symbols);
+        DecimalFormat f = new DecimalFormat("#,###");
+        DecimalFormatSymbols s = new DecimalFormatSymbols();
+        s.setGroupingSeparator('.');
+        f.setDecimalFormatSymbols(s);
+
+        String rate = (totalCooked > 0)
+                ? String.format("%d%%", (int) ((cookCount * 100.0) / totalCooked))
+                : "N/A";
 
         int y = 40;
-        c.drawText("Food Cooked: " + formatter.format(cookCount), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Food/hr: " + formatter.format(cooksPerHour), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("XP gained: " + formatter.format(totalXpGained), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("XP/hr: " + formatter.format(xpPerHour), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+        c.drawText("Cooked: C: " + f.format(cookCount) + "  B: " + f.format(burnCount) + " (" + rate + ")", 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+        c.drawText("Actions/hr: " + f.format(totalPerHour), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+        c.drawText("XP gained: " + f.format(totalXpGained), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+        c.drawText("XP/hr: " + f.format(xpPerHour), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
 
         if (isMultipleMode) {
             int remaining = selectedItemIDs.size() - selectedItemIndex - 1;
             String nextFishName = "N/A";
             if (selectedItemIndex + 1 < selectedItemIDs.size()) {
                 Integer nextId = selectedItemIDs.get(selectedItemIndex + 1);
-                nextFishName = getItemManager().getItemName(nextId) + "(" + nextId + ")";
+                nextFishName = getItemManager().getItemName(nextId) + " (" + nextId + ")";
             }
 
             c.drawText("Fish types left: " + remaining, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
@@ -318,7 +326,8 @@ public class dCooker extends Script {
             conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
 
             long elapsed = System.currentTimeMillis() - startTime;
-            int cooksPerHour = (int) ((cookCount * 3600000L) / elapsed);
+            int totalCooked = cookCount + burnCount;
+            int cooksPerHour = (int) ((totalCooked * 3600000L) / elapsed);
             int xpPerHour = (int) ((totalXpGained * 3600000L) / elapsed);
             String formattedRuntime = formatDuration(elapsed);
             DecimalFormatSymbols symbols = new DecimalFormatSymbols(); symbols.setGroupingSeparator('.');
@@ -331,15 +340,22 @@ public class dCooker extends Script {
             payload.append("\"color\": 4620980,");
 
             if (webhookShowStats) {
+
+                String rate = (totalCooked > 0)
+                        ? (int) ((cookCount * 100.0) / totalCooked) + "%"
+                        : "N/A";
+
                 payload.append("\"fields\": [")
-                        .append("{\"name\": \"Food Cooked\", \"value\": \"").append(formatter.format(cookCount)).append("\", \"inline\": true},")
+                        .append("{\"name\": \"Food Cooked\", \"value\": \"C: ").append(formatter.format(cookCount))
+                        .append("  B: ").append(formatter.format(burnCount))
+                        .append(" (").append(rate).append(")\", \"inline\": true},")
                         .append("{\"name\": \"Cooked/hr\", \"value\": \"").append(formatter.format(cooksPerHour)).append("\", \"inline\": true},")
-                        .append("{\"name\": \"Script version\", \"value\": \"").append(scriptVersion).append("\", \"inline\": true},")
                         .append("{\"name\": \"XP Gained\", \"value\": \"").append(formatter.format(totalXpGained)).append("\", \"inline\": true},")
                         .append("{\"name\": \"XP/hr\", \"value\": \"").append(formatter.format(xpPerHour)).append("\", \"inline\": true},")
                         .append("{\"name\": \"Task\", \"value\": \"").append(escapeJson(task)).append("\", \"inline\": true},")
                         .append("{\"name\": \"Bank Method\", \"value\": \"").append(escapeJson(bankMethod)).append("\", \"inline\": true},")
-                        .append("{\"name\": \"Runtime\", \"value\": \"").append(formattedRuntime).append("\", \"inline\": true}")
+                        .append("{\"name\": \"Runtime\", \"value\": \"").append(formattedRuntime).append("\", \"inline\": true},")
+                        .append("{\"name\": \"Script version\", \"value\": \"").append(scriptVersion).append("\", \"inline\": true}")
                         .append("],");
             } else {
                 payload.append("\"description\": \"Task: ").append(escapeJson(task)).append("\",");

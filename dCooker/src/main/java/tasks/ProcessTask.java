@@ -107,8 +107,17 @@ public class ProcessTask extends Task {
                 script.log(getClass(), "No fish to cook could be located.");
             } else {
                 int cookedNow = inventorySnapshot.getAmount(cookedItemID);
-                cookCount += cookedNow;
-                totalXpGained += cookedNow * getXpForFood(cookingItemID);
+
+                if (cookingItemID != ItemID.GIANT_SEAWEED) {
+                    totalCookCount = totalCookCount + 28;
+                    cookCount += cookedNow;
+                    burnCount = burnCount + (28 - cookedNow);
+                    totalXpGained += cookedNow * getXpForFood(cookingItemID);
+                } else {
+                    totalCookCount = totalCookCount + 6;
+                    cookCount += cookedNow;
+                    totalXpGained += cookedNow * getXpForFood(cookingItemID);
+                }
             }
 
             printStats();
@@ -171,12 +180,17 @@ public class ProcessTask extends Task {
 
     private void printStats() {
         long elapsed = System.currentTimeMillis() - startTime;
-        int cooksPerHour = (int) ((cookCount * 3600000L) / elapsed);
+        int totalCooked = cookCount + burnCount;
+        int cooksPerHour = (int) ((totalCooked * 3600000L) / elapsed);
         int xpPerHour = (int) ((totalXpGained * 3600000L) / elapsed);
 
+        String rate = (totalCooked > 0)
+                ? (int) ((cookCount * 100.0) / totalCooked) + "%"
+                : "N/A";
+
         script.log("STATS", String.format(
-                "Food cooked: %,d | Food/hr: %,d | XP gained: %,d | XP/hr: %,d\n",
-                cookCount, cooksPerHour, (int) totalXpGained, xpPerHour
+                "Food cooked: C: %,d  B: %,d (%s) | Food/hr: %,d | XP gained: %,d | XP/hr: %,d",
+                cookCount, burnCount, rate, cooksPerHour, (int) totalXpGained, xpPerHour
         ));
     }
 
