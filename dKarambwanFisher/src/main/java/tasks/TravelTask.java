@@ -67,6 +67,12 @@ public class TravelTask extends Task {
         task = getClass().getSimpleName();
         // Handle if we're within the fishing area still
         if (fishingArea.contains(currentPos)) {
+            // Additional check to make sure we don't early travel
+            inventorySnapshot = script.getWidgetManager().getInventory().search(Collections.emptySet());
+            if (!inventorySnapshot.isFull()) {
+                script.log(getClass().getSimpleName(), "Travel task ran too early, inventory is not full yet. Returning!");
+                return false;
+            }
             if (bankOption.equals("Zanaris")) {
                 task = "Travel to zanaris";
                 script.log(getClass().getSimpleName(), "Traveling to zanaris with fairy ring");
