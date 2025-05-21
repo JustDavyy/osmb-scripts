@@ -147,6 +147,7 @@ public class FishingTask extends Task {
             script.log(getClass().getSimpleName(), "Failed to long-press 'Fish' on fishing tile.");
             return false;
         } else {
+            script.submitHumanTask(() -> false, script.random(1500, 2500));
             return true;
         }
     }

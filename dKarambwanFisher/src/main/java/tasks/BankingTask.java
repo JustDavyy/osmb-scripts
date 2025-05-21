@@ -42,9 +42,20 @@ public class BankingTask extends Task {
         task = getClass().getSimpleName();
         inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(ItemID.RAW_KARAMBWANJI, ItemID.KARAMBWAN_VESSEL, ItemID.KARAMBWAN_VESSEL_3159, ItemID.RAW_KARAMBWAN, ItemID.FISH_BARREL, ItemID.OPEN_FISH_BARREL, ItemID.CRAFTING_CAPE, ItemID.CRAFTING_CAPET));
 
+        if (inventorySnapshot == null) {
+            script.log(getClass().getSimpleName(), "Inventory not visible.");
+            return false;
+        }
+
         if (!inventorySnapshot.contains(ItemID.RAW_KARAMBWANJI)) {
             missingKarambwanjiCount++;
             script.log(getClass().getSimpleName(), "❌ Missing Karambwanji (" + missingKarambwanjiCount + "/3)");
+            script.submitHumanTask(() -> false, script.random(2000, 4000));
+
+            if (!script.getWidgetManager().getBank().isVisible()) {
+                openBank();
+                return false;
+            }
 
             if (missingKarambwanjiCount >= 3) {
                 script.log(getClass().getSimpleName(), "‼ Karambwanji missing 3 times in a row. Stopping script...");

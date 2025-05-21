@@ -27,6 +27,8 @@ public class TravelTask extends Task {
     private final Area legendsFairyArea = new RectangleArea(2736, 3347, 7, 7, 0);
     private final Area monasteryArea = new RectangleArea(2584, 3219, 87, 24, 0);
     private final Area monasteryFairyArea = new RectangleArea(2653, 3226, 10, 9, 0);
+    private final Area fishingFailsafeArea = new RectangleArea(2881, 3055, 77, 73, 0);
+    private final Area fishingFailsafeWalkArea = new RectangleArea(2896, 3113, 8, 4, 0);
     private final WorldPosition fishingFairyRing = new WorldPosition(2900, 3111, 0);
 
     public static final String[] FAIRY_NAMES = {"Fairy ring"};
@@ -170,6 +172,14 @@ public class TravelTask extends Task {
             task = "Travel to fairy ring";
             script.log(getClass().getSimpleName(), "Traveling to Monastery Fairy Ring");
             return script.getWalker().walkTo(monasteryFairyArea.getRandomPosition());
+        }
+
+        // Fail safe if we're south of the fishing area
+        if (fishingFailsafeArea.contains(currentPos)) {
+            task = "Fail safe, we're south of fishing area";
+            script.log(getClass().getSimpleName(), "Fail safe triggered, we're south of the fishing area!");
+            script.log(getClass().getSimpleName(), "Pathing back to fishing area!");
+            return script.getWalker().walkTo(fishingFailsafeWalkArea.getRandomPosition());
         }
 
         return false;
