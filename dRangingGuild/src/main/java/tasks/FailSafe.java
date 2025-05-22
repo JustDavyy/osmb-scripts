@@ -1,6 +1,7 @@
 package tasks;
 
 import com.osmb.api.script.Script;
+import com.osmb.api.walker.WalkConfig;
 import utils.Task;
 
 import static main.dRangingGuild.*;
@@ -23,6 +24,16 @@ public class FailSafe extends Task {
     @Override
     public boolean execute() {
         script.log(getClass(), "Resetting states and caches and falling back to TalkTask. (due to break/hop)");
+
+        // Check if interface is in our way
+        if (targetInterface.isVisible()) {
+            WalkConfig noScreenWalk = new WalkConfig.Builder()
+                    .disableWalkScreen(true)
+                    .disableWalkMinimap(false)
+                    .build();
+            script.getWalker().walkTo(minigameArea.getRandomPosition(), noScreenWalk);
+            return script.submitHumanTask(() -> !targetInterface.isVisible(), script.random(2000, 4000));
+        }
 
         // Check our position and make sure we're still within the script area
         task = "Check character position";
