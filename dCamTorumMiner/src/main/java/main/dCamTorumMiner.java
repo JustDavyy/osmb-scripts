@@ -1,5 +1,6 @@
 package main;
 
+import com.osmb.api.item.ItemID;
 import com.osmb.api.location.area.Area;
 import com.osmb.api.location.area.impl.RectangleArea;
 import com.osmb.api.script.Script;
@@ -23,17 +24,19 @@ import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @ScriptDefinition(
         name = "dCamTorumMiner",
         description = "Mines blessed bone shards in the Cam Torum mine",
         skillCategory = SkillCategory.MINING,
-        version = 1.1,
+        version = 1.2,
         author = "JustDavyy"
 )
 public class dCamTorumMiner extends Script {
-    public static final String scriptVersion = "1.1";
+    public static final String scriptVersion = "1.2";
     public static boolean setupDone = false;
     public static boolean hasReqs;
     public static int blessedShardCount = 0;
@@ -41,6 +44,19 @@ public class dCamTorumMiner extends Script {
     public static boolean dropMode = false;
     public static boolean smithMode = false;
     public static final Area miningArea = new RectangleArea(1498, 9541, 3, 3, 1);
+    public static final Area bankWalkArea = new RectangleArea(1449, 9567, 4, 1, 1);
+    public static final Area bankArea = new RectangleArea(1448, 9564, 11, 7, 1);
+    public static final Area anvilPlusBankArea = new RectangleArea(1432, 9557, 36, 35, 1);
+
+    public static final Set<Integer> ITEM_IDS_TO_NOT_DEPOSIT = new HashSet<>(Set.of(
+            ItemID.PAYDIRT, ItemID.BRONZE_PICKAXE, ItemID.IRON_PICKAXE,
+            ItemID.STEEL_PICKAXE, ItemID.BLACK_PICKAXE, ItemID.MITHRIL_PICKAXE,
+            ItemID.ADAMANT_PICKAXE, ItemID.RUNE_PICKAXE, ItemID.DRAGON_PICKAXE,
+            ItemID.DRAGON_PICKAXE_OR, ItemID.CRYSTAL_PICKAXE, ItemID.INFERNAL_PICKAXE,
+            ItemID.INFERNAL_PICKAXE_OR, ItemID.ANTIQUE_LAMP, ItemID.GILDED_PICKAXE,
+            ItemID.HAMMER, ItemID.IMCANDO_HAMMER, ItemID.IMCANDO_HAMMER_OFFHAND,
+            ItemID.BLESSED_BONE_SHARDS, ItemID.CALCIFIED_MOTH
+    ));
 
     public static String task = "Initialize";
     public static long startTime = System.currentTimeMillis();

@@ -2,11 +2,18 @@ package tasks;
 
 import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.item.ItemID;
+import com.osmb.api.location.position.types.WorldPosition;
+import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
+import com.osmb.api.utils.timing.Timer;
 import utils.Task;
 
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 
 import static main.dCamTorumMiner.*;
 
@@ -18,13 +25,17 @@ public class DropTask extends Task {
     private int prevClueElite = 0;
     private int prevLoopKey = 0;
 
-    private static final Set<Integer> DROP_ITEMS = Set.of(
-            ItemID.UNCUT_SAPPHIRE,
-            ItemID.UNCUT_EMERALD,
-            ItemID.UNCUT_RUBY,
-            ItemID.UNCUT_DIAMOND,
-            ItemID.CALCIFIED_DEPOSIT
-    );
+    public static final Set<Integer> ITEM_IDS_TO_NOT_DEPOSIT2 = new HashSet<>(Set.of(
+            ItemID.PAYDIRT, ItemID.BRONZE_PICKAXE, ItemID.IRON_PICKAXE,
+            ItemID.STEEL_PICKAXE, ItemID.BLACK_PICKAXE, ItemID.MITHRIL_PICKAXE,
+            ItemID.ADAMANT_PICKAXE, ItemID.RUNE_PICKAXE, ItemID.DRAGON_PICKAXE,
+            ItemID.DRAGON_PICKAXE_OR, ItemID.CRYSTAL_PICKAXE, ItemID.INFERNAL_PICKAXE,
+            ItemID.INFERNAL_PICKAXE_OR, ItemID.ANTIQUE_LAMP, ItemID.GILDED_PICKAXE,
+            ItemID.HAMMER, ItemID.IMCANDO_HAMMER, ItemID.IMCANDO_HAMMER_OFFHAND,
+            ItemID.BLESSED_BONE_SHARDS, ItemID.CALCIFIED_MOTH, ItemID.CALCIFIED_DEPOSIT
+    ));
+
+    private int currentBankThreshold = getNewBankThreshold();
 
     public DropTask(Script script) {
         super(script);
@@ -32,11 +43,10 @@ public class DropTask extends Task {
 
     @Override
     public boolean activate() {
-        if (!dropMode) {
-            return false;
-        }
+        if (!dropMode) return false;
         ItemGroupResult inv = script.getWidgetManager().getInventory().search(Collections.emptySet());
-        return inv != null && inv.isFull();
+        WorldPosition myPos = script.getWorldPosition();
+        return inv != null && inv.isFull() || myPos != null && anvilPlusBankArea.contains(myPos);
     }
 
     @Override
@@ -47,74 +57,123 @@ public class DropTask extends Task {
 
         int totalXp = 0;
 
-        // Dropped items XP
+        int deposits = safeAmount(inv.getAmount(ItemID.CALCIFIED_DEPOSIT));
         int sapphires = safeAmount(inv.getAmount(ItemID.UNCUT_SAPPHIRE));
         int emeralds = safeAmount(inv.getAmount(ItemID.UNCUT_EMERALD));
         int rubies = safeAmount(inv.getAmount(ItemID.UNCUT_RUBY));
         int diamonds = safeAmount(inv.getAmount(ItemID.UNCUT_DIAMOND));
-        int deposits = safeAmount(inv.getAmount(ItemID.CALCIFIED_DEPOSIT));
+        int loopKeys = safeAmount(inv.getAmount(ItemID.LOOP_HALF_OF_KEY_30107));
 
-        int dropXp = (sapphires + emeralds + rubies + diamonds + deposits) * 33;
-        totalXp += dropXp;
+        int totalBankable = sapphires + emeralds + rubies + diamonds + loopKeys;
 
-        script.log(getClass(), String.format("Dropped: Sapphires=%d, Emeralds=%d, Rubies=%d, Diamonds=%d, Deposits=%d → +%d XP",
-                sapphires, emeralds, rubies, diamonds, deposits, dropXp));
+        script.log(getClass(), String.format("Detected: Sapphires=%d, Emeralds=%d, Rubies=%d, Diamonds=%d, LoopKeys=%d (Total bankable = %d, Threshold = %d)",
+                sapphires, emeralds, rubies, diamonds, loopKeys, totalBankable, currentBankThreshold));
 
-        // Kept items XP
-        int curBeginner = safeAmount(inv.getAmount(ItemID.CLUE_GEODE_BEGINNER));
-        int curEasy = safeAmount(inv.getAmount(ItemID.CLUE_GEODE_EASY));
-        int curMedium = safeAmount(inv.getAmount(ItemID.CLUE_GEODE_MEDIUM));
-        int curHard = safeAmount(inv.getAmount(ItemID.CLUE_GEODE_HARD));
-        int curElite = safeAmount(inv.getAmount(ItemID.CLUE_GEODE_ELITE));
-        int curLoop = safeAmount(inv.getAmount(ItemID.LOOP_HALF_OF_KEY_30107));
+        // Bank if total bankable meets/exceeds threshold
+        task = "Check bankable items";
+        if (totalBankable >= currentBankThreshold) {
+            task = "Check position";
+            WorldPosition myPos = script.getWorldPosition();
+            if (myPos != null && !bankArea.contains(myPos)) {
+                task = "Walk to bank area";
+                return script.getWalker().walkTo(bankWalkArea.getRandomPosition());
+            }
 
-        int gainedBeginner = Math.max(0, curBeginner - prevClueBeginner);
-        int gainedEasy = Math.max(0, curEasy - prevClueEasy);
-        int gainedMedium = Math.max(0, curMedium - prevClueMedium);
-        int gainedHard = Math.max(0, curHard - prevClueHard);
-        int gainedElite = Math.max(0, curElite - prevClueElite);
-        int gainedLoop = Math.max(0, curLoop - prevLoopKey);
-
-        int keptXp = (gainedBeginner + gainedEasy + gainedMedium + gainedHard + gainedElite + gainedLoop) * 33;
-        totalXp += keptXp;
-
-        script.log(getClass(), String.format("Kept: Beginner=%d (%d→%d), Easy=%d (%d→%d), Medium=%d (%d→%d), Hard=%d (%d→%d), Elite=%d (%d→%d), LoopKeys=%d (%d→%d) → +%d XP",
-                gainedBeginner, prevClueBeginner, curBeginner,
-                gainedEasy, prevClueEasy, curEasy,
-                gainedMedium, prevClueMedium, curMedium,
-                gainedHard, prevClueHard, curHard,
-                gainedElite, prevClueElite, curElite,
-                gainedLoop, prevLoopKey, curLoop,
-                keptXp));
-
-        task = "Add XP gained for solid items";
-        // Add XP once
-        miningXpGained += totalXp;
-        script.log(getClass(), "Total mining XP added: " + totalXp);
-
-        // Update previous counts
-        prevClueBeginner = curBeginner;
-        prevClueEasy = curEasy;
-        prevClueMedium = curMedium;
-        prevClueHard = curHard;
-        prevClueElite = curElite;
-        prevLoopKey = curLoop;
-
-        task = "Drop uncuts, deposits and keys";
-        // Attempt dropping up to 3 times if needed
-        for (int attempt = 1; attempt <= 3; attempt++) {
-            boolean droppedAll = script.getWidgetManager().getInventory().dropItems(ItemID.UNCUT_SAPPHIRE, ItemID.UNCUT_EMERALD, ItemID.UNCUT_RUBY, ItemID.UNCUT_DIAMOND, ItemID.CALCIFIED_DEPOSIT, ItemID.LOOP_HALF_OF_KEY_30107);
-            if (droppedAll) {
-                script.log(getClass(), "Successfully dropped all items (attempt " + attempt + ")");
+            boolean success = bankItems(inv);
+            if (success) {
+                currentBankThreshold = getNewBankThreshold();
                 return true;
-            } else {
-                script.log(getClass(), "Drop attempt " + attempt + " incomplete, retrying...");
-                script.submitHumanTask(() -> false, script.random(250, 450));
             }
         }
 
-        script.log(getClass(), "Failed to drop all items after 3 attempts.");
+        // Drop deposits
+        if (deposits > 0) {
+            script.log(getClass(), "Dropping " + deposits + " calcified deposit(s).");
+            script.getWidgetManager().getInventory().dropItems(ItemID.CALCIFIED_DEPOSIT);
+            totalXp += deposits * 33;
+        }
+
+        inv = script.getWidgetManager().getInventory().search(getTrackedItemIDs());
+
+        if (!inv.containsAny(getTrackedItemIDs())) {
+            script.log(getClass().getSimpleName(), "Nothing to drop/deposit anymore, walking back!");
+            return script.getWalker().walkTo(miningArea.getRandomPosition());
+        } else {
+            script.log(getClass().getSimpleName(), "Not enough to bank, walking back to mining area.");
+            script.getWalker().walkTo(miningArea.getRandomPosition());
+        }
+
+        miningXpGained += totalXp;
+        script.log(getClass(), "Total mining XP added: " + totalXp);
+
+        // Update previous counts for kept items
+        updatePreviousCounts(inv);
+
         return true;
+    }
+
+    private boolean bankItems(ItemGroupResult inv) {
+        if (!script.getWidgetManager().getDepositBox().isVisible()) {
+            task = "Bank at deposit box";
+            script.log(getClass(), "Searching for deposit box...");
+
+            Predicate<RSObject> bankQuery = obj ->
+                    obj.getName() != null &&
+                            obj.getName().equalsIgnoreCase("Bank Deposit Box") &&
+                            obj.canReach();
+
+            List<RSObject> banksFound = script.getObjectManager().getObjects(bankQuery);
+            if (banksFound.isEmpty()) {
+                script.log(getClass(), "Can't find any banks matching criteria...");
+                return false;
+            }
+
+            RSObject depositBox = (RSObject) script.getUtils().getClosest(banksFound);
+            if (!depositBox.interact("Deposit")) {
+                script.log(getClass(), "Failed to interact with deposit box.");
+                return false;
+            }
+
+            AtomicReference<Timer> positionChangeTimer = new AtomicReference<>(new Timer());
+            AtomicReference<WorldPosition> pos = new AtomicReference<>(null);
+            script.submitHumanTask(() -> {
+                WorldPosition current = script.getWorldPosition();
+                if (current == null) return false;
+                if (pos.get() == null || !current.equals(pos.get())) {
+                    positionChangeTimer.get().reset();
+                    pos.set(current);
+                }
+                return script.getWidgetManager().getDepositBox().isVisible() || positionChangeTimer.get().timeElapsed() > 4000;
+            }, 20000);
+        }
+
+        var snapshot = script.getWidgetManager().getDepositBox().search(ITEM_IDS_TO_NOT_DEPOSIT2);
+        if (snapshot == null) {
+            script.log(getClass(), "Deposit box not open.");
+            return false;
+        }
+
+        if (!script.getWidgetManager().getDepositBox().depositAll(ITEM_IDS_TO_NOT_DEPOSIT2)) {
+            script.log(getClass(), "Failed to deposit items.");
+            return false;
+        }
+
+        script.getWidgetManager().getDepositBox().close();
+        script.log(getClass(), "Banked items and closed deposit box.");
+        return true;
+    }
+
+    private void updatePreviousCounts(ItemGroupResult inv) {
+        prevClueBeginner = safeAmount(inv.getAmount(ItemID.CLUE_GEODE_BEGINNER));
+        prevClueEasy = safeAmount(inv.getAmount(ItemID.CLUE_GEODE_EASY));
+        prevClueMedium = safeAmount(inv.getAmount(ItemID.CLUE_GEODE_MEDIUM));
+        prevClueHard = safeAmount(inv.getAmount(ItemID.CLUE_GEODE_HARD));
+        prevClueElite = safeAmount(inv.getAmount(ItemID.CLUE_GEODE_ELITE));
+        prevLoopKey = safeAmount(inv.getAmount(ItemID.LOOP_HALF_OF_KEY_30107));
+    }
+
+    private int getNewBankThreshold() {
+        return script.random(15, 21);
     }
 
     private int safeAmount(int amount) {
