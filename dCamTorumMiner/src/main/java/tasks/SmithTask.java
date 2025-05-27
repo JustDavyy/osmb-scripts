@@ -3,6 +3,7 @@ package tasks;
 import com.osmb.api.input.MenuEntry;
 import com.osmb.api.input.MenuHook;
 import com.osmb.api.item.ItemID;
+import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.location.area.Area;
@@ -30,8 +31,9 @@ public class SmithTask extends Task {
     @Override
     public boolean activate() {
         if (!smithMode) return false;
-        ItemGroupResult inv = script.getWidgetManager().getInventory().search(Collections.emptySet());
-        return inv != null && inv.isFull();
+        ItemGroupResult inv = script.getWidgetManager().getInventory().search(Set.of(ItemID.CALCIFIED_DEPOSIT));
+        WorldPosition myPos = script.getWorldPosition();
+        return inv != null && inv.isFull() || inv != null && inv.contains(ItemID.CALCIFIED_DEPOSIT) && myPos != null && smithArea.contains(myPos);
     }
 
     @Override
