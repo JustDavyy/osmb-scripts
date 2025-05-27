@@ -136,28 +136,17 @@ public class RangeTask extends Task {
             }
         }
 
-        // Step 1: Fire at the target using tile cube instead of long-press
-        RSTile tile = script.getSceneManager().getTile(cachedTarget2.getWorldPosition());
-        if (tile == null) {
-            script.log(getClass(), "❌ Failed to get RSTile for target position.");
-            return false;
-        }
-
-        if (!tile.isOnGameScreen()) {
-            script.log(getClass(), "❌ Target tile is not on the game screen.");
-            return false;
-        }
-
-        Polygon targetPoly = tile.getTileCube(40, 45).getResized(0.6);
+        // Step 1: Fire at the target using the convex hull of the cached target
+        Polygon targetPoly = cachedTarget2.getConvexHull().getResized(0.7);
         if (targetPoly == null) {
-            script.log(getClass(), "❌ Failed to get tile cube for target.");
+            script.log(getClass(), "❌ Failed to get convex hull for target.");
             return false;
         }
 
         boolean success = script.getFinger().tap(targetPoly);
 
         if (!success) {
-            script.log(getClass(), "❌ Failed to tap target tile.");
+            script.log(getClass(), "❌ Failed to tap target convex hull.");
             return false;
         }
 

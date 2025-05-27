@@ -203,27 +203,16 @@ public class TalkTask extends Task {
         }
 
         // If all else fails, fire at target
-        RSTile tile = script.getSceneManager().getTile(cachedTarget.getWorldPosition());
-        if (tile == null) {
-            script.log(getClass(), "❌ Failed to get RSTile for target position.");
-            return false;
-        }
-
-        if (!tile.isOnGameScreen()) {
-            script.log(getClass(), "❌ Target tile is not on the game screen.");
-            return false;
-        }
-
-        Polygon targetPoly = tile.getTileCube(40, 45).getResized(0.6);
+        Polygon targetPoly = cachedTarget.getConvexHull().getResized(0.7);
         if (targetPoly == null) {
-            script.log(getClass(), "❌ Failed to get tile cube for target.");
+            script.log(getClass(), "❌ Failed to get convex hull for target.");
             return false;
         }
 
         boolean success = script.getFinger().tap(targetPoly);
 
         if (!success) {
-            script.log(getClass(), "❌ Failed to tap target tile.");
+            script.log(getClass(), "❌ Failed to tap target convex hull.");
             return false;
         }
 
