@@ -240,8 +240,13 @@ public class MineTask extends Task {
     }
 
     private List<WorldPosition> getRespawnCirclePositions() {
-        List<Rectangle> respawnCircles = script.getPixelAnalyzer().findRespawnCircles();
-        return script.getUtils().getWorldPositionForRespawnCircles(respawnCircles, 20);
+        try {
+            List<Rectangle> respawnCircles = script.getPixelAnalyzer().findRespawnCircles();
+            return script.getUtils().getWorldPositionForRespawnCircles(respawnCircles, 20);
+        } catch (RuntimeException e) {
+            script.log("ERROR", "Could not get respawn circle positions: " + e.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     private List<RSObject> getActiveVeinsOnScreen(List<RSObject> veins, WorldPosition myPosition) {

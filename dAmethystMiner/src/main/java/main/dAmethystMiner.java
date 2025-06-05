@@ -30,11 +30,11 @@ import java.util.List;
         name = "dAmethystMiner",
         description = "Mines and crafts/banks amethyst in the mining guild",
         skillCategory = SkillCategory.MINING,
-        version = 1.0,
+        version = 1.1,
         author = "JustDavyy"
 )
 public class dAmethystMiner extends Script {
-    public static final String scriptVersion = "1.0";
+    public static final String scriptVersion = "1.1";
 
     public static boolean bankMode = false;
     public static boolean craftMode = false;
