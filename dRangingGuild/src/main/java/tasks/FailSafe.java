@@ -5,9 +5,6 @@ import com.osmb.api.walker.WalkConfig;
 import utils.Task;
 
 import static main.dRangingGuild.*;
-import static tasks.TalkTask.cachedTarget;
-import static tasks.TalkTask.alreadyStarted;
-import static tasks.RangeTask.cachedTarget2;
 import static tasks.Setup.minigameArea;
 
 public class FailSafe extends Task {

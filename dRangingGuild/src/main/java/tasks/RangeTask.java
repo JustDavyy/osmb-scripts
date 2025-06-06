@@ -2,7 +2,6 @@ package tasks;
 
 import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.item.ItemID;
-import com.osmb.api.scene.RSTile;
 import com.osmb.api.shape.Polygon;
 import com.osmb.api.shape.Rectangle;
 import com.osmb.api.ui.chatbox.dialogue.DialogueType;
@@ -195,7 +194,6 @@ public class RangeTask extends Task {
                 blackShots++;
                 break;
             case "missed!":
-                shotScore = 0;
                 missedShots++;
                 break;
             default:

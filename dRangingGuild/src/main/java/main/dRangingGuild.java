@@ -19,6 +19,7 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,11 +33,11 @@ import javax.imageio.ImageIO;
         name = "dRangingGuild",
         description = "Trains ranged by doing the ranging guild minigame",
         skillCategory = SkillCategory.COMBAT,
-        version = 1.1,
+        version = 1.2,
         author = "JustDavyy"
 )
 public class dRangingGuild extends Script {
-    public static final String scriptVersion = "1.1";
+    public static final String scriptVersion = "1.2";
     public static boolean setupDone = false;
     public static boolean failSafeNeeded = false;
     public static boolean needsToSwitchGear = false;
@@ -127,7 +128,7 @@ public class dRangingGuild extends Script {
 
         c.drawText("Task: " + task, 10, y += 35, Color.WHITE.getRGB(), FONT);
         c.drawText("Runtime: " + runtime, 10, y += 20, Color.WHITE.getRGB(), FONT);
-        c.drawText("Version: " + scriptVersion, 10, y += 20, Color.WHITE.getRGB(), FONT);
+        c.drawText("Version: " + scriptVersion, 10, y + 20, Color.WHITE.getRGB(), FONT);
     }
 
     @Override
@@ -244,12 +245,12 @@ public class dRangingGuild extends Script {
                 return;
             }
 
-            if (compareVersions(scriptVersion, latest) < 0) {
+            if (compareVersions(latest) < 0) {
                 log("UPDATE", "⏬ New version v" + latest + " found! Updating...");
                 File dir = new File(System.getProperty("user.home") + File.separator + ".osmb" + File.separator + "Scripts");
                 if (!dir.exists()) dir.mkdirs();
 
-                for (File f : dir.listFiles((d, n) -> n.startsWith("dRangingGuild"))) {
+                for (File f : Objects.requireNonNull(dir.listFiles((d, n) -> n.startsWith("dRangingGuild")))) {
                     if (f.delete()) log("UPDATE", "🗑 Deleted old: " + f.getName());
                 }
 
@@ -291,8 +292,8 @@ public class dRangingGuild extends Script {
         return null;
     }
 
-    private int compareVersions(String v1, String v2) {
-        String[] a = v1.split("\\.");
+    private int compareVersions(String v2) {
+        String[] a = dRangingGuild.scriptVersion.split("\\.");
         String[] b = v2.split("\\.");
         for (int i = 0; i < Math.max(a.length, b.length); i++) {
             int n1 = i < a.length ? Integer.parseInt(a[i]) : 0;

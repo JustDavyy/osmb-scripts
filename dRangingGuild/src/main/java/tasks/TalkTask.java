@@ -6,7 +6,6 @@ import com.osmb.api.location.area.impl.PolyArea;
 import com.osmb.api.location.position.types.LocalPosition;
 import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
-import com.osmb.api.scene.RSTile;
 import com.osmb.api.script.Script;
 import com.osmb.api.shape.Polygon;
 import com.osmb.api.shape.Rectangle;
@@ -21,13 +20,10 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 import static main.dRangingGuild.*;
-import static tasks.Setup.minigameArea;
 
 public class TalkTask extends Task {
 
     public static boolean alreadyStarted = false;
-    private boolean readyToLoop = false;
-    private boolean doneInitialShoot = false;
     private static final String TARGET_NAME = "Target";
     private static final String TARGET_ACTION = "Fire-at";
     private static final WorldPosition POS1 = new WorldPosition(2679, 3426, 0);
@@ -122,7 +118,6 @@ public class TalkTask extends Task {
             if (success) {
                 readyToShoot = true;
                 shotsLeft = 10;
-                readyToLoop = true;
                 return true;
             }
         }
@@ -192,7 +187,7 @@ public class TalkTask extends Task {
             }
         }
 
-        // Check if target interface is visible
+        // Check if the target interface is visible
         if (targetInterface.isVisible()) {
             script.log(getClass().getSimpleName(), "Already in a shooting round, marking readyToShoot as true, shots left set to 9.");
             // We are already shooting targets, mark ready to shoot as ready

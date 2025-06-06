@@ -7,7 +7,6 @@ import com.osmb.api.ui.tabs.Tab;
 import main.ScriptUI;
 import utils.Task;
 
-import java.util.Collections;
 import java.util.Set;
 
 import static main.dRangingGuild.*;
