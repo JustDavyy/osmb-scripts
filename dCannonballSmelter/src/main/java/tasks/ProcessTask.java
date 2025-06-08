@@ -128,23 +128,9 @@ public class ProcessTask extends Task {
             }
 
             // Force AFK during these checks if we're due a AFK
-            if (script.isDueToAFK()) {
+            if (script.getProfileManager().isDueToAFK()) {
                 script.log(getClass().getSimpleName(), "We are due to AFK during processing, forcing AFK now.");
-                script.forceAFK();
-            }
-
-            // Force break during these checks if we're due to break
-            if (script.isDueToBreak()) {
-                script.log(getClass().getSimpleName(), "We are due to break during processing, forcing break now.");
-                script.forceBreak();
-                return true;
-            }
-
-            // Force hop during these checks if we're due to hop
-            if (script.isDueToHop()) {
-                script.log(getClass().getSimpleName(), "We are due to hop during processing, forcing hop now.");
-                script.forceHop();
-                return true;
+                script.getProfileManager().forceAFK();
             }
 
             // A timer to timeout
