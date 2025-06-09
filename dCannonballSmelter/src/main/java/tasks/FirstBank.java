@@ -80,7 +80,7 @@ public class FirstBank extends Task {
         bankSnapshot = script.getWidgetManager().getBank().search(Set.of(ItemID.STEEL_BAR));
 
         task = "Check bank supplies";
-        if (bankSnapshot.isEmpty()) {
+        if (!bankSnapshot.contains(ItemID.STEEL_BAR)) {
             script.log(getClass(), "Ran out of supplies. Stopping script.");
             script.stop();
             return false;

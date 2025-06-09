@@ -38,15 +38,14 @@ public class BankTask extends Task {
         if (depositCannonballs) {
             task = "Deposit cannonballs";
             script.log(getClass(), "Depositing cannonballs (85% case).");
-            if (!script.getWidgetManager().getBank().depositAll(Set.of(ItemID.AMMO_MOULD, ItemID.DOUBLE_AMMO_MOULD))) {
-                ItemGroupResult bankSnapshot = script.getWidgetManager().getBank().search(Set.of(ItemID.STEEL_BAR));
+            ItemGroupResult bankSnapshot = script.getWidgetManager().getBank().search(Set.of(ItemID.STEEL_BAR));
 
-                if (bankSnapshot.isEmpty()) {
-                    script.log(getClass(), "Ran out of supplies. Stopping script.");
-                    script.stop();
-                    return false;
-                }
+            if (!bankSnapshot.contains(ItemID.STEEL_BAR)) {
+                script.log(getClass(), "Ran out of supplies. Stopping script.");
+                script.stop();
+                return false;
             }
+            script.getWidgetManager().getBank().depositAll(Set.of(ItemID.AMMO_MOULD, ItemID.DOUBLE_AMMO_MOULD));
         } else {
             task = "Skip deposit";
             script.log(getClass(), "Skipping cannonball deposit (15% case).");
@@ -54,7 +53,7 @@ public class BankTask extends Task {
 
         ItemGroupResult bankSnapshot = script.getWidgetManager().getBank().search(Set.of(ItemID.STEEL_BAR));
 
-        if (bankSnapshot.isEmpty()) {
+        if (!bankSnapshot.contains(ItemID.STEEL_BAR)) {
             script.log(getClass(), "Ran out of supplies. Stopping script.");
             script.stop();
             return false;
@@ -68,7 +67,7 @@ public class BankTask extends Task {
 
         task = "Check inventory";
         ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(ItemID.STEEL_BAR));
-        if (inventorySnapshot.isEmpty()) {
+        if (!inventorySnapshot.contains(ItemID.STEEL_BAR)) {
             script.log(getClass(), "No steel bars in inventory. Exiting banking logic.");
             return false;
         }
