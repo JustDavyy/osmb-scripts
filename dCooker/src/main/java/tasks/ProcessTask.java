@@ -102,19 +102,24 @@ public class ProcessTask extends Task {
 
             waitUntilFinishedCooking();
 
-            inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(cookingItemID, cookedItemID));
+            Set<Integer> idsToSearch = (cookingItemID == cookedItemID)
+                    ? Set.of(cookingItemID)
+                    : Set.of(cookingItemID, cookedItemID);
+
+            inventorySnapshot = script.getWidgetManager().getInventory().search(idsToSearch);
+
             if (inventorySnapshot == null || inventorySnapshot.isEmpty()) {
                 script.log(getClass(), "No fish to cook could be located.");
             } else {
                 int cookedNow = inventorySnapshot.getAmount(cookedItemID);
 
                 if (cookingItemID != ItemID.GIANT_SEAWEED) {
-                    totalCookCount = totalCookCount + 28;
+                    totalCookCount += 28;
                     cookCount += cookedNow;
-                    burnCount = burnCount + (28 - cookedNow);
+                    burnCount += (28 - cookedNow);
                     totalXpGained += cookedNow * getXpForFood(cookingItemID);
                 } else {
-                    totalCookCount = totalCookCount + 6;
+                    totalCookCount += 6;
                     cookCount += cookedNow;
                     totalXpGained += cookedNow * getXpForFood(cookingItemID);
                 }
