@@ -32,11 +32,11 @@ import java.util.Set;
         name = "dCamTorumMiner",
         description = "Mines blessed bone shards in the Cam Torum mine",
         skillCategory = SkillCategory.MINING,
-        version = 1.2,
+        version = 1.3,
         author = "JustDavyy"
 )
 public class dCamTorumMiner extends Script {
-    public static final String scriptVersion = "1.2";
+    public static final String scriptVersion = "1.3";
     public static boolean setupDone = false;
     public static boolean hasReqs;
     public static int blessedShardCount = 0;

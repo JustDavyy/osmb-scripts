@@ -96,7 +96,7 @@ public class MineTask extends Task {
             targetVein = activeVeins.get(0);
         } else {
             script.log(getClass(), "No veins found on screen. Hopping worlds.");
-            script.forceHop();
+            script.getProfileManager().forceHop();
             return false;
         }
 
