@@ -31,12 +31,12 @@ import java.util.concurrent.atomic.AtomicReference;
 @ScriptDefinition(
         name = "dWyrmAgility",
         author = "JustDavyy",
-        version = 1.3,
+        version = 1.4,
         description = "Does the Wyrm basic or advanced agility course.",
         skillCategory = SkillCategory.AGILITY
 )
 public class dWyrmAgility extends Script {
-    public static final String scriptVersion = "1.3";
+    public static final String scriptVersion = "1.4";
     private Course selectedCourse;
     private int nextRunActivate;
     public int noMovementTimeout = RandomUtils.weightedRandom(6000, 9000);
@@ -416,7 +416,6 @@ public class dWyrmAgility extends Script {
             if (compareVersions(scriptVersion, latest) < 0) {
                 log("UPDATE", "⏬ New version v" + latest + " found! Updating...");
                 File dir = new File(System.getProperty("user.home") + File.separator + ".osmb" + File.separator + "Scripts");
-                if (!dir.exists()) dir.mkdirs();
 
                 for (File f : dir.listFiles((d, n) -> n.startsWith("dWyrmAgility"))) {
                     if (f.delete()) log("UPDATE", "🗑 Deleted old: " + f.getName());

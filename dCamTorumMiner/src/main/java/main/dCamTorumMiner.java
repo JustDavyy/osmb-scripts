@@ -32,11 +32,11 @@ import java.util.Set;
         name = "dCamTorumMiner",
         description = "Mines blessed bone shards in the Cam Torum mine",
         skillCategory = SkillCategory.MINING,
-        version = 1.3,
+        version = 1.4,
         author = "JustDavyy"
 )
 public class dCamTorumMiner extends Script {
-    public static final String scriptVersion = "1.3";
+    public static final String scriptVersion = "1.4";
     public static boolean setupDone = false;
     public static boolean hasReqs;
     public static int blessedShardCount = 0;
@@ -253,7 +253,7 @@ public class dCamTorumMiner extends Script {
             log("VERSION", "⏬ New version v" + latest + " found! Updating...");
             try {
                 File dir = new File(System.getProperty("user.home") + File.separator + ".osmb" + File.separator + "Scripts");
-                if (!dir.exists()) dir.mkdirs();
+
                 File[] old = dir.listFiles((d, n) -> n.equals("dCamTorumMiner.jar") || n.startsWith("dCamTorumMiner-"));
                 if (old != null) for (File f : old) if (f.delete()) log("UPDATE", "🗑 Deleted old: " + f.getName());
 

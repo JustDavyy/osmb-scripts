@@ -30,11 +30,11 @@ import java.util.function.Predicate;
         name = "dCannonballSmelter",
         description = "Turns steel bars into cannonballs",
         skillCategory = SkillCategory.SMITHING,
-        version = 2.0,
+        version = 2.1,
         author = "JustDavyy"
 )
 public class dCannonballSmelter extends Script {
-    public static final String scriptVersion = "2.0";
+    public static final String scriptVersion = "2.1";
     public static final String[] BANK_NAMES = {"Bank", "Chest", "Bank booth", "Bank chest", "Grand Exchange booth", "Bank counter", "Bank table"};
     public static final String[] BANK_ACTIONS = {"bank", "open", "use", "bank banker"};
     public static final Predicate<RSObject> bankQuery = gameObject -> {
@@ -255,7 +255,6 @@ public class dCannonballSmelter extends Script {
 
             try {
                 File dir = new File(System.getProperty("user.home") + "/.osmb/Scripts");
-                if (!dir.exists()) dir.mkdirs();
 
                 File[] oldFiles = dir.listFiles((d, name) -> name.startsWith("dCannonballSmelter"));
                 if (oldFiles != null) {

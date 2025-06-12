@@ -27,11 +27,11 @@ import java.util.List;
         name = "dTeleporter",
         description = "Trains magic by continuously casting teleportation spells.",
         skillCategory = SkillCategory.MAGIC,
-        version = 1.2,
+        version = 1.3,
         author = "JustDavyy"
 )
 public class dTeleporter extends Script {
-    public static final String scriptVersion = "1.2";
+    public static final String scriptVersion = "1.3";
     public static boolean setupDone = false;
     public static StandardSpellbook spellToCast;
     public static boolean hasReqs = true;
@@ -239,7 +239,6 @@ public class dTeleporter extends Script {
             log("VERSION", "⏬ New version v" + latest + " found! Updating...");
             try {
                 File dir = new File(System.getProperty("user.home") + File.separator + ".osmb" + File.separator + "Scripts");
-                if (!dir.exists()) dir.mkdirs();
 
                 File[] old = dir.listFiles((d, n) -> n.equals("dTeleporter.jar") || n.startsWith("dTeleporter-"));
                 if (old != null) for (File f : old) if (f.delete()) log("UPDATE", "🗑 Deleted old: " + f.getName());

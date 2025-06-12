@@ -186,7 +186,7 @@ public class MineTask extends Task {
 
         if (availableVeins.isEmpty()) {
             script.log(getClass(), "No available veins free — force hop worlds.");
-            script.forceHop();
+            script.getProfileManager().forceHop();
             return false;
         }
 

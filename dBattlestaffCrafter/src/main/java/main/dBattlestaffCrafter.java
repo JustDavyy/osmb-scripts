@@ -36,12 +36,12 @@ import javax.imageio.ImageIO;
         name = "dBattlestaffCrafter",
         description = "Attaches orbs to battlestaves for quick crafting experience",
         skillCategory = SkillCategory.CRAFTING,
-        version = 1.3,
+        version = 1.4,
         author = "JustDavyy"
 )
 
 public class dBattlestaffCrafter extends Script {
-    public static final String scriptVersion = "1.3";
+    public static final String scriptVersion = "1.4";
     public static boolean setupDone = false;
     public static int staffID;
 
@@ -361,7 +361,6 @@ public class dBattlestaffCrafter extends Script {
 
             try {
                 File dir = new File(System.getProperty("user.home") + File.separator + ".osmb" + File.separator + "Scripts");
-                if (!dir.exists()) dir.mkdirs();
 
                 File[] old = dir.listFiles((d, n) -> n.equals("dBattlestaffCrafter.jar") || n.startsWith("dBattlestaffCrafter-"));
                 if (old != null) {

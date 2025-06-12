@@ -31,11 +31,11 @@ import javax.imageio.ImageIO;
         name = "dPublic Alcher",
         description = "Alchs items (both high & low) until out of items or runes.",
         skillCategory = SkillCategory.MAGIC,
-        version = 1.6,
+        version = 1.7,
         author = "JustDavyy"
 )
 public class dPublicAlcher extends Script {
-    public static final String scriptVersion = "1.6";
+    public static final String scriptVersion = "1.7";
     public static boolean setupDone = false;
     public static StandardSpellbook spellToCast;
     public static int alchItemID;
@@ -341,7 +341,6 @@ public class dPublicAlcher extends Script {
 
             try {
                 File dir = new File(System.getProperty("user.home") + File.separator + ".osmb" + File.separator + "Scripts");
-                if (!dir.exists()) dir.mkdirs();
 
                 File[] old = dir.listFiles((d, n) -> n.equals("dPublicAlcher.jar") || n.startsWith("dPublicAlcher-"));
                 if (old != null) {

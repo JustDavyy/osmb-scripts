@@ -34,33 +34,8 @@ public class BankTask extends Task {
             return false;
         }
 
-        boolean depositCannonballs = script.random(100) < 85;
-        if (depositCannonballs) {
-            task = "Deposit cannonballs";
-            script.log(getClass(), "Depositing cannonballs (85% case).");
-            ItemGroupResult bankSnapshot = script.getWidgetManager().getBank().search(Set.of(ItemID.STEEL_BAR));
-
-            if (!bankSnapshot.contains(ItemID.STEEL_BAR)) {
-                script.log(getClass(), "Ran out of supplies. Stopping script.");
-                script.stop();
-                return false;
-            }
-            script.getWidgetManager().getBank().depositAll(Set.of(ItemID.AMMO_MOULD, ItemID.DOUBLE_AMMO_MOULD));
-        } else {
-            task = "Skip deposit";
-            script.log(getClass(), "Skipping cannonball deposit (15% case).");
-        }
-
-        ItemGroupResult bankSnapshot = script.getWidgetManager().getBank().search(Set.of(ItemID.STEEL_BAR));
-
-        if (!bankSnapshot.contains(ItemID.STEEL_BAR)) {
-            script.log(getClass(), "Ran out of supplies. Stopping script.");
-            script.stop();
-            return false;
-        }
-
         task = "Withdraw bars";
-        script.getWidgetManager().getBank().withdraw(ItemID.STEEL_BAR, 27);
+        boolean withdrawed = script.getWidgetManager().getBank().withdraw(ItemID.STEEL_BAR, 27);
         task = "Close bank";
         script.getWidgetManager().getBank().close();
         script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(5000, 7500));
@@ -68,7 +43,12 @@ public class BankTask extends Task {
         task = "Check inventory";
         ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(ItemID.STEEL_BAR));
         if (!inventorySnapshot.contains(ItemID.STEEL_BAR)) {
-            script.log(getClass(), "No steel bars in inventory. Exiting banking logic.");
+            if (withdrawed) {
+                script.log(getClass(), "No steel bars in inventory. Ran out of supplies. Stopping script!");
+                script.stop();
+            } else {
+                script.log(getClass(), "No steel bars in inventory. Exiting banking logic.");
+            }
             return false;
         }
 

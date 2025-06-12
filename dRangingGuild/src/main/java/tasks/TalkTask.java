@@ -269,7 +269,7 @@ public class TalkTask extends Task {
                 script.submitHumanTask(() -> false, script.random(500, 1500));
             } else {
                 script.log(getClass().getSimpleName(), "All attempts failed. Hopping worlds...");
-                script.forceHop();
+                script.getProfileManager().forceHop();
             }
         }
 

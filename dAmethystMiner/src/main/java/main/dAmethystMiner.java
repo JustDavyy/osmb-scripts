@@ -30,11 +30,11 @@ import java.util.List;
         name = "dAmethystMiner",
         description = "Mines and crafts/banks amethyst in the mining guild",
         skillCategory = SkillCategory.MINING,
-        version = 1.1,
+        version = 1.2,
         author = "JustDavyy"
 )
 public class dAmethystMiner extends Script {
-    public static final String scriptVersion = "1.1";
+    public static final String scriptVersion = "1.2";
 
     public static boolean bankMode = false;
     public static boolean craftMode = false;
@@ -277,7 +277,6 @@ public class dAmethystMiner extends Script {
             log("VERSION", "⏬ New version v" + latest + " found! Updating...");
             try {
                 File dir = new File(System.getProperty("user.home") + File.separator + ".osmb" + File.separator + "Scripts");
-                if (!dir.exists()) dir.mkdirs();
                 File[] old = dir.listFiles((d, n) -> n.equals("dAmethystMiner.jar") || n.startsWith("dAmethystMiner-"));
                 if (old != null) for (File f : old) if (f.delete()) log("UPDATE", "🗑 Deleted old: " + f.getName());
 

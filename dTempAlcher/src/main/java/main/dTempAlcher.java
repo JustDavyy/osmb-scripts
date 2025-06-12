@@ -27,11 +27,11 @@ import java.util.List;
         name = "dTemp Alcher",
         description = "Used as a substitute from dPublic Alcher to allow noted items to be alched by choosing a slot ID to alch instead.",
         skillCategory = SkillCategory.MAGIC,
-        version = 1.6,
+        version = 1.7,
         author = "JustDavyy"
 )
 public class dTempAlcher extends Script {
-    public static final String scriptVersion = "1.6";
+    public static final String scriptVersion = "1.7";
     public static boolean setupDone = false;
     public static StandardSpellbook spellToCast;
     public static int alchSlotID;
@@ -232,7 +232,6 @@ public class dTempAlcher extends Script {
                 log("VERSION", "⏬ New version v" + latest + " found! Updating...");
 
                 File dir = new File(System.getProperty("user.home") + File.separator + ".osmb" + File.separator + "Scripts");
-                if (!dir.exists()) dir.mkdirs();
 
                 File[] old = dir.listFiles((d, n) -> n.equals("dTempAlcher.jar") || n.startsWith("dTempAlcher-"));
                 if (old != null) for (File f : old) f.delete();

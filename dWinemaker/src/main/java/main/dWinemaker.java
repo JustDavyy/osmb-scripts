@@ -30,11 +30,11 @@ import java.util.function.Predicate;
         name = "dWinemaker",
         description = "Turns your grapes into Jug of Wines or Wine of Zamorak for hefty cooking experience.",
         skillCategory = SkillCategory.COOKING,
-        version = 1.4,
+        version = 1.5,
         author = "JustDavyy"
 )
 public class dWinemaker extends Script {
-    public static final String scriptVersion = "1.4";
+    public static final String scriptVersion = "1.5";
     public static boolean setupDone = false;
     public static boolean hasReqs;
     public static int grapeID;
@@ -249,7 +249,7 @@ public class dWinemaker extends Script {
             log("VERSION", "⏬ New version v" + latest + " found! Updating...");
             try {
                 File dir = new File(System.getProperty("user.home") + File.separator + ".osmb" + File.separator + "Scripts");
-                if (!dir.exists()) dir.mkdirs();
+
                 File[] old = dir.listFiles((d, n) -> n.equals("dWinemaker.jar") || n.startsWith("dWinemaker-"));
                 if (old != null) for (File f : old) if (f.delete()) log("UPDATE", "🗑 Deleted old: " + f.getName());
 

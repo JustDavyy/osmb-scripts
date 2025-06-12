@@ -35,11 +35,11 @@ import java.util.function.Predicate;
         name = "dCooker",
         description = "Cooks a wide variety of fish and other items at cookable objects.",
         skillCategory = SkillCategory.COOKING,
-        version = 1.8,
+        version = 1.9,
         author = "JustDavyy"
 )
 public class dCooker extends Script {
-    public static String scriptVersion = "1.8";
+    public static String scriptVersion = "1.9";
     public static final String[] BANK_NAMES = {"Bank", "Chest", "Bank booth", "Bank chest", "Grand Exchange booth", "Bank counter", "Bank table"};
     public static final String[] BANK_ACTIONS = {"bank", "open", "use", "bank banker"};
     public static final String[] COOKING_ACTIONS = {"cook"};
@@ -195,7 +195,6 @@ public class dCooker extends Script {
                 try {
                     String userHome = System.getProperty("user.home");
                     File scriptsDir = new File(userHome + File.separator + ".osmb" + File.separator + "Scripts");
-                    if (!scriptsDir.exists()) scriptsDir.mkdirs();
 
                     // Delete old versions
                     File[] oldFiles = scriptsDir.listFiles((dir, name) ->

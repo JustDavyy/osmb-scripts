@@ -33,11 +33,11 @@ import javax.imageio.ImageIO;
         name = "dRangingGuild",
         description = "Trains ranged by doing the ranging guild minigame",
         skillCategory = SkillCategory.COMBAT,
-        version = 1.2,
+        version = 1.3,
         author = "JustDavyy"
 )
 public class dRangingGuild extends Script {
-    public static final String scriptVersion = "1.2";
+    public static final String scriptVersion = "1.3";
     public static boolean setupDone = false;
     public static boolean failSafeNeeded = false;
     public static boolean needsToSwitchGear = false;
@@ -248,7 +248,6 @@ public class dRangingGuild extends Script {
             if (compareVersions(latest) < 0) {
                 log("UPDATE", "⏬ New version v" + latest + " found! Updating...");
                 File dir = new File(System.getProperty("user.home") + File.separator + ".osmb" + File.separator + "Scripts");
-                if (!dir.exists()) dir.mkdirs();
 
                 for (File f : Objects.requireNonNull(dir.listFiles((d, n) -> n.startsWith("dRangingGuild")))) {
                     if (f.delete()) log("UPDATE", "🗑 Deleted old: " + f.getName());
