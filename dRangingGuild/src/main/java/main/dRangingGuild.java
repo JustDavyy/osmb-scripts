@@ -33,11 +33,11 @@ import javax.imageio.ImageIO;
         name = "dRangingGuild",
         description = "Trains ranged by doing the ranging guild minigame",
         skillCategory = SkillCategory.COMBAT,
-        version = 1.3,
+        version = 1.4,
         author = "JustDavyy"
 )
 public class dRangingGuild extends Script {
-    public static final String scriptVersion = "1.3";
+    public static final String scriptVersion = "1.4";
     public static boolean setupDone = false;
     public static boolean failSafeNeeded = false;
     public static boolean needsToSwitchGear = false;
@@ -263,8 +263,7 @@ public class dRangingGuild extends Script {
                 log("UPDATE", "✅ Downloaded: " + out.getName());
                 stop();
             } else {
-                log("SCRIPTVERSION", "✅ You are running a newer version (v" + scriptVersion + ") than the published one (v" + latest + ").");
-                log("SCRIPTVERSION", "🙏 Thank you for testing a development build — your time and feedback are appreciated!");
+                log("SCRIPTVERSION", "✅ You are running the latest version (v" + scriptVersion + ").");
             }
         } catch (Exception e) {
             log("UPDATE", "❌ Error updating: " + e.getMessage());

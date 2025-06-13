@@ -96,6 +96,27 @@ public class TargetView extends ComponentCentered {
         return text.equalsIgnoreCase(TITLE_TEXT);
     }
 
+    public boolean close() {
+        Rectangle bounds = getBounds();
+        if (bounds == null) return false;
+
+        // Use hardcoded position based on UI design
+        int relativeX = 488 - 26;
+        int relativeY = 5;
+        Rectangle closeRect = new Rectangle(bounds.x + relativeX, bounds.y + relativeY, 21, 21);
+
+        core.log(getClass(), "Clicking close button at " + closeRect);
+        boolean tapped = core.getFinger().tap(closeRect);
+        if (!tapped) {
+            core.log(getClass(), "Failed to tap close button.");
+            return false;
+        }
+
+        boolean closed = core.submitHumanTask(() -> !isVisible(), core.random(4000, 8000));
+        core.log(getClass(), closed ? "TargetView closed." : "Timeout waiting for TargetView to close.");
+        return closed;
+    }
+
     public String getResultText() {
         Rectangle bounds = getBounds();
         if (bounds == null) {

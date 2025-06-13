@@ -24,12 +24,15 @@ public class FailSafe extends Task {
 
         // Check if interface is in our way
         if (targetInterface.isVisible()) {
-            WalkConfig noScreenWalk = new WalkConfig.Builder()
-                    .disableWalkScreen(true)
-                    .disableWalkMinimap(false)
-                    .build();
-            script.getWalker().walkTo(minigameArea.getRandomPosition(), noScreenWalk);
-            return script.submitHumanTask(() -> !targetInterface.isVisible(), script.random(2000, 4000));
+            script.log(getClass(), "Target interface is visible, closing it!");
+
+            boolean succeeded = targetInterface.close();
+
+            if (succeeded) {
+                lastTaskRanAt = System.currentTimeMillis();
+            }
+
+            return succeeded;
         }
 
         // Check our position and make sure we're still within the script area
