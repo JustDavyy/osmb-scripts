@@ -40,9 +40,17 @@ public class Setup extends Task {
             return false;
         }
 
+        // Check if we have a fishing barrel in our inventory
+        ItemGroupResult inventorySnapshot2 = script.getWidgetManager().getInventory().search(Set.of(ItemID.FISH_BARREL, ItemID.OPEN_FISH_BARREL));
+
+        if (inventorySnapshot2 == null) {
+            // Inventory not visible
+            return false;
+        }
+
         // Check if we're using fishing barrel
         task = "Check fish barrel";
-        if (inventorySnapshot.containsAny(ItemID.FISH_BARREL, ItemID.OPEN_FISH_BARREL)) {
+        if (inventorySnapshot2.containsAny(ItemID.FISH_BARREL, ItemID.OPEN_FISH_BARREL)) {
             script.log(getClass().getSimpleName(), "Fishing barrel detected in inventory, marking usage as TRUE");
             usingBarrel = true;
         }
