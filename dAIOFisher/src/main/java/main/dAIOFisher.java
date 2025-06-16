@@ -170,6 +170,8 @@ public class dAIOFisher extends Script {
             sendWebhook();
         }
 
+        checkForUpdates();
+
         tasks = Arrays.asList(
                 new Setup(this),
                 new Travel(this),
@@ -196,6 +198,40 @@ public class dAIOFisher extends Script {
             }
         }
         return 0;
+    }
+
+    private void checkForUpdates() {
+        String latest = getLatestVersion("https://raw.githubusercontent.com/JustDavyy/osmb-scripts/main/dAIOFisher/src/main/java/main/dAIOFisher.java");
+
+        if (latest == null) {
+            log("VERSION", "⚠ Could not fetch latest version info.");
+            return;
+        }
+
+        if (compareVersions(scriptVersion, latest) < 0) {
+            log("VERSION", "⏬ New version v" + latest + " found! Updating...");
+            try {
+                File dir = new File(System.getProperty("user.home") + File.separator + ".osmb" + File.separator + "Scripts");
+                File[] old = dir.listFiles((d, n) -> n.equals("dAIOFisher.jar") || n.startsWith("dAIOFisher-"));
+                if (old != null) for (File f : old) if (f.delete()) log("UPDATE", "🗑 Deleted old: " + f.getName());
+
+                File out = new File(dir, "dAIOFisher-" + latest + ".jar");
+                URL url = new URL("https://raw.githubusercontent.com/JustDavyy/osmb-scripts/main/dAIOFisher/jar/dAIOFisher.jar");
+                try (InputStream in = url.openStream(); FileOutputStream fos = new FileOutputStream(out)) {
+                    byte[] buf = new byte[4096];
+                    int n;
+                    while ((n = in.read(buf)) != -1) fos.write(buf, 0, n);
+                }
+
+                log("UPDATE", "✅ Downloaded: " + out.getName());
+                stop();
+
+            } catch (Exception e) {
+                log("UPDATE", "❌ Error downloading new version: " + e.getMessage());
+            }
+        } else {
+            log("SCRIPTVERSION", "✅ You are running the latest version (v" + scriptVersion + ").");
+        }
     }
 
     public String getLatestVersion(String urlString) {
