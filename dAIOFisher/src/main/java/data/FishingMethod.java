@@ -13,6 +13,7 @@ public class FishingMethod {
     private final List<HandlingMode> handlingModes;
     private final List<Integer> requiredTools;
     private final List<Integer> cookedFish;
+    private final List<Integer> burntFish;
     private final String menuEntry;
     private final Set<WorldPosition> fishingSpots;
     private final String cookingObjectName;
@@ -25,6 +26,7 @@ public class FishingMethod {
                          List<HandlingMode> handlingModes,
                          List<Integer> requiredTools,
                          List<Integer> cookedFish,
+                         List<Integer> burntFish,
                          String menuEntry,
                          Set<WorldPosition> fishingSpots,
                          String cookingObjectName,
@@ -36,6 +38,7 @@ public class FishingMethod {
         this.handlingModes = handlingModes;
         this.requiredTools = requiredTools;
         this.cookedFish = cookedFish;
+        this.burntFish = burntFish;
         this.menuEntry = menuEntry;
         this.fishingSpots = fishingSpots;
         this.cookingObjectName = cookingObjectName;
@@ -64,9 +67,14 @@ public class FishingMethod {
         return cookedFish;
     }
 
+    public List<Integer> getBurntFish() {
+        return burntFish;
+    }
+
     public List<Integer> getAllFish() {
         Set<Integer> allFish = new HashSet<>(catchableFish);
         allFish.addAll(cookedFish);
+        allFish.addAll(burntFish);
         return new ArrayList<>(allFish);
     }
 

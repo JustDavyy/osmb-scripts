@@ -23,6 +23,7 @@ public enum FishingLocation {
                             List.of(HandlingMode.BANK, HandlingMode.DROP, HandlingMode.COOK, HandlingMode.COOKnBANK),
                             List.of(ItemID.FLY_FISHING_ROD, ItemID.FEATHER),
                             List.of(ItemID.TROUT, ItemID.SALMON),
+                            List.of(ItemID.BURNT_FISH_343),
                             "Lure",
                             Set.of(
                                     new WorldPosition(3104, 3425, 0),
@@ -42,6 +43,7 @@ public enum FishingLocation {
                             List.of(HandlingMode.BANK, HandlingMode.DROP, HandlingMode.COOK, HandlingMode.COOKnBANK),
                             List.of(ItemID.FISHING_ROD, ItemID.FISHING_BAIT),
                             List.of(ItemID.PIKE),
+                            List.of(ItemID.BURNT_FISH_343),
                             "Bait",
                             Set.of(
                                     new WorldPosition(3104, 3425, 0),
@@ -71,6 +73,7 @@ public enum FishingLocation {
                             List.of(ItemID.LEAPING_TROUT, ItemID.LEAPING_SALMON, ItemID.LEAPING_STURGEON),
                             List.of(HandlingMode.DROP, HandlingMode.BANK),
                             List.of(ItemID.BARBARIAN_ROD, ItemID.FEATHER),
+                            List.of(),
                             List.of(),
                             "Use-rod",
                             Set.of(
@@ -112,6 +115,7 @@ public enum FishingLocation {
                             List.of(ItemID.LEAPING_TROUT, ItemID.LEAPING_SALMON, ItemID.LEAPING_STURGEON),
                             List.of( HandlingMode.DROP, HandlingMode.BANK),
                             List.of(ItemID.BARBARIAN_ROD, ItemID.FEATHER),
+                            List.of(),
                             List.of(),
                             "Use-rod",
                             Set.of(

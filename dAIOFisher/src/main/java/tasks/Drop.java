@@ -3,6 +3,7 @@ package tasks;
 import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.script.Script;
 import utils.Task;
+
 import java.util.*;
 
 import static main.dAIOFisher.*;
@@ -16,29 +17,39 @@ public class Drop extends Task {
     public boolean activate() {
         if (!dropMode) return false;
 
-        List<Integer> relevantFishIds = cookMode
-                ? fishingMethod.getCookedFish()
-                : fishingMethod.getCatchableFish();
+        List<Integer> relevantFishIds = new ArrayList<>(
+                cookMode ? fishingMethod.getCookedFish() : fishingMethod.getCatchableFish()
+        );
+
+        if (cookMode) {
+            relevantFishIds.addAll(fishingMethod.getBurntFish());
+        }
 
         ItemGroupResult inv = script.getWidgetManager().getInventory().search(Set.copyOf(relevantFishIds));
-
         return inv != null && inv.isFull();
     }
 
     public boolean execute() {
         task = getClass().getSimpleName();
 
-        List<Integer> relevantFishIds = cookMode
-                ? fishingMethod.getCookedFish()
-                : fishingMethod.getCatchableFish();
+        List<Integer> relevantFishIds = new ArrayList<>(
+                cookMode ? fishingMethod.getCookedFish() : fishingMethod.getCatchableFish()
+        );
+
+        if (cookMode) {
+            relevantFishIds.addAll(fishingMethod.getBurntFish());
+        }
 
         if (relevantFishIds.isEmpty()) return false;
 
         ItemGroupResult inv = script.getWidgetManager().getInventory().search(Set.copyOf(relevantFishIds));
         if (inv == null) return false;
 
-        for (int i = 0; i < relevantFishIds.size(); i++) {
-            int id = relevantFishIds.get(i);
+        List<Integer> cooked = cookMode ? fishingMethod.getCookedFish() : Collections.emptyList();
+        List<Integer> burnt = cookMode ? fishingMethod.getBurntFish() : Collections.emptyList();
+
+        for (int i = 0; i < cooked.size(); i++) {
+            int id = cooked.get(i);
             int count = inv.getAmount(id);
 
             switch (i) {
@@ -51,6 +62,10 @@ public class Drop extends Task {
                 case 6 -> fish7Caught += count;
                 case 7 -> fish8Caught += count;
             }
+        }
+
+        for (Integer burntId : burnt) {
+            fish1Caught += inv.getAmount(burntId);
         }
 
         Set<Integer> dropIds = Set.copyOf(relevantFishIds);
