@@ -152,6 +152,7 @@ public enum FishingLocation {
 //                            List.of(HandlingMode.DROP, HandlingMode.BANK),
 //                            List.of(ItemID.BARBARIAN_ROD, ItemID.FEATHER),
 //                            List.of(),
+//                            List.of(),
 //                            "Use-rod",
 //                            Set.of(
 //                                    // North

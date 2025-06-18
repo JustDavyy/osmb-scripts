@@ -107,7 +107,7 @@ public class MineTask extends Task {
         Polygon poly = targetVein.getConvexHull();
         if (poly == null) return false;
 
-        MenuHook hook = getVeinMenuHook(targetVein);
+        MenuHook hook = getVeinMenuHook();
         if (!script.getFinger().tapGameScreen(poly, hook)) {
             objectPositionBlacklist.put(targetVein.getWorldPosition(), System.currentTimeMillis());
             return false;
@@ -157,7 +157,7 @@ public class MineTask extends Task {
         return active;
     }
 
-    private MenuHook getVeinMenuHook(RSObject vein) {
+    private MenuHook getVeinMenuHook() {
         return menuEntries -> {
             for (MenuEntry entry : menuEntries) {
                 if (entry.getRawText().equalsIgnoreCase("mine calcified rocks")) {
@@ -196,7 +196,7 @@ public class MineTask extends Task {
 
     private void waitUntilFinishedMining(RSObject vein) {
         AtomicInteger localMinedCount = new AtomicInteger(0);
-        int maxMiningDuration = (int) script.random(240_000, 270_000);
+        int maxMiningDuration = script.random(240_000, 270_000);
 
         ItemGroupResult startSnapshot = script.getWidgetManager().getInventory().search(Set.of(ItemID.BLESSED_BONE_SHARDS));
         if (startSnapshot == null) {
@@ -254,13 +254,16 @@ public class MineTask extends Task {
             if (currentCount > lastCount) {
                 int gained = currentCount - lastCount;
 
-                if (gained > 10) {
+                // Allow large increments that are exact multiples of 1000
+                boolean isStackedIncrement = lastCount >= 100_000 && gained % 1000 == 0 && gained <= 10_000;
+
+                if (gained > 10 && !isStackedIncrement) {
                     script.log(getClass(), "Ignored suspicious shard jump: +" + gained +
                             " (from " + lastCount + " to " + currentCount + ")");
                 } else {
                     previousCount.set(currentCount);
                     blessedShardCount += gained;
-                    miningXpGained += 33;
+                    miningXpGained += 33 * gained;
                     localMinedCount.addAndGet(gained);
                     animationTimer.reset();
                     debounceTimer.reset();
@@ -268,7 +271,6 @@ public class MineTask extends Task {
                     script.log(getClass(), "+" + gained + " blessed shard(s) mined! (" + blessedShardCount + " in total)");
                 }
             } else if (currentCount < lastCount) {
-                // Inventory count went down — probably a bad read, reset to current safely
                 script.log(getClass(), "Detected shard count drop (from " + lastCount + " to " + currentCount + "). Syncing.");
                 previousCount.set(currentCount);
             }
