@@ -30,11 +30,11 @@ import java.util.function.Predicate;
         name = "dWinemaker",
         description = "Turns your grapes into Jug of Wines or Wine of Zamorak for hefty cooking experience.",
         skillCategory = SkillCategory.COOKING,
-        version = 1.5,
+        version = 1.6,
         author = "JustDavyy"
 )
 public class dWinemaker extends Script {
-    public static final String scriptVersion = "1.5";
+    public static final String scriptVersion = "1.6";
     public static boolean setupDone = false;
     public static boolean hasReqs;
     public static int grapeID;

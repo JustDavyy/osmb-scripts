@@ -30,11 +30,11 @@ import javax.imageio.ImageIO;
         name = "dAIOFisher",
         description = "AIO Fisher that fishes, banks and/or drops to get those gains!",
         skillCategory = SkillCategory.FISHING,
-        version = 1.2,
+        version = 1.3,
         author = "JustDavyy"
 )
 public class dAIOFisher extends Script {
-    public static String scriptVersion = "1.2";
+    public static String scriptVersion = "1.3";
     public static boolean setupDone = false;
     public static boolean usingBarrel = false;
     private static final java.awt.Font ARIEL = java.awt.Font.getFont("Ariel");
