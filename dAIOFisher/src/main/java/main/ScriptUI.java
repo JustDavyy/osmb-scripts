@@ -206,7 +206,7 @@ public class ScriptUI {
             }
         } else {
             fishCycleIndex = 0;
-            fishCycleTimeline = new Timeline(new KeyFrame(Duration.seconds(2), e -> {
+            fishCycleTimeline = new Timeline(new KeyFrame(Duration.seconds(0.5), e -> {
                 fishPreviewBox.getChildren().clear();
                 for (int i = 0; i < 3; i++) {
                     int index = (fishCycleIndex + i) % fishList.size();

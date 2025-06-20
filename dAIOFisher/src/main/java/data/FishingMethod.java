@@ -126,8 +126,9 @@ public class FishingMethod {
 
     public boolean isStackableFish(int itemId) {
         return switch (itemId) {
-            case ItemID.RAW_KARAMBWANJI -> true;
-            // Add more stackable fish IDs here
+            // We also include 'big' versions here so they don't get dropped!
+            case ItemID.RAW_KARAMBWANJI, ItemID.BIG_SHARK,
+                 ItemID.BIG_SWORDFISH, ItemID.BIG_BASS -> true;
             default -> false;
         };
     }

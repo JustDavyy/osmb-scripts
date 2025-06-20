@@ -518,6 +518,1070 @@ public enum FishingLocation {
                             35000
                     )
             )
+    ),
+    Farming_Guild(
+            new RectangleArea(1262, 3700, 17, 11, 0), // Main fishing area
+            List.of(
+                    new RectangleArea(1270, 3708, 4, 1, 0)
+            ), // Fishing spot areas
+            new RectangleArea(0, 0, 0, 0, 0), // Bank area
+            List.of(
+                    new FishingMethod(
+                            "Fly Fishing Rod (Feathers)",
+                            List.of(ItemID.RAW_TROUT, ItemID.RAW_SALMON),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.FLY_FISHING_ROD, ItemID.FEATHER),
+                            List.of(ItemID.TROUT, ItemID.SALMON),
+                            List.of(ItemID.BURNT_FISH_343),
+                            "Lure",
+                            Set.of(
+                                    new WorldPosition(1271, 3707, 0),
+                                    new WorldPosition(1272, 3707, 0),
+                                    new WorldPosition(1273, 3707, 0),
+                                    new WorldPosition(1267, 3703, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            20000
+                    ),
+                    new FishingMethod(
+                            "Fishing Rod (Bait)",
+                            List.of(ItemID.RAW_PIKE),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.FISHING_ROD, ItemID.FISHING_BAIT),
+                            List.of(ItemID.PIKE),
+                            List.of(ItemID.BURNT_FISH_343),
+                            "Bait",
+                            Set.of(
+                                    new WorldPosition(1271, 3707, 0),
+                                    new WorldPosition(1272, 3707, 0),
+                                    new WorldPosition(1273, 3707, 0),
+                                    new WorldPosition(1267, 3703, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            30000
+                    )
+            )
+    ),
+    Chaos_Druid_Tower(
+            new RectangleArea(2557, 3362, 12, 13, 0), // Main fishing area
+            List.of(
+                    new RectangleArea(2561, 3369, 3, 3, 0)
+            ), // Fishing spot areas
+            new RectangleArea(0, 0, 0, 0, 0), // Bank area
+            List.of(
+                    new FishingMethod(
+                            "Fly Fishing Rod (Feathers)",
+                            List.of(ItemID.RAW_TROUT, ItemID.RAW_SALMON),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.FLY_FISHING_ROD, ItemID.FEATHER),
+                            List.of(ItemID.TROUT, ItemID.SALMON),
+                            List.of(ItemID.BURNT_FISH_343),
+                            "Lure",
+                            Set.of(
+                                    new WorldPosition(2566, 3369, 0),
+                                    new WorldPosition(2566, 3370, 0),
+                                    new WorldPosition(2561, 3374, 0),
+                                    new WorldPosition(2562, 3374, 0),
+                                    new WorldPosition(2568, 3365, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            20000
+                    ),
+                    new FishingMethod(
+                            "Fishing Rod (Bait)",
+                            List.of(ItemID.RAW_PIKE),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.FISHING_ROD, ItemID.FISHING_BAIT),
+                            List.of(ItemID.PIKE),
+                            List.of(ItemID.BURNT_FISH_343),
+                            "Bait",
+                            Set.of(
+                                    new WorldPosition(2566, 3369, 0),
+                                    new WorldPosition(2566, 3370, 0),
+                                    new WorldPosition(2561, 3374, 0),
+                                    new WorldPosition(2562, 3374, 0),
+                                    new WorldPosition(2568, 3365, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            30000
+                    )
+            )
+    ),
+    Lumbridge_Goblins(
+            new RectangleArea(3238, 3239, 5, 20, 0), // Main fishing area
+            List.of(
+                    new RectangleArea(3239, 3252, 1, 6, 0),
+                    new RectangleArea(3240, 3241, 2, 3, 0)
+            ), // Fishing spot areas
+            new RectangleArea(0, 0, 0, 0, 0), // Bank area
+            List.of(
+                    new FishingMethod(
+                            "Fly Fishing Rod (Feathers)",
+                            List.of(ItemID.RAW_TROUT, ItemID.RAW_SALMON),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.FLY_FISHING_ROD, ItemID.FEATHER),
+                            List.of(ItemID.TROUT, ItemID.SALMON),
+                            List.of(ItemID.BURNT_FISH_343),
+                            "Lure",
+                            Set.of(
+                                    // North
+                                    new WorldPosition(3238, 3255, 0),
+                                    new WorldPosition(3238, 3254, 0),
+                                    new WorldPosition(3238, 3253, 0),
+                                    new WorldPosition(3238, 3252, 0),
+                                    new WorldPosition(3238, 3251, 0),
+
+                                    // South
+                                    new WorldPosition(3239, 3243, 0),
+                                    new WorldPosition(3239, 3242, 0),
+                                    new WorldPosition(3239, 3241, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            20000
+                    ),
+                    new FishingMethod(
+                            "Fishing Rod (Bait)",
+                            List.of(ItemID.RAW_PIKE),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.FISHING_ROD, ItemID.FISHING_BAIT),
+                            List.of(ItemID.PIKE),
+                            List.of(ItemID.BURNT_FISH_343),
+                            "Bait",
+                            Set.of(
+                                    // North
+                                    new WorldPosition(3238, 3255, 0),
+                                    new WorldPosition(3238, 3254, 0),
+                                    new WorldPosition(3238, 3253, 0),
+                                    new WorldPosition(3238, 3252, 0),
+                                    new WorldPosition(3238, 3251, 0),
+
+                                    // South
+                                    new WorldPosition(3239, 3243, 0),
+                                    new WorldPosition(3239, 3242, 0),
+                                    new WorldPosition(3239, 3241, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            30000
+                    )
+            )
+    ),
+    Lumbridge_Swamp(
+            new RectangleArea(3236, 3142, 9, 12, 0), // Main fishing area
+            List.of(
+                    new RectangleArea(3240, 3150, 3, 3, 0),
+                    new RectangleArea(3239, 3142, 1, 2, 0)
+            ), // Fishing spot areas
+            new RectangleArea(0, 0, 0, 0, 0), // Bank area
+            List.of(
+                    new FishingMethod(
+                            "Fishing Rod (Bait)",
+                            List.of(ItemID.RAW_SARDINE, ItemID.RAW_HERRING),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.FISHING_ROD, ItemID.FISHING_BAIT),
+                            List.of(),
+                            List.of(),
+                            "Bait",
+                            Set.of(
+                                    new WorldPosition(3246, 3155, 0),
+                                    new WorldPosition(3245, 3152, 0),
+                                    new WorldPosition(3244, 3150, 0),
+                                    new WorldPosition(3241, 3148, 0),
+                                    new WorldPosition(3242, 3148, 0),
+                                    new WorldPosition(3240, 3146, 0),
+                                    new WorldPosition(3240, 3147, 0),
+                                    new WorldPosition(3242, 3143, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            25000
+                    ),
+                    new FishingMethod(
+                            "Small Fishing Net",
+                            List.of(ItemID.RAW_SHRIMPS, ItemID.RAW_ANCHOVIES),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.SMALL_FISHING_NET),
+                            List.of(),
+                            List.of(),
+                            "Net",
+                            Set.of(
+                                    new WorldPosition(3246, 3155, 0),
+                                    new WorldPosition(3245, 3152, 0),
+                                    new WorldPosition(3244, 3150, 0),
+                                    new WorldPosition(3241, 3148, 0),
+                                    new WorldPosition(3242, 3148, 0),
+                                    new WorldPosition(3240, 3146, 0),
+                                    new WorldPosition(3240, 3147, 0),
+                                    new WorldPosition(3242, 3143, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            25000
+                    )
+            )
+    ),
+    Seers_SinclairMansion(
+            new RectangleArea(2711, 3518, 24, 18, 0), // Main fishing area
+            List.of(
+                    new RectangleArea(2725, 3525, 4, 2, 0),
+                    new RectangleArea(2715, 3531, 2, 2, 0)
+            ), // Fishing spot areas
+            new RectangleArea(2723, 3490, 6, 3, 0), // Bank area
+            List.of(
+                    new FishingMethod(
+                            "Fly Fishing Rod (Feathers)",
+                            List.of(ItemID.RAW_TROUT, ItemID.RAW_SALMON),
+                            List.of(HandlingMode.DROP, HandlingMode.BANK),
+                            List.of(ItemID.FLY_FISHING_ROD, ItemID.FEATHER),
+                            List.of(ItemID.TROUT, ItemID.SALMON),
+                            List.of(ItemID.BURNT_FISH_343),
+                            "Lure",
+                            Set.of(
+                                    // West
+                                    new WorldPosition(2714, 3533, 0),
+                                    new WorldPosition(2714, 3532, 0),
+                                    new WorldPosition(2716, 3530, 0),
+                                    new WorldPosition(2718, 3529, 0),
+
+                                    // South
+                                    new WorldPosition(2726, 2524, 0),
+                                    new WorldPosition(2727, 2524, 0),
+                                    new WorldPosition(2728, 3524, 0)
+                            ),
+                            "None",
+                            "None",
+                            "Bank deposit box",
+                            "Deposit",
+                            FishingMethod.BankObjectType.DEPOSIT_BOX,
+                            20000
+                    ),
+                    new FishingMethod(
+                            "Fishing Rod (Bait)",
+                            List.of(ItemID.RAW_PIKE),
+                            List.of(HandlingMode.DROP, HandlingMode.BANK),
+                            List.of(ItemID.FISHING_ROD, ItemID.FISHING_BAIT),
+                            List.of(ItemID.PIKE),
+                            List.of(ItemID.BURNT_FISH_343),
+                            "Bait",
+                            Set.of(
+                                    // West
+                                    new WorldPosition(2714, 3533, 0),
+                                    new WorldPosition(2714, 3532, 0),
+                                    new WorldPosition(2716, 3530, 0),
+                                    new WorldPosition(2718, 3529, 0),
+
+                                    // South
+                                    new WorldPosition(2726, 2524, 0),
+                                    new WorldPosition(2727, 2524, 0),
+                                    new WorldPosition(2728, 3524, 0)
+                            ),
+                            "None",
+                            "None",
+                            "Bank deposit box",
+                            "Deposit",
+                            FishingMethod.BankObjectType.DEPOSIT_BOX,
+                            30000
+                    )
+            )
+    ),
+    Rellekka_WestPier(
+            new RectangleArea(2630, 3687, 2, 8, 0), // Main fishing area
+            List.of(
+                    new RectangleArea(2631, 3690, 1, 3, 0)
+            ), // Fishing spot areas
+            new RectangleArea(0, 0, 0, 0, 0), // Bank area
+            List.of(
+                    new FishingMethod(
+                            "Fishing Rod (Bait)",
+                            List.of(ItemID.RAW_SARDINE, ItemID.RAW_HERRING),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.FISHING_ROD, ItemID.FISHING_BAIT),
+                            List.of(),
+                            List.of(),
+                            "Bait",
+                            Set.of(
+                                    new WorldPosition(2633, 3693, 0),
+                                    new WorldPosition(2633, 3692, 0),
+                                    new WorldPosition(2633, 3691, 0),
+                                    new WorldPosition(2633, 3690, 0),
+                                    new WorldPosition(2633, 3689, 0),
+                                    new WorldPosition(2633, 3688, 0),
+                                    new WorldPosition(2633, 3687, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            25000
+                    ),
+                    new FishingMethod(
+                            "Small Fishing Net",
+                            List.of(ItemID.RAW_SHRIMPS, ItemID.RAW_ANCHOVIES),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.SMALL_FISHING_NET),
+                            List.of(),
+                            List.of(),
+                            "Small Net",
+                            Set.of(
+                                    new WorldPosition(2633, 3693, 0),
+                                    new WorldPosition(2633, 3692, 0),
+                                    new WorldPosition(2633, 3691, 0),
+                                    new WorldPosition(2633, 3690, 0),
+                                    new WorldPosition(2633, 3689, 0),
+                                    new WorldPosition(2633, 3688, 0),
+                                    new WorldPosition(2633, 3687, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            25000
+                    )
+            )
+    ),
+    Rellekka_MiddlePier(
+            new RectangleArea(2640, 3691, 1, 8, 0), // Main fishing area
+            List.of(
+                    new RectangleArea(2640, 3694, 1, 4, 0)
+            ), // Fishing spot areas
+            new RectangleArea(0, 0, 0, 0, 0), // Bank area
+            List.of(
+                    new FishingMethod(
+                            "Pot",
+                            List.of(ItemID.RAW_LOBSTER),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.LOBSTER_POT),
+                            List.of(),
+                            List.of(),
+                            "Cage",
+                            Set.of(
+                                    new WorldPosition(2640, 3700, 0),
+                                    new WorldPosition(2639, 3695, 0),
+                                    new WorldPosition(2639, 3694, 0),
+                                    new WorldPosition(2639, 3693, 0),
+                                    new WorldPosition(2642, 3699, 0),
+                                    new WorldPosition(2642, 3698, 0),
+                                    new WorldPosition(2642, 3697, 0),
+                                    new WorldPosition(2642, 3696, 0),
+                                    new WorldPosition(2642, 3695, 0),
+                                    new WorldPosition(2642, 3694, 0),
+                                    new WorldPosition(2642, 3693, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            42500
+                    ),
+                    new FishingMethod(
+                            "Harpoon",
+                            List.of(ItemID.RAW_TUNA, ItemID.RAW_SWORDFISH, ItemID.BIG_SWORDFISH),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.HARPOON),
+                            List.of(),
+                            List.of(),
+                            "Harpoon",
+                            Set.of(
+                                    new WorldPosition(2640, 3700, 0),
+                                    new WorldPosition(2639, 3695, 0),
+                                    new WorldPosition(2639, 3694, 0),
+                                    new WorldPosition(2639, 3693, 0),
+                                    new WorldPosition(2642, 3699, 0),
+                                    new WorldPosition(2642, 3698, 0),
+                                    new WorldPosition(2642, 3697, 0),
+                                    new WorldPosition(2642, 3696, 0),
+                                    new WorldPosition(2642, 3695, 0),
+                                    new WorldPosition(2642, 3694, 0),
+                                    new WorldPosition(2642, 3693, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            50000
+                    )
+            )
+    ),
+    Rellekka_NorthPier(
+            new RectangleArea(2641, 3709, 8, 1, 0), // Main fishing area
+            List.of(
+                    new RectangleArea(2643, 3709, 3, 1, 0)
+            ), // Fishing spot areas
+            new RectangleArea(0, 0, 0, 0, 0), // Bank area
+            List.of(
+                    new FishingMethod(
+                            "Harpoon",
+                            List.of(ItemID.RAW_SHARK, ItemID.BIG_SHARK),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.HARPOON),
+                            List.of(),
+                            List.of(),
+                            "Harpoon",
+                            Set.of(
+                                    new WorldPosition(2648, 3708, 0),
+                                    new WorldPosition(2647, 3708, 0),
+                                    new WorldPosition(2646, 3708, 0),
+                                    new WorldPosition(2645, 3708, 0),
+                                    new WorldPosition(2644, 3708, 0),
+                                    new WorldPosition(2643, 3708, 0),
+                                    new WorldPosition(2642, 3708, 0),
+                                    new WorldPosition(2641, 3708, 0),
+                                    new WorldPosition(2647, 3711, 0),
+                                    new WorldPosition(2648, 3711, 0),
+                                    new WorldPosition(2640, 3710, 0),
+                                    new WorldPosition(2640, 3709, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            90000
+                    ),
+                    new FishingMethod(
+                            "Big Net",
+                            List.of(ItemID.RAW_MACKEREL, ItemID.RAW_COD, ItemID.RAW_BASS, ItemID.BIG_BASS, ItemID.CASKET, ItemID.LEATHER_BOOTS, ItemID.LEATHER_GLOVES, ItemID.OYSTER, ItemID.SEAWEED),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.BIG_FISHING_NET),
+                            List.of(),
+                            List.of(),
+                            "Big Net",
+                            Set.of(
+                                    new WorldPosition(2648, 3708, 0),
+                                    new WorldPosition(2647, 3708, 0),
+                                    new WorldPosition(2646, 3708, 0),
+                                    new WorldPosition(2645, 3708, 0),
+                                    new WorldPosition(2644, 3708, 0),
+                                    new WorldPosition(2643, 3708, 0),
+                                    new WorldPosition(2642, 3708, 0),
+                                    new WorldPosition(2641, 3708, 0),
+                                    new WorldPosition(2647, 3711, 0),
+                                    new WorldPosition(2648, 3711, 0),
+                                    new WorldPosition(2640, 3710, 0),
+                                    new WorldPosition(2640, 3709, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            40000
+                    )
+            )
+    ),
+    Jatizso(
+            new RectangleArea(2405, 3781, 18, 1, 0), // Main fishing area
+            List.of(
+                    new RectangleArea(2411, 3781, 4, 1, 0)
+            ), // Fishing spot areas
+            new RectangleArea(0, 0, 0, 0, 0), // Bank area
+            List.of(
+                    new FishingMethod(
+                            "Harpoon",
+                            List.of(ItemID.RAW_TUNA, ItemID.RAW_SWORDFISH, ItemID.RAW_SHARK, ItemID.BIG_SWORDFISH, ItemID.BIG_SHARK),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.HARPOON),
+                            List.of(),
+                            List.of(),
+                            "Harpoon",
+                            Set.of(
+                                    new WorldPosition(2407, 3783, 0),
+                                    new WorldPosition(2408, 3783, 0),
+                                    new WorldPosition(2409, 3783, 0),
+                                    new WorldPosition(2410, 3783, 0),
+                                    new WorldPosition(2411, 3783, 0),
+                                    new WorldPosition(2412, 3783, 0),
+                                    new WorldPosition(2413, 3783, 0),
+                                    new WorldPosition(2414, 3783, 0),
+                                    new WorldPosition(2415, 3783, 0),
+                                    new WorldPosition(2416, 3783, 0),
+                                    new WorldPosition(2417, 3783, 0),
+                                    new WorldPosition(2418, 3783, 0),
+                                    new WorldPosition(2419, 3783, 0),
+                                    new WorldPosition(2420, 3783, 0),
+                                    new WorldPosition(2421, 3783, 0),
+                                    new WorldPosition(2422, 3783, 0),
+                                    new WorldPosition(2423, 3783, 0),
+                                    new WorldPosition(2424, 3781, 0),
+                                    new WorldPosition(2424, 3782, 0),
+                                    new WorldPosition(2406, 3780, 0),
+                                    new WorldPosition(2407, 3780, 0),
+                                    new WorldPosition(2408, 3780, 0),
+                                    new WorldPosition(2409, 3780, 0),
+                                    new WorldPosition(2410, 3780, 0),
+                                    new WorldPosition(2411, 3780, 0),
+                                    new WorldPosition(2412, 3780, 0),
+                                    new WorldPosition(2413, 3780, 0),
+                                    new WorldPosition(2414, 3780, 0),
+                                    new WorldPosition(2415, 3780, 0),
+                                    new WorldPosition(2416, 3780, 0),
+                                    new WorldPosition(2417, 3780, 0),
+                                    new WorldPosition(2418, 3780, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            90000
+                    ),
+                    new FishingMethod(
+                            "Pot",
+                            List.of(ItemID.RAW_LOBSTER),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.LOBSTER_POT),
+                            List.of(),
+                            List.of(),
+                            "Cage",
+                            Set.of(
+                                    new WorldPosition(2407, 3783, 0),
+                                    new WorldPosition(2408, 3783, 0),
+                                    new WorldPosition(2409, 3783, 0),
+                                    new WorldPosition(2410, 3783, 0),
+                                    new WorldPosition(2411, 3783, 0),
+                                    new WorldPosition(2412, 3783, 0),
+                                    new WorldPosition(2413, 3783, 0),
+                                    new WorldPosition(2414, 3783, 0),
+                                    new WorldPosition(2415, 3783, 0),
+                                    new WorldPosition(2416, 3783, 0),
+                                    new WorldPosition(2417, 3783, 0),
+                                    new WorldPosition(2418, 3783, 0),
+                                    new WorldPosition(2419, 3783, 0),
+                                    new WorldPosition(2420, 3783, 0),
+                                    new WorldPosition(2421, 3783, 0),
+                                    new WorldPosition(2422, 3783, 0),
+                                    new WorldPosition(2423, 3783, 0),
+                                    new WorldPosition(2424, 3781, 0),
+                                    new WorldPosition(2424, 3782, 0),
+                                    new WorldPosition(2406, 3780, 0),
+                                    new WorldPosition(2407, 3780, 0),
+                                    new WorldPosition(2408, 3780, 0),
+                                    new WorldPosition(2409, 3780, 0),
+                                    new WorldPosition(2410, 3780, 0),
+                                    new WorldPosition(2411, 3780, 0),
+                                    new WorldPosition(2412, 3780, 0),
+                                    new WorldPosition(2413, 3780, 0),
+                                    new WorldPosition(2414, 3780, 0),
+                                    new WorldPosition(2415, 3780, 0),
+                                    new WorldPosition(2416, 3780, 0),
+                                    new WorldPosition(2417, 3780, 0),
+                                    new WorldPosition(2418, 3780, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            42500
+                    ),
+                    new FishingMethod(
+                            "Big Net",
+                            List.of(ItemID.RAW_MACKEREL, ItemID.RAW_COD, ItemID.RAW_BASS, ItemID.BIG_BASS, ItemID.CASKET, ItemID.LEATHER_BOOTS, ItemID.LEATHER_GLOVES, ItemID.OYSTER, ItemID.SEAWEED),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.BIG_FISHING_NET),
+                            List.of(),
+                            List.of(),
+                            "Net",
+                            Set.of(
+                                    new WorldPosition(2407, 3783, 0),
+                                    new WorldPosition(2408, 3783, 0),
+                                    new WorldPosition(2409, 3783, 0),
+                                    new WorldPosition(2410, 3783, 0),
+                                    new WorldPosition(2411, 3783, 0),
+                                    new WorldPosition(2412, 3783, 0),
+                                    new WorldPosition(2413, 3783, 0),
+                                    new WorldPosition(2414, 3783, 0),
+                                    new WorldPosition(2415, 3783, 0),
+                                    new WorldPosition(2416, 3783, 0),
+                                    new WorldPosition(2417, 3783, 0),
+                                    new WorldPosition(2418, 3783, 0),
+                                    new WorldPosition(2419, 3783, 0),
+                                    new WorldPosition(2420, 3783, 0),
+                                    new WorldPosition(2421, 3783, 0),
+                                    new WorldPosition(2422, 3783, 0),
+                                    new WorldPosition(2423, 3783, 0),
+                                    new WorldPosition(2424, 3781, 0),
+                                    new WorldPosition(2424, 3782, 0),
+                                    new WorldPosition(2406, 3780, 0),
+                                    new WorldPosition(2407, 3780, 0),
+                                    new WorldPosition(2408, 3780, 0),
+                                    new WorldPosition(2409, 3780, 0),
+                                    new WorldPosition(2410, 3780, 0),
+                                    new WorldPosition(2411, 3780, 0),
+                                    new WorldPosition(2412, 3780, 0),
+                                    new WorldPosition(2413, 3780, 0),
+                                    new WorldPosition(2414, 3780, 0),
+                                    new WorldPosition(2415, 3780, 0),
+                                    new WorldPosition(2416, 3780, 0),
+                                    new WorldPosition(2417, 3780, 0),
+                                    new WorldPosition(2418, 3780, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            40000
+                    )
+            )
+    ),
+    Hosidius_West(
+            new RectangleArea(1709, 3606, 6, 9, 0), // Main fishing area
+            List.of(
+                    new RectangleArea(1713, 3610, 1, 2, 0)
+            ), // Fishing spot areas
+            new RectangleArea(1751, 3594, 5, 5, 0), // Bank area
+            List.of(
+                    new FishingMethod(
+                            "Fly Fishing Rod (Feathers)",
+                            List.of(ItemID.RAW_TROUT, ItemID.RAW_SALMON),
+                            List.of(HandlingMode.DROP, HandlingMode.BANK),
+                            List.of(ItemID.FLY_FISHING_ROD, ItemID.FEATHER),
+                            List.of(ItemID.TROUT, ItemID.SALMON),
+                            List.of(ItemID.BURNT_FISH_343),
+                            "Lure",
+                            Set.of(
+                                    new WorldPosition(1715, 3613, 0),
+                                    new WorldPosition(1715, 3612, 0),
+                                    new WorldPosition(1715, 3611, 0),
+                                    new WorldPosition(1715, 3610, 0),
+                                    new WorldPosition(1714, 3607, 0),
+                                    new WorldPosition(1714, 3606, 0)
+                            ),
+                            "None",
+                            "None",
+                            "Bank deposit box",
+                            "Deposit",
+                            FishingMethod.BankObjectType.DEPOSIT_BOX,
+                            20000
+                    ),
+                    new FishingMethod(
+                            "Fishing Rod (Bait)",
+                            List.of(ItemID.RAW_PIKE),
+                            List.of(HandlingMode.DROP, HandlingMode.BANK),
+                            List.of(ItemID.FISHING_ROD, ItemID.FISHING_BAIT),
+                            List.of(ItemID.PIKE),
+                            List.of(ItemID.BURNT_FISH_343),
+                            "Bait",
+                            Set.of(
+                                    new WorldPosition(1715, 3613, 0),
+                                    new WorldPosition(1715, 3612, 0),
+                                    new WorldPosition(1715, 3611, 0),
+                                    new WorldPosition(1715, 3610, 0),
+                                    new WorldPosition(1714, 3607, 0),
+                                    new WorldPosition(1714, 3606, 0)
+                            ),
+                            "None",
+                            "None",
+                            "Bank deposit box",
+                            "Deposit",
+                            FishingMethod.BankObjectType.DEPOSIT_BOX,
+                            30000
+                    )
+            )
+    ),
+    Lands_End_East(
+            new RectangleArea(1524, 3414, 27, 6, 0), // Main fishing area
+            List.of(
+                    new RectangleArea(1540, 3418, 2, 1, 0),
+                    new RectangleArea(1533, 3416, 4, 1, 0)
+            ), // Fishing spot areas
+            new RectangleArea(1508, 3420, 5, 3, 0), // Bank area
+            List.of(
+                    new FishingMethod(
+                            "Small Fishing Net",
+                            List.of(ItemID.RAW_SHRIMPS, ItemID.RAW_ANCHOVIES),
+                            List.of(HandlingMode.DROP, HandlingMode.BANK),
+                            List.of(ItemID.SMALL_FISHING_NET),
+                            List.of(),
+                            List.of(),
+                            "Small Net",
+                            Set.of(
+                                    // West
+                                    new WorldPosition(1534, 3414, 0),
+                                    new WorldPosition(1535, 3414, 0),
+                                    new WorldPosition(1536, 3414, 0),
+
+                                    // East
+                                    new WorldPosition(1541, 3417, 0),
+                                    new WorldPosition(1542, 3417, 0),
+                                    new WorldPosition(1543, 3417, 0)
+                            ),
+                            "None",
+                            "None",
+                            "Bank chest",
+                            "Use",
+                            FishingMethod.BankObjectType.BANK,
+                            25000
+                    ),
+                    new FishingMethod(
+                            "Fishing Rod (Bait)",
+                            List.of(ItemID.RAW_SARDINE, ItemID.RAW_HERRING),
+                            List.of(HandlingMode.DROP, HandlingMode.BANK),
+                            List.of(ItemID.FISHING_ROD, ItemID.FISHING_BAIT),
+                            List.of(),
+                            List.of(),
+                            "Bait",
+                            Set.of(
+                                    // West
+                                    new WorldPosition(1534, 3414, 0),
+                                    new WorldPosition(1535, 3414, 0),
+                                    new WorldPosition(1536, 3414, 0),
+
+                                    // East
+                                    new WorldPosition(1541, 3417, 0),
+                                    new WorldPosition(1542, 3417, 0),
+                                    new WorldPosition(1543, 3417, 0)
+                            ),
+                            "None",
+                            "None",
+                            "Bank chest",
+                            "Use",
+                            FishingMethod.BankObjectType.BANK,
+                            25000
+                    )
+            )
+    ),
+    Lands_End_West(
+            new RectangleArea(1479, 3426, 19, 21, 0), // Main fishing area
+            List.of(
+                    new RectangleArea(1486, 3431, 2, 2, 0),
+                    new RectangleArea(1495, 3440, 2, 4, 0)
+            ), // Fishing spot areas
+            new RectangleArea(1508, 3420, 5, 3, 0), // Bank area
+            List.of(
+                    new FishingMethod(
+                            "Small Fishing Net",
+                            List.of(ItemID.RAW_SHRIMPS, ItemID.RAW_ANCHOVIES),
+                            List.of(HandlingMode.DROP, HandlingMode.BANK),
+                            List.of(ItemID.SMALL_FISHING_NET),
+                            List.of(),
+                            List.of(),
+                            "Small Net",
+                            Set.of(
+                                    // North
+                                    new WorldPosition(1494, 3443, 0),
+                                    new WorldPosition(1493, 3442, 0),
+
+                                    // South
+                                    new WorldPosition(1485, 3433, 0),
+                                    new WorldPosition(1485, 3432, 0),
+                                    new WorldPosition(1485, 3431, 0)
+                            ),
+                            "None",
+                            "None",
+                            "Bank chest",
+                            "Use",
+                            FishingMethod.BankObjectType.BANK,
+                            25000
+                    ),
+                    new FishingMethod(
+                            "Fishing Rod (Bait)",
+                            List.of(ItemID.RAW_SARDINE, ItemID.RAW_HERRING),
+                            List.of(HandlingMode.DROP, HandlingMode.BANK),
+                            List.of(ItemID.FISHING_ROD, ItemID.FISHING_BAIT),
+                            List.of(),
+                            List.of(),
+                            "Bait",
+                            Set.of(
+                                    // North
+                                    new WorldPosition(1494, 3443, 0),
+                                    new WorldPosition(1493, 3442, 0),
+
+                                    // South
+                                    new WorldPosition(1485, 3433, 0),
+                                    new WorldPosition(1485, 3432, 0),
+                                    new WorldPosition(1485, 3431, 0)
+                            ),
+                            "None",
+                            "None",
+                            "Bank chest",
+                            "Use",
+                            FishingMethod.BankObjectType.BANK,
+                            25000
+                    ),
+                    new FishingMethod(
+                            "Big Net",
+                            List.of(ItemID.RAW_MACKEREL, ItemID.RAW_COD, ItemID.RAW_BASS, ItemID.BIG_BASS, ItemID.CASKET, ItemID.LEATHER_BOOTS, ItemID.LEATHER_GLOVES, ItemID.OYSTER, ItemID.SEAWEED),
+                            List.of(HandlingMode.DROP, HandlingMode.BANK),
+                            List.of(ItemID.BIG_FISHING_NET),
+                            List.of(),
+                            List.of(),
+                            "Big Net",
+                            Set.of(
+                                    // North
+                                    new WorldPosition(1494, 3443, 0),
+                                    new WorldPosition(1493, 3442, 0),
+
+                                    // South
+                                    new WorldPosition(1485, 3433, 0),
+                                    new WorldPosition(1485, 3432, 0),
+                                    new WorldPosition(1485, 3431, 0)
+                            ),
+                            "None",
+                            "None",
+                            "Bank chest",
+                            "Use",
+                            FishingMethod.BankObjectType.BANK,
+                            40000
+                    ),
+                    new FishingMethod(
+                            "Pot",
+                            List.of(ItemID.RAW_LOBSTER),
+                            List.of(HandlingMode.DROP, HandlingMode.BANK),
+                            List.of(ItemID.LOBSTER_POT),
+                            List.of(),
+                            List.of(),
+                            "Cage",
+                            Set.of(
+                                    // North
+                                    new WorldPosition(1494, 3443, 0),
+                                    new WorldPosition(1493, 3442, 0),
+
+                                    // South
+                                    new WorldPosition(1485, 3433, 0),
+                                    new WorldPosition(1485, 3432, 0),
+                                    new WorldPosition(1485, 3431, 0)
+                            ),
+                            "None",
+                            "None",
+                            "Bank chest",
+                            "Use",
+                            FishingMethod.BankObjectType.BANK,
+                            42500
+                    ),
+                    new FishingMethod(
+                            "Harpoon",
+                            List.of(ItemID.RAW_TUNA, ItemID.RAW_SWORDFISH, ItemID.RAW_SHARK, ItemID.BIG_SWORDFISH, ItemID.BIG_SHARK),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.HARPOON),
+                            List.of(),
+                            List.of(),
+                            "Harpoon",
+                            Set.of(
+                                    // North
+                                    new WorldPosition(1494, 3443, 0),
+                                    new WorldPosition(1493, 3442, 0),
+
+                                    // South
+                                    new WorldPosition(1485, 3433, 0),
+                                    new WorldPosition(1485, 3432, 0),
+                                    new WorldPosition(1485, 3431, 0)
+                            ),
+                            "None",
+                            "None",
+                            "Bank chest",
+                            "Use",
+                            FishingMethod.BankObjectType.BANK,
+                            90000
+                    )
+            )
+    ),
+    Isle_Of_Souls_South(
+            new RectangleArea(2154, 2778, 19, 13, 0), // Main fishing area
+            List.of(
+                    new RectangleArea(2161, 2783, 5, 2, 0)
+            ), // Fishing spot areas
+            new RectangleArea(0, 0, 0, 0, 0), // Bank area
+            List.of(
+                    new FishingMethod(
+                            "Small Fishing Net",
+                            List.of(ItemID.RAW_SHRIMPS, ItemID.RAW_ANCHOVIES),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.SMALL_FISHING_NET),
+                            List.of(),
+                            List.of(),
+                            "Small Net",
+                            Set.of(
+                                    new WorldPosition(2161, 2782, 0),
+                                    new WorldPosition(2162, 2782, 0),
+                                    new WorldPosition(2163, 2782, 0),
+                                    new WorldPosition(2164, 2782, 0),
+                                    new WorldPosition(2166, 2781, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            25000
+                    ),
+                    new FishingMethod(
+                            "Fishing Rod (Bait)",
+                            List.of(ItemID.RAW_SARDINE, ItemID.RAW_HERRING),
+                            List.of(HandlingMode.DROP, HandlingMode.BANK),
+                            List.of(ItemID.FISHING_ROD, ItemID.FISHING_BAIT),
+                            List.of(),
+                            List.of(),
+                            "Bait",
+                            Set.of(
+                                    new WorldPosition(2161, 2782, 0),
+                                    new WorldPosition(2162, 2782, 0),
+                                    new WorldPosition(2163, 2782, 0),
+                                    new WorldPosition(2164, 2782, 0),
+                                    new WorldPosition(2166, 2781, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            25000
+                    )
+            )
+    ),
+    Isle_Of_Souls_East(
+            new RectangleArea(2272, 2831, 17, 21, 0), // Main fishing area
+            List.of(
+                    new RectangleArea(2277, 2836, 2, 3, 0),
+                    new RectangleArea(2286, 2846, 1, 3, 0)
+            ), // Fishing spot areas
+            new RectangleArea(0, 0, 0, 0, 0), // Bank area
+            List.of(
+                    new FishingMethod(
+                            "Harpoon",
+                            List.of(ItemID.RAW_SHARK, ItemID.BIG_SHARK),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.HARPOON),
+                            List.of(),
+                            List.of(),
+                            "Harpoon",
+                            Set.of(
+                                    // North
+                                    new WorldPosition(2288, 2848, 0),
+                                    new WorldPosition(2288, 2847, 0),
+
+                                    // South
+                                    new WorldPosition(2280, 2839, 0),
+                                    new WorldPosition(2280, 2838, 0),
+                                    new WorldPosition(2280, 2837, 0),
+                                    new WorldPosition(2280, 2836, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            90000
+                    ),
+                    new FishingMethod(
+                            "Big Net",
+                            List.of(ItemID.RAW_MACKEREL, ItemID.RAW_COD, ItemID.RAW_BASS, ItemID.BIG_BASS, ItemID.CASKET, ItemID.LEATHER_BOOTS, ItemID.LEATHER_GLOVES, ItemID.OYSTER, ItemID.SEAWEED),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.BIG_FISHING_NET),
+                            List.of(),
+                            List.of(),
+                            "Big Net",
+                            Set.of(
+                                    // North
+                                    new WorldPosition(2288, 2848, 0),
+                                    new WorldPosition(2288, 2847, 0),
+
+                                    // South
+                                    new WorldPosition(2280, 2839, 0),
+                                    new WorldPosition(2280, 2838, 0),
+                                    new WorldPosition(2280, 2837, 0),
+                                    new WorldPosition(2280, 2836, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            40000
+                    )
+            )
+    ),
+    Isle_Of_Souls_North(
+            new RectangleArea(2274, 2968, 20, 8, 0), // Main fishing area
+            List.of(
+                    new RectangleArea(2285, 2971, 3, 2, 0),
+                    new RectangleArea(2276, 2973, 3, 2, 0)
+            ), // Fishing spot areas
+            new RectangleArea(0, 0, 0, 0, 0), // Bank area
+            List.of(
+                    new FishingMethod(
+                            "Pot",
+                            List.of(ItemID.RAW_LOBSTER),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.LOBSTER_POT),
+                            List.of(),
+                            List.of(),
+                            "Cage",
+                            Set.of(
+                                    // West
+                                    new WorldPosition(2276, 2976, 0),
+                                    new WorldPosition(2278, 2976, 0),
+
+                                    // East
+                                    new WorldPosition(2286, 2974, 0),
+                                    new WorldPosition(2287, 2974, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            42500
+                    ),
+                    new FishingMethod(
+                            "Harpoon",
+                            List.of(ItemID.RAW_TUNA, ItemID.RAW_SWORDFISH, ItemID.BIG_SWORDFISH),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.HARPOON),
+                            List.of(),
+                            List.of(),
+                            "Harpoon",
+                            Set.of(
+                                    // West
+                                    new WorldPosition(2276, 2976, 0),
+                                    new WorldPosition(2278, 2976, 0),
+
+                                    // East
+                                    new WorldPosition(2286, 2974, 0),
+                                    new WorldPosition(2287, 2974, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            50000
+                    )
+            )
     );
 //    Mor_Ul_Rek(
 //            new RectangleArea(2179, 3060, 26, 10, 0), // Main fishing area

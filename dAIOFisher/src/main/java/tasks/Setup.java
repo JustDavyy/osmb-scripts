@@ -34,7 +34,7 @@ public class Setup extends Task {
             return false;
         }
 
-        if (!fishingMethod.getRequiredTools().contains(ItemID.SMALL_FISHING_NET)) {
+        if (!fishingMethod.getRequiredTools().contains(ItemID.SMALL_FISHING_NET) && !fishingMethod.getRequiredTools().contains(ItemID.BIG_FISHING_NET)) {
             task = "Check required tools";
             if (!inventorySnapshot.containsAll(Set.copyOf(fishingMethod.getRequiredTools()))) {
                 script.log(getClass().getSimpleName(), "Not all required tools could be located in inventory, stopping script!");

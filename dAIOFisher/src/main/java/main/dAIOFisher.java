@@ -30,11 +30,11 @@ import javax.imageio.ImageIO;
         name = "dAIOFisher",
         description = "AIO Fisher that fishes, banks and/or drops to get those gains!",
         skillCategory = SkillCategory.FISHING,
-        version = 1.4,
+        version = 1.5,
         author = "JustDavyy"
 )
 public class dAIOFisher extends Script {
-    public static String scriptVersion = "1.4";
+    public static String scriptVersion = "1.5";
     public static boolean setupDone = false;
     public static boolean usingBarrel = false;
     private static final java.awt.Font ARIEL = java.awt.Font.getFont("Ariel");
@@ -131,6 +131,42 @@ public class dAIOFisher extends Script {
 
                 // Kingstown
                 6713,
+
+                // Farming Guild
+                4922,
+                4921,
+
+                // Lumbirdge
+                12850,
+                12849,
+
+                // Chaos Druid Tower
+                10292,
+                10036,
+                10037,
+
+                // Seers - Sinclair Mansion
+                10807,
+                10806,
+
+                // Fishing Guild
+                10293,
+
+                // Rellekka
+                10553,
+                10554,
+
+                // Jatizso
+                9531,
+
+                // Land's end
+                5941,
+                6197,
+
+                // Isle of Souls
+                8491,
+                9004,
+                9006,
         };
     }
 

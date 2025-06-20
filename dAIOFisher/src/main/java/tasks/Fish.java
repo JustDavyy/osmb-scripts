@@ -63,7 +63,7 @@ public class Fish extends Task {
         }
 
         // Special case, small fishing net is textured.
-        if (fishingMethod.getRequiredTools().contains(ItemID.SMALL_FISHING_NET)) {
+        if (fishingMethod.getRequiredTools().contains(ItemID.SMALL_FISHING_NET) || fishingMethod.getRequiredTools().contains(ItemID.BIG_FISHING_NET)) {
             return !inventorySnapshot.isFull();
         }
 
