@@ -63,7 +63,13 @@ public class ScriptUI {
         locationComboBox.setItems(FXCollections.observableArrayList(FishingLocation.values()));
         locationComboBox.getItems().sort((a, b) -> a.toString().compareToIgnoreCase(b.toString()));
         String savedLocation = prefs.get(PREF_SELECTED_LOCATION, FishingLocation.Barb_Village.name());
-        locationComboBox.getSelectionModel().select(FishingLocation.valueOf(savedLocation));
+        FishingLocation initialLocation;
+        try {
+            initialLocation = FishingLocation.valueOf(savedLocation);
+        } catch (IllegalArgumentException e) {
+            initialLocation = FishingLocation.Barb_Village;
+        }
+        locationComboBox.getSelectionModel().select(initialLocation);
 
         Label methodLabel = new Label("Fishing method:");
         methodComboBox = new ComboBox<>();
@@ -104,8 +110,6 @@ public class ScriptUI {
         });
 
         // Initialize with saved location and method
-        FishingLocation initialLocation = FishingLocation.valueOf(savedLocation);
-        locationComboBox.getSelectionModel().select(initialLocation);
         methodComboBox.setItems(FXCollections.observableArrayList(initialLocation.getMethods()));
         String savedMethod = prefs.get(PREF_SELECTED_METHOD, "Fly Fishing Rod (Feathers)");
         methodComboBox.getItems().stream()

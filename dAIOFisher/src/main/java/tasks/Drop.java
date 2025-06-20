@@ -1,7 +1,9 @@
 package tasks;
 
 import com.osmb.api.item.ItemGroupResult;
+import com.osmb.api.item.ItemID;
 import com.osmb.api.script.Script;
+import data.FishingLocation;
 import utils.Task;
 
 import java.util.*;
@@ -16,6 +18,9 @@ public class Drop extends Task {
 
     public boolean activate() {
         if (!dropMode) return false;
+        if (script.getWidgetManager().getDepositBox().isVisible()) {
+            return false;
+        }
 
         List<Integer> relevantFishIds = new ArrayList<>(
                 cookMode ? fishingMethod.getCookedFish() : fishingMethod.getCatchableFish()
@@ -68,7 +73,12 @@ public class Drop extends Task {
             fish1Caught += inv.getAmount(burntId);
         }
 
-        Set<Integer> dropIds = Set.copyOf(relevantFishIds);
+        Set<Integer> dropIds = new HashSet<>();
+        for (int id : relevantFishIds) {
+            if (!fishingMethod.isStackableFish(id)) {
+                dropIds.add(id);
+            }
+        }
         for (int attempt = 0; attempt < 3; attempt++) {
             script.getWidgetManager().getInventory().dropItems(dropIds);
             ItemGroupResult afterDrop = script.getWidgetManager().getInventory().search(dropIds);
@@ -78,6 +88,14 @@ public class Drop extends Task {
             }
 
             script.submitTask(() -> false, script.random(150, 400));
+        }
+
+        // Special case: for Karamja_West, count remaining stackable raw fish
+        if (fishingLocation.equals(FishingLocation.Karamja_West)) {
+            ItemGroupResult afterDrop = script.getWidgetManager().getInventory().search(Set.of(ItemID.RAW_KARAMBWANJI));
+            if (afterDrop != null) {
+                fish3Caught = afterDrop.getAmount(ItemID.RAW_KARAMBWANJI) - startAmount;
+            }
         }
 
         return false;

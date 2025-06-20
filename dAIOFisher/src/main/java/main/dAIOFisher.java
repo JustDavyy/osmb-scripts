@@ -30,11 +30,11 @@ import javax.imageio.ImageIO;
         name = "dAIOFisher",
         description = "AIO Fisher that fishes, banks and/or drops to get those gains!",
         skillCategory = SkillCategory.FISHING,
-        version = 1.3,
+        version = 1.4,
         author = "JustDavyy"
 )
 public class dAIOFisher extends Script {
-    public static String scriptVersion = "1.3";
+    public static String scriptVersion = "1.4";
     public static boolean setupDone = false;
     public static boolean usingBarrel = false;
     private static final java.awt.Font ARIEL = java.awt.Font.getFont("Ariel");
@@ -69,6 +69,7 @@ public class dAIOFisher extends Script {
     public static int fish6Caught = 0;
     public static int fish7Caught = 0;
     public static int fish8Caught = 0;
+    public static int startAmount = 0;
 
     private static final Stopwatch webhookTimer = new Stopwatch();
     private static String webhookUrl = "";
@@ -99,6 +100,37 @@ public class dAIOFisher extends Script {
 
                 // Mount Quidamortem / CoX
                 4919,
+
+                // Karamja West
+                11055,
+                11054,
+                11311,
+
+                // Shilo Village
+                11310,
+
+                // Lumbridge goblin area
+                12850,
+
+                // Lumbridge swamps
+                12849,
+
+                // Mor Ul Rek
+                10063,
+                9807,
+
+                // Zul-Andra
+                8751,
+                8752,
+
+                // Port Piscarilius
+                6971,
+                7227,
+                7226,
+                6970,
+
+                // Kingstown
+                6713,
         };
     }
 

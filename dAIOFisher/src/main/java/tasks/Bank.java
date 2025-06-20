@@ -6,6 +6,7 @@ import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
 import com.osmb.api.utils.timing.Timer;
+import data.FishingMethod;
 import utils.Task;
 
 import java.util.*;
@@ -41,12 +42,6 @@ public class Bank extends Task {
             return script.getWalker().walkTo(fishingLocation.getBankArea().getRandomPosition());
         }
 
-        // Open bank if not open yet
-        if (!script.getWidgetManager().getBank().isVisible()) {
-            openBank();
-            return false;
-        }
-
         ItemGroupResult inv = script.getWidgetManager().getInventory().search(Set.copyOf(fishingMethod.getAllFish()));
         if (!alreadyCountedFish) {
             if (inv == null) return false;
@@ -70,6 +65,23 @@ public class Bank extends Task {
             alreadyCountedFish = true;
         }
 
+        // Open the correct bank type
+        if (fishingMethod.getBankObjectType().equals(FishingMethod.BankObjectType.BANK)) {
+            if (!script.getWidgetManager().getBank().isVisible()) {
+                openBank();
+                return false;
+            } else {
+                script.log(getClass(), "Bank interface is visible.");
+            }
+        } else if (fishingMethod.getBankObjectType().equals(FishingMethod.BankObjectType.DEPOSIT_BOX)) {
+            if (!script.getWidgetManager().getDepositBox().isVisible()) {
+                openDepositBox();
+                return false;
+            } else {
+                script.log(getClass(), "Deposit box interface is visible.");
+            }
+        }
+
         // Deposit items
         task = "Deposit items";
         if (usingBarrel && inv.containsAny(Set.copyOf(fishingMethod.getAllFish()))) {
@@ -82,16 +94,31 @@ public class Bank extends Task {
             fish1Caught += 28;
         }
 
-        if (!script.getWidgetManager().getBank().depositAll(Set.copyOf(ignoreItems))) {
-            script.log(getClass().getSimpleName(), "Deposit items failed.");
-            return false;
+        if (fishingMethod.getBankObjectType().equals(FishingMethod.BankObjectType.BANK)) {
+            if (!script.getWidgetManager().getBank().depositAll(Set.copyOf(ignoreItems))) {
+                script.log(getClass().getSimpleName(), "Deposit items failed.");
+                return false;
+            } else {
+                script.log(getClass(), "Deposit items was successful.");
+            }
+        } else if (fishingMethod.getBankObjectType().equals(FishingMethod.BankObjectType.DEPOSIT_BOX)) {
+            if (!script.getWidgetManager().getDepositBox().depositAll(Set.copyOf(ignoreItems))) {
+                script.log(getClass().getSimpleName(), "Deposit items failed.");
+                return false;
+            } else {
+                script.log(getClass(), "Deposit items was successful.");
+            }
         }
 
-        task = "Close bank";
-        script.getWidgetManager().getBank().close();
-        script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(4000, 6000));
 
-        task = "Check required tools";
+        task = "Close bank";
+        if (fishingMethod.getBankObjectType().equals(FishingMethod.BankObjectType.BANK)) {
+            script.getWidgetManager().getBank().close();
+            script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(4000, 6000));
+        } else if (fishingMethod.getBankObjectType().equals(FishingMethod.BankObjectType.DEPOSIT_BOX)) {
+            script.getWidgetManager().getDepositBox().close();
+            script.submitTask(() -> !script.getWidgetManager().getDepositBox().isVisible(), script.random(4000, 6000));
+        }
 
         return false;
     }
@@ -145,6 +172,58 @@ public class Bank extends Task {
             }
 
             return script.getWidgetManager().getBank().isVisible() || positionChangeTimer.get().timeElapsed() > 2000;
+        }, script.random(14000, 16000));
+    }
+
+    private void openDepositBox() {
+        task = "Open Deposit box";
+        script.log(getClass(), "Searching for a deposit box...");
+
+        task = "Get bank name/action";
+        String bankName = fishingMethod.getBankObjectName();
+        String bankAction = fishingMethod.getBankObjectAction();
+
+        if (bankName == null || bankAction == null) {
+            script.log(getClass(), "Bank name or action is not defined in fishingMethod.");
+            return;
+        }
+
+        task = "Get deposit box objects";
+        List<RSObject> banksFound = script.getObjectManager().getObjects(gameObject -> {
+            if (gameObject.getName() == null || gameObject.getActions() == null) return false;
+            return gameObject.getName().equalsIgnoreCase(bankName)
+                    && Arrays.stream(gameObject.getActions()).anyMatch(action ->
+                    action != null && action.equalsIgnoreCase(bankAction))
+                    && gameObject.canReach();
+        });
+
+        if (banksFound.isEmpty()) {
+            script.log(getClass(), "No deposit box objects found matching name: " + bankName + " and action: " + bankAction);
+            return;
+        }
+
+        task = "Interact with deposit box object";
+        RSObject bank = (RSObject) script.getUtils().getClosest(banksFound);
+        if (!bank.interact(bankAction)) {
+            script.log(getClass(), "Failed to interact with deposit box object.");
+            return;
+        }
+
+        // Wait for deposit box UI to appear or player to stop moving
+        AtomicReference<Timer> positionChangeTimer = new AtomicReference<>(new Timer());
+        AtomicReference<WorldPosition> previousPosition = new AtomicReference<>(null);
+
+        task = "Wait for deposit box to open";
+        script.submitTask(() -> {
+            WorldPosition current = script.getWorldPosition();
+            if (current == null) return false;
+
+            if (!Objects.equals(current, previousPosition.get())) {
+                positionChangeTimer.get().reset();
+                previousPosition.set(current);
+            }
+
+            return script.getWidgetManager().getDepositBox().isVisible() || positionChangeTimer.get().timeElapsed() > 3000;
         }, script.random(14000, 16000));
     }
 }

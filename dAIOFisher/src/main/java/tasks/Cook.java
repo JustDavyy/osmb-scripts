@@ -1,6 +1,7 @@
 package tasks;
 
 import com.osmb.api.item.ItemGroupResult;
+import com.osmb.api.item.ItemID;
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
 import com.osmb.api.shape.Rectangle;
@@ -9,6 +10,7 @@ import com.osmb.api.ui.component.ComponentSearchResult;
 import com.osmb.api.ui.component.minimap.xpcounter.XPDropsComponent;
 import com.osmb.api.utils.timing.Timer;
 import com.osmb.api.visual.ocr.fonts.Font;
+import data.FishingLocation;
 import utils.Task;
 
 import java.awt.Color;
@@ -25,6 +27,9 @@ public class Cook extends Task {
 
     public boolean activate() {
         if (!cookMode) return false;
+        if (script.getWidgetManager().getDepositBox().isVisible()) {
+            return false;
+        }
         ItemGroupResult inv;
         inv = script.getWidgetManager().getInventory().search(Set.copyOf(fishingMethod.getCatchableFish()));
         return inv != null && inv.isFull() && inv.containsAny(Set.copyOf(fishingMethod.getCatchableFish()));
@@ -38,6 +43,46 @@ public class Cook extends Task {
         if (inventory == null || inventory.isEmpty()) {
             script.log(getClass(), "No raw fish found in inventory.");
             return false;
+        }
+
+        // Different cooking method for eels
+        if (fishingLocation.equals(FishingLocation.Zul_Andra)) { //|| fishingLocation.equals(FishingLocation.Mor_Ul_Rek)) {
+            // Select which tool/fish to use
+            int toolToUse = 0;
+            int fishToUse = 0;
+            if (fishingLocation.equals(FishingLocation.Zul_Andra)) {
+                toolToUse = ItemID.KNIFE;
+                fishToUse = ItemID.SACRED_EEL;
+            } else {
+                toolToUse = ItemID.HAMMER;
+                fishToUse = ItemID.INFERNAL_EEL;
+            }
+
+            task = "Start cooking action";
+            inventory = script.getWidgetManager().getInventory().search(Set.of(fishToUse, toolToUse));
+            if (inventory == null) {
+                script.log(getClass(), "Inventory could not be found");
+                return false;
+            }
+
+            boolean clickSuccess;
+            int clickOrder = script.random(1, 2);
+            if (clickOrder == 1) {
+                // Click fish first, then tool
+                clickSuccess = inventory.getItem(fishToUse).interact() &&
+                        inventory.getItem(toolToUse).interact();
+            } else {
+                // Click tool first, then fish
+                clickSuccess = inventory.getItem(toolToUse).interact() &&
+                        inventory.getItem(fishToUse).interact();
+            }
+
+            if (!clickSuccess) {
+                return false;
+            }
+
+            // We're now cutting the eels, wait to complete.
+            waitUntilFinishedCutting(fishToUse);
         }
 
         for (int rawId : rawFish) {
@@ -141,6 +186,45 @@ public class Cook extends Task {
             }
 
             return itemIdsToWatch.stream().noneMatch(inventorySnapshot::contains);
+        };
+
+        script.log(getClass(), "Using human task to wait until cooking finishes.");
+        script.submitHumanTask(condition, script.random(66000, 70000));
+    }
+
+    private void waitUntilFinishedCutting(int itemIdToWatch) {
+        task = "Wait until cooking finish";
+        Timer amountChangeTimer = new Timer();
+
+        BooleanSupplier condition = () -> {
+            DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
+            if (type == DialogueType.TAP_HERE_TO_CONTINUE) {
+                script.submitTask(() -> false, script.random(1000, 3000));
+                return true;
+            }
+
+            if (amountChangeTimer.timeElapsed() > 66000) {
+                return true;
+            }
+
+            ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(itemIdToWatch));
+            if (inventorySnapshot == null) return false;
+
+            int fishLeft = inventorySnapshot.getAmount(itemIdToWatch);
+
+            if (!readyToReadCookingXP) {
+                ItemGroupResult postCookInv = script.getWidgetManager().getInventory().search(Set.of(itemIdToWatch));
+                if (postCookInv != null && postCookInv.getAmount(itemIdToWatch) < fishLeft) {
+                    script.log(getClass(), "Processed at least one " + script.getItemManager().getItemName(itemIdToWatch) + ", enabling cooking XP tracking.");
+                    readyToReadCookingXP = true;
+                }
+            }
+
+            if (readyToReadCookingXP) {
+                readCookingXp();
+            }
+
+            return inventorySnapshot.contains(itemIdToWatch);
         };
 
         script.log(getClass(), "Using human task to wait until cooking finishes.");

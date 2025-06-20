@@ -15,6 +15,9 @@ public class Travel extends Task {
     }
 
     public boolean activate() {
+        if (script.getWidgetManager().getDepositBox().isVisible()) {
+            return false;
+        }
         WorldPosition myPos = script.getWorldPosition();
         if (myPos == null) return false;
 

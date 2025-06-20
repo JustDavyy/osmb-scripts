@@ -1,6 +1,7 @@
 package tasks;
 
 import com.osmb.api.item.ItemGroupResult;
+import com.osmb.api.item.ItemID;
 import com.osmb.api.location.area.Area;
 import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSTile;
@@ -15,6 +16,7 @@ import com.osmb.api.visual.color.ColorModel;
 import com.osmb.api.visual.color.tolerance.impl.SingleThresholdComparator;
 import com.osmb.api.visual.ocr.fonts.Font;
 import com.osmb.api.walker.WalkConfig;
+import data.FishingLocation;
 import data.FishingSpot;
 import utils.Task;
 import com.osmb.api.script.Script;
@@ -32,33 +34,47 @@ public class Fish extends Task {
             new SearchablePixel(-11366999, new SingleThresholdComparator(2), ColorModel.HSL),
     };
     private FishingSpot lastFishingSpot = null;
+    private int consecutiveNoSpotChecks = 0;
+    private int relocationAttempts = 0;
 
     public Fish(Script script) {
         super(script);
     }
 
     public boolean activate() {
+        if (script.getWidgetManager().getDepositBox().isVisible()) {
+            return false;
+        }
+
         ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.copyOf(fishingMethod.getRequiredTools()));
         if (inventorySnapshot == null) {
             script.log(getClass().getSimpleName(), "Inventory not visible.");
             return false;
         }
 
+        WorldPosition myPos = script.getWorldPosition();
+        if (myPos == null) {
+            return false;
+        }
+
+        // Always require being inside the fishing area
+        if (!fishingLocation.getFishingArea().contains(myPos)) {
+            return false;
+        }
+
+        // Special case, small fishing net is textured.
+        if (fishingMethod.getRequiredTools().contains(ItemID.SMALL_FISHING_NET)) {
+            return !inventorySnapshot.isFull();
+        }
+
+        // For other locations: require all tools
         if (!inventorySnapshot.containsAll(Set.copyOf(fishingMethod.getRequiredTools()))) {
-            script.log(getClass().getSimpleName(), "Not all required tools (rods/feathers etc) could be located in inventory, stopping script!");
+            script.log(getClass().getSimpleName(), "Not all required tools could be located in inventory, stopping script!");
             script.stop();
             return false;
         }
 
-        WorldPosition myPos = script.getWorldPosition();
-
-        if (myPos != null) {
-            return !inventorySnapshot.isFull()
-                    && fishingLocation.getFishingArea().contains(script.getWorldPosition())
-                    && inventorySnapshot.containsAll(Set.copyOf(fishingMethod.getRequiredTools()));
-        }
-
-        return false;
+        return !inventorySnapshot.isFull();
     }
 
     public boolean execute() {
@@ -104,7 +120,7 @@ public class Fish extends Task {
 
         boolean stillValid = isValidFishingSpot(lastFishingSpot.getPosition()) != null;
         task = "Check XP Gained";
-        boolean xpRecently = !readyToReadFishingXP || System.currentTimeMillis() - lastXpGained <= 20000;
+        boolean xpRecently = !readyToReadFishingXP || System.currentTimeMillis() - lastXpGained <= fishingMethod.getFishingDelay();
 
         if (readyToReadFishingXP) {
             readFishingXp();
@@ -166,8 +182,9 @@ public class Fish extends Task {
 
         task = "Check XP gained";
         long idleSinceXp = System.currentTimeMillis() - lastXpGained;
-        if (readyToReadFishingXP && idleSinceXp > 20000) {
-            script.log(getClass(), "No XP gained in last 20s — early exit.");
+        if (readyToReadFishingXP && idleSinceXp > fishingMethod.getFishingDelay()) {
+            int delay = (int) (fishingMethod.getFishingDelay() / 1000);
+            script.log(getClass(), "No XP gained in last " + delay + "s — early exit.");
             return true;
         }
 
@@ -193,12 +210,29 @@ public class Fish extends Task {
         }
 
         script.log(getClass(), "No visible fishing spots, walking to another area...");
+        if (fishingMethod.getName().equals("Small Fishing Net (SafeMode/10HP)")) {
+            script.log(getClass(), "SafeMode method in use, skipping relocation and hopping immediately.");
+            script.getProfileManager().forceHop();
+            relocationAttempts = 0;
+            consecutiveNoSpotChecks = 0;
+            return false;
+        }
+
+        relocationAttempts++;
         script.getWalker().walkTo(getDestination(), new WalkConfig.Builder().disableWalkScreen(true).breakDistance(5).build());
+
+        if (relocationAttempts >= 3) {
+            script.log(getClass(), "Still no fishing spots after 3 relocations. Forcing world hop...");
+            script.getProfileManager().forceHop();
+            relocationAttempts = 0;
+            consecutiveNoSpotChecks = 0;
+        }
 
         fishingSpot = getFishingSpot(script.getWorldPosition());
         if (fishingSpot != null) {
             lastFishingSpot = fishingSpot;
             lastXpGained = System.currentTimeMillis();
+            relocationAttempts = 0;
             return attemptFishing(fishingSpot);
         } else {
             script.log(getClass(), "Still no fishing spots after relocating.");
@@ -210,7 +244,7 @@ public class Fish extends Task {
     private boolean interactWithFishingSpot(FishingSpot fishingSpot) {
         script.log(getClass(), "Interacting with fishing spot at " + fishingSpot.getPosition());
 
-        boolean clicked = script.getFinger().tap(fishingSpot.getFishingSpotPoly(), menuHook);
+        boolean clicked = script.getFinger().tap(fishingSpot.getFishingSpotPoly().getResized(0.85), menuHook);
         if (!clicked) {
             script.log(getClass(), "Failed to click fishing spot.");
             lastFishingSpot = null;
@@ -244,14 +278,33 @@ public class Fish extends Task {
     private FishingSpot getFishingSpot(WorldPosition worldPosition) {
         long start = System.currentTimeMillis();
 
-        // Get the pre-defined fishing spots for our location
         Area spotArea = fishingLocation.getFishingArea();
         Set<WorldPosition> fishingSpotPositions = fishingMethod.getFishingSpots();
 
         List<FishingSpot> activeFishingSpotsOnScreen = getFishingSpots(fishingSpotPositions);
         if (activeFishingSpotsOnScreen.isEmpty()) {
+            consecutiveNoSpotChecks++;
+            script.log(getClass(), "No fishing spots found (" + consecutiveNoSpotChecks + " check(s) in a row)");
+
+            if (fishingMethod.getName().equals("Small Fishing Net (SafeMode/10HP)")) {
+                script.log(getClass(), "SafeMode method detected, forcing hop immediately...");
+                script.getProfileManager().forceHop();
+                consecutiveNoSpotChecks = 0;
+                relocationAttempts = 0;
+                return null;
+            }
+
+            if (consecutiveNoSpotChecks >= 3) {
+                script.log(getClass(), "No fishing spots found for 3 consecutive checks. Forcing world hop...");
+                script.getProfileManager().forceHop();
+                consecutiveNoSpotChecks = 0;
+                relocationAttempts = 0;
+            }
             return null;
         }
+
+        // Found spots; reset counter
+        consecutiveNoSpotChecks = 0;
 
         long end = System.currentTimeMillis();
         script.log(getClass(), "Fishing spots found in: " + (end - start) + "ms");

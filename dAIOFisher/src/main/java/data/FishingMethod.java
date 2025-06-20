@@ -1,5 +1,6 @@
 package data;
 
+import com.osmb.api.item.ItemID;
 import com.osmb.api.location.position.types.WorldPosition;
 
 import java.util.ArrayList;
@@ -20,6 +21,15 @@ public class FishingMethod {
     private final String cookingObjectAction;
     private final String bankObjectName;
     private final String bankObjectAction;
+    private final BankObjectType bankObjectType;
+    private final long fishingDelay; // in milliseconds
+
+    public enum BankObjectType {
+        BANK,
+        DEPOSIT_BOX,
+        NPC,
+        NONE
+    }
 
     public FishingMethod(String name,
                          List<Integer> catchableFish,
@@ -32,7 +42,9 @@ public class FishingMethod {
                          String cookingObjectName,
                          String cookingObjectAction,
                          String bankObjectName,
-                         String bankObjectAction) {
+                         String bankObjectAction,
+                         BankObjectType bankObjectType,
+                         long fishingDelay) {
         this.name = name;
         this.catchableFish = catchableFish;
         this.handlingModes = handlingModes;
@@ -45,6 +57,8 @@ public class FishingMethod {
         this.cookingObjectAction = cookingObjectAction;
         this.bankObjectName = bankObjectName;
         this.bankObjectAction = bankObjectAction;
+        this.bankObjectType = bankObjectType;
+        this.fishingDelay = fishingDelay;
     }
 
     public String getName() {
@@ -100,6 +114,22 @@ public class FishingMethod {
 
     public String getBankObjectAction() {
         return bankObjectAction;
+    }
+
+    public BankObjectType getBankObjectType() {
+        return bankObjectType;
+    }
+
+    public long getFishingDelay() {
+        return fishingDelay;
+    }
+
+    public boolean isStackableFish(int itemId) {
+        return switch (itemId) {
+            case ItemID.RAW_KARAMBWANJI -> true;
+            // Add more stackable fish IDs here
+            default -> false;
+        };
     }
 
     @Override
