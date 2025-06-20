@@ -229,6 +229,31 @@ public enum FishingLocation {
                             "Deposit",
                             FishingMethod.BankObjectType.DEPOSIT_BOX,
                             20000
+                    ),
+                    new FishingMethod(
+                            "Fishing Rod (Bait)",
+                            List.of(ItemID.RAW_PIKE),
+                            List.of(HandlingMode.DROP, HandlingMode.BANK),
+                            List.of(ItemID.FISHING_ROD, ItemID.FISHING_BAIT),
+                            List.of(ItemID.PIKE),
+                            List.of(ItemID.BURNT_FISH_343),
+                            "Bait",
+                            Set.of(
+                                    // South east
+                                    new WorldPosition(2860, 2972, 0),
+                                    new WorldPosition(2865, 2972, 0),
+
+                                    // South west
+                                    new WorldPosition(2836, 2971, 0),
+                                    new WorldPosition(2841, 2971, 0)
+
+                            ),
+                            "None",
+                            "None",
+                            "Bank Deposit Box",
+                            "Deposit",
+                            FishingMethod.BankObjectType.DEPOSIT_BOX,
+                            35000
                     )
             )
     ),
