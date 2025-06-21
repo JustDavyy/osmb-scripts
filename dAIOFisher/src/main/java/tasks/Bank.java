@@ -42,7 +42,11 @@ public class Bank extends Task {
             return script.getWalker().walkTo(fishingLocation.getBankArea().getRandomPosition());
         }
 
-        ItemGroupResult inv = script.getWidgetManager().getInventory().search(Set.copyOf(fishingMethod.getAllFish()));
+        Set<Integer> allFishAndBarrels = new HashSet<>(fishingMethod.getAllFish());
+        allFishAndBarrels.add(ItemID.FISH_BARREL);
+        allFishAndBarrels.add(ItemID.OPEN_FISH_BARREL);
+
+        ItemGroupResult inv = script.getWidgetManager().getInventory().search(allFishAndBarrels);
         if (!alreadyCountedFish) {
             if (inv == null) return false;
 
