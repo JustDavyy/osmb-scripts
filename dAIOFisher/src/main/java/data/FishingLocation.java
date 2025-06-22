@@ -1903,6 +1903,29 @@ public enum FishingLocation {
                             "None",
                             FishingMethod.BankObjectType.NONE,
                             90000
+                    ),
+                    new FishingMethod(
+                            "Pot",
+                            List.of(ItemID.RAW_LOBSTER),
+                            List.of(HandlingMode.DROP),
+                            List.of(ItemID.LOBSTER_POT),
+                            List.of(),
+                            List.of(),
+                            "Cage",
+                            Set.of(
+                                    new WorldPosition(2225, 3428, 0),
+                                    new WorldPosition(2225, 3429, 0),
+                                    new WorldPosition(2226, 3430, 0),
+                                    new WorldPosition(2227, 3430, 0),
+                                    new WorldPosition(2228, 3429, 0),
+                                    new WorldPosition(2228, 3428, 0)
+                            ),
+                            "None",
+                            "None",
+                            "None",
+                            "None",
+                            FishingMethod.BankObjectType.NONE,
+                            42500
                     )
             )
     ),
