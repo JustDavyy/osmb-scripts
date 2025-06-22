@@ -46,6 +46,10 @@ public class Fish extends Task {
             return false;
         }
 
+        if (fishingLocation.equals(FishingLocation.Karamja_West)) {
+            return true;
+        }
+
         ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.copyOf(fishingMethod.getRequiredTools()));
         if (inventorySnapshot == null) {
             script.log(getClass().getSimpleName(), "Inventory not visible.");
@@ -166,9 +170,11 @@ public class Fish extends Task {
             return false;
         }
 
-        if (inventorySnapshot.isFull()) {
-            script.log(getClass().getSimpleName(), "Early exit, Inventory is full");
-            return true;
+        if (!fishingLocation.equals(FishingLocation.Karamja_West)) {
+            if (inventorySnapshot.isFull()) {
+                script.log(getClass().getSimpleName(), "Early exit, Inventory is full");
+                return true;
+            }
         }
 
         task = "Check last fishing spot";

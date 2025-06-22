@@ -30,11 +30,11 @@ import javax.imageio.ImageIO;
         name = "dAIOFisher",
         description = "AIO Fisher that fishes, banks and/or drops to get those gains!",
         skillCategory = SkillCategory.FISHING,
-        version = 1.6,
+        version = 1.7,
         author = "JustDavyy"
 )
 public class dAIOFisher extends Script {
-    public static String scriptVersion = "1.6";
+    public static String scriptVersion = "1.7";
     public static boolean setupDone = false;
     public static boolean usingBarrel = false;
     private static final java.awt.Font ARIEL = java.awt.Font.getFont("Ariel");
@@ -167,6 +167,30 @@ public class dAIOFisher extends Script {
                 8491,
                 9004,
                 9006,
+
+                // Burgh de Rott
+                13874,
+                13873,
+
+                // Tree Gnome Village + Observatory
+                9777,
+
+                // Piscatoris
+                9273,
+
+                // Prifddinas
+                12896,
+                13152,
+                13150,
+                13149,
+                8757,
+                9010,
+
+                // Corsair Cove
+                10028,
+
+                // Myths Guild
+                9773,
         };
     }
 
