@@ -31,7 +31,22 @@ import static main.dAIOFisher.*;
 
 public class Fish extends Task {
     private static final SearchablePixel[] FISHING_SPOT_PIXELS = new SearchablePixel[]{
+            // Normal spots
             new SearchablePixel(-11366999, new SingleThresholdComparator(2), ColorModel.HSL),
+            new SearchablePixel(-7555094, new SingleThresholdComparator(2), ColorModel.HSL),
+            new SearchablePixel(-8605987, new SingleThresholdComparator(2), ColorModel.HSL),
+            new SearchablePixel(-3283474, new SingleThresholdComparator(2), ColorModel.HSL),
+            new SearchablePixel(-6702368, new SingleThresholdComparator(2), ColorModel.HSL),
+            new SearchablePixel(-12288621, new SingleThresholdComparator(2), ColorModel.HSL),
+            new SearchablePixel(-12617586, new SingleThresholdComparator(2), ColorModel.HSL),
+            new SearchablePixel(-12420721, new SingleThresholdComparator(2), ColorModel.HSL),
+
+            // Sacred eels
+            new SearchablePixel(-13146533, new SingleThresholdComparator(2), ColorModel.HSL),
+            new SearchablePixel(-13080483, new SingleThresholdComparator(2), ColorModel.HSL),
+            new SearchablePixel(-13343911, new SingleThresholdComparator(2), ColorModel.HSL),
+            new SearchablePixel(-13475753, new SingleThresholdComparator(2), ColorModel.HSL),
+            new SearchablePixel(-12883106, new SingleThresholdComparator(2), ColorModel.HSL)
     };
     private FishingSpot lastFishingSpot = null;
     private int consecutiveNoSpotChecks = 0;
