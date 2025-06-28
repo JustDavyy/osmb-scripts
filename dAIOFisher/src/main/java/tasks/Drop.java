@@ -7,6 +7,7 @@ import data.FishingLocation;
 import utils.Task;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 import static main.dAIOFisher.*;
 
@@ -50,7 +51,7 @@ public class Drop extends Task {
         ItemGroupResult inv = script.getWidgetManager().getInventory().search(Set.copyOf(relevantFishIds));
         if (inv == null) return false;
 
-        List<Integer> cooked = cookMode ? fishingMethod.getCookedFish() : Collections.emptyList();
+        List<Integer> cooked = cookMode ? fishingMethod.getCookedFish() : fishingMethod.getCatchableFish();
         List<Integer> burnt = cookMode ? fishingMethod.getBurntFish() : Collections.emptyList();
 
         for (int i = 0; i < cooked.size(); i++) {
@@ -90,12 +91,9 @@ public class Drop extends Task {
             script.submitTask(() -> false, script.random(150, 400));
         }
 
-        // Special case: for Karamja_West, count remaining stackable raw fish
-        if (fishingLocation.equals(FishingLocation.Karamja_West)) {
-            ItemGroupResult afterDrop = script.getWidgetManager().getInventory().search(Set.of(ItemID.RAW_KARAMBWANJI));
-            if (afterDrop != null) {
-                fish3Caught = afterDrop.getAmount(ItemID.RAW_KARAMBWANJI) - startAmount;
-            }
+        if (switchTabTimer.timeLeft() < TimeUnit.MINUTES.toMillis(1)) {
+            script.log("PREVENT-LOG", "Timer was under 1 minute – resetting as we just performed an action.");
+            switchTabTimer.reset(script.random(TimeUnit.MINUTES.toMillis(3), TimeUnit.MINUTES.toMillis(5)));
         }
 
         return false;

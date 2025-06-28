@@ -1,7 +1,12 @@
 package main;
 
+import com.osmb.api.item.ItemID;
+import com.osmb.api.location.area.impl.PolyArea;
+import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.utils.timing.Stopwatch;
+import com.osmb.api.visual.color.ColorUtils;
 import com.osmb.api.visual.drawing.Canvas;
+import com.osmb.api.visual.image.SearchableImage;
 import data.FishingLocation;
 import data.FishingMethod;
 import data.HandlingMode;
@@ -17,8 +22,10 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
@@ -30,11 +37,11 @@ import javax.imageio.ImageIO;
         name = "dAIOFisher",
         description = "AIO Fisher that fishes, banks and/or drops to get those gains!",
         skillCategory = SkillCategory.FISHING,
-        version = 1.8,
+        version = 1.9,
         author = "JustDavyy"
 )
 public class dAIOFisher extends Script {
-    public static String scriptVersion = "1.8";
+    public static String scriptVersion = "1.9";
     public static boolean setupDone = false;
     public static boolean usingBarrel = false;
     private static final java.awt.Font ARIEL = java.awt.Font.getFont("Ariel");
@@ -44,6 +51,7 @@ public class dAIOFisher extends Script {
     public static boolean bankMode = false;
     public static boolean dropMode = false;
     public static boolean cookMode = false;
+    public static boolean noteMode = false;
     public static FishingMethod fishingMethod;
     public static FishingLocation fishingLocation;
     public static HandlingMode handlingMode;
@@ -79,6 +87,20 @@ public class dAIOFisher extends Script {
     private static int webhookIntervalMinutes = 5;
     private static String user = "";
 
+    // Karambwan merged stuff
+    public static final PolyArea fishingArea = new PolyArea(List.of(new WorldPosition(2896, 3119, 0),new WorldPosition(2894, 3118, 0),new WorldPosition(2893, 3116, 0),new WorldPosition(2894, 3115, 0),new WorldPosition(2895, 3114, 0),new WorldPosition(2895, 3113, 0),new WorldPosition(2895, 3112, 0),new WorldPosition(2895, 3110, 0),new WorldPosition(2897, 3109, 0),new WorldPosition(2898, 3108, 0),new WorldPosition(2899, 3107, 0),new WorldPosition(2900, 3106, 0),new WorldPosition(2909, 3106, 0),new WorldPosition(2912, 3108, 0),new WorldPosition(2916, 3111, 0),new WorldPosition(2914, 3115, 0),new WorldPosition(2914, 3116, 0),new WorldPosition(2913, 3117, 0),new WorldPosition(2913, 3118, 0),new WorldPosition(2911, 3118, 0),new WorldPosition(2910, 3117, 0),new WorldPosition(2909, 3116, 0),new WorldPosition(2908, 3115, 0),new WorldPosition(2907, 3115, 0),new WorldPosition(2906, 3116, 0),new WorldPosition(2905, 3117, 0),new WorldPosition(2904, 3118, 0),new WorldPosition(2903, 3119, 0),new WorldPosition(2901, 3119, 0),new WorldPosition(2900, 3119, 0),new WorldPosition(2899, 3118, 0),new WorldPosition(2897, 3119, 0),new WorldPosition(2898, 3118, 0)));
+    public static int equippedCloakId = -1;
+    public static int teleportCapeId = -1;
+    public static String bankOption;
+    public static String fairyOption;
+    public static boolean doneBanking = false;
+    public static double totalXpGained = 0.0;
+    public static WorldPosition currentPos;
+
+    // Minnows stuff
+    public static SearchableImage minnowTileImageTop;
+    public static SearchableImage minnowTileImageBottom;
+
     private List<Task> tasks;
 
     public dAIOFisher(Object scriptCore) {
@@ -87,117 +109,104 @@ public class dAIOFisher extends Script {
 
     @Override
     public int[] regionsToPrioritise() {
-        return new int[]{
-                // Barb village
-                12341,
-                12342,
+        if (fishingLocation == null) {
+            return new int[0];
+        }
 
-                // Ottos Grotto
-                10038,
-                10039,
-                9782,
-                9783,
-
-                // Mount Quidamortem / CoX
-                4919,
-
-                // Karamja West
-                11055,
-                11054,
-                11311,
-
-                // Shilo Village
-                11310,
-
-                // Lumbridge goblin area
-                12850,
-
-                // Lumbridge swamps
-                12849,
-
-                // Mor Ul Rek
-                10063,
-                9807,
-
-                // Zul-Andra
-                8751,
-                8752,
-
-                // Port Piscarilius
-                6971,
-                7227,
-                7226,
-                6970,
-
-                // Kingstown
-                6713,
-
-                // Farming Guild
-                4922,
-                4921,
-
-                // Lumbirdge
-                12850,
-                12849,
-
-                // Chaos Druid Tower
-                10292,
-                10036,
-                10037,
-
-                // Seers - Sinclair Mansion
-                10807,
-                10806,
-
-                // Fishing Guild
-                10293,
-
-                // Rellekka
-                10553,
-                10554,
-
-                // Jatizso
-                9531,
-
-                // Land's end
-                5941,
-                6197,
-
-                // Isle of Souls
-                8491,
-                9004,
-                9006,
-
-                // Burgh de Rott
-                13874,
-                13873,
-
-                // Tree Gnome Village + Observatory
-                9777,
-
-                // Piscatoris
-                9273,
-
-                // Prifddinas
-                12896,
-                13152,
-                13150,
-                13149,
-                8757,
-                9010,
-
-                // Corsair Cove
-                10028,
-
-                // Myths Guild
-                9773,
+        return switch (fishingLocation) {
+            case Karambwans -> new int[]{
+                    11568, 9541, 11571, 10804, 10290, 10546
+            };
+            case Barb_Village -> new int[]{
+                    12341, 12342
+            };
+            case Ottos_Grotto -> new int[]{
+                    10038, 10039, 9782, 9783
+            };
+            case Mount_Quidamortem_CoX -> new int[]{
+                    4919
+            };
+            case Karamja_West -> new int[]{
+                    11055, 11054, 11311
+            };
+            case Shilo_Village -> new int[]{
+                    11310
+            };
+            case Lumbridge_Goblins, Lumbridge_Swamp -> new int[]{
+                    12850, 12849
+            };
+            case Mor_Ul_Rek_East, Mor_Ul_Rek_West -> new int[]{
+                    10064, 10063, 9808, 9807
+            };
+            case Zul_Andra -> new int[]{
+                    8751, 8752
+            };
+            case Port_Piscarilius_East, Port_Piscarilius_West -> new int[]{
+                    6971, 7227, 7226, 6970
+            };
+            case Kingstown -> new int[]{
+                    6713
+            };
+            case Farming_Guild -> new int[]{
+                    4922, 4921
+            };
+            case Chaos_Druid_Tower -> new int[]{
+                    10292, 10036, 10037
+            };
+            case Seers_SinclairMansion -> new int[]{
+                    10807, 10806
+            };
+            // Fishing_Guild case left commented intentionally
+            case Rellekka_MiddlePier, Rellekka_NorthPier, Rellekka_WestPier -> new int[]{
+                    10553, 10554
+            };
+            case Jatizso -> new int[]{
+                    9531
+            };
+            case Lands_End_East, Lands_End_West -> new int[]{
+                    5941, 6197
+            };
+            case Isle_Of_Souls_East, Isle_Of_Souls_North, Isle_Of_Souls_South -> new int[]{
+                    8491, 9004, 9006
+            };
+            case Burgh_de_Rott -> new int[]{
+                    13874, 13873
+            };
+            case Tree_Gnome_Village -> new int[]{
+                    9777
+            };
+            case Piscatoris -> new int[]{
+                    9273
+            };
+            case Prifddinas_North, Prifddinas_South_NorthSide, Prifddinas_South_SouthSide -> new int[]{
+                    12896, 13152, 13150, 13149, 8757, 9010
+            };
+            case Corsair_Cove -> new int[]{
+                    10028
+            };
+            case Myths_Guild -> new int[]{
+                    9773
+            };
+            case Varlamore -> new int[]{
+                    6193
+            };
+            case Entrana_East, Entrana_Middle -> new int[]{
+                    11316, 11572
+            };
+            case Catherby -> new int[]{
+                    11317, 11061
+            };
+            case Fishing_Guild_South, Fishing_Guild_North, Minnows -> new int[]{
+                    10293
+            };
+            default -> new int[0];
         };
     }
 
     @Override
     public void onPaint(Canvas c) {
-        c.fillRect(5, 40, 270, 240, Color.BLACK.getRGB(), 1);
-        c.drawRect(5, 40, 270, 240, Color.BLACK.getRGB());
+        c.fillRect(5, 40, 270, 275, Color.BLACK.getRGB(), 1);
+        c.drawRect(5, 40, 270, 275, Color.BLACK.getRGB());
 
         long elapsed = System.currentTimeMillis() - startTime;
         int caughtCount = fish1Caught + fish2Caught + fish3Caught + fish4Caught + fish5Caught + fish6Caught + fish7Caught + fish8Caught;
@@ -205,6 +214,8 @@ public class dAIOFisher extends Script {
 
         int fishingXpPerHour = elapsed > 0 ? (int) ((fishingXp * 3600000L) / elapsed) : 0;
         int cookingXpPerHour = elapsed > 0 ? (int) ((cookingXp * 3600000L) / elapsed) : 0;
+
+        int cookingXpBanked = caughtCount * 190;
 
         DecimalFormat formatter = new DecimalFormat("#,###");
         DecimalFormatSymbols symbols = new DecimalFormatSymbols();
@@ -214,6 +225,10 @@ public class dAIOFisher extends Script {
         int y = 40;
         c.drawText("Catches: " + formatter.format(caughtCount), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
         c.drawText("Catches/hr: " + formatter.format(caughtPerHour), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+        if (fishingLocation.equals(FishingLocation.Minnows)) {
+            c.drawText("Sharks: " + formatter.format(caughtCount / 40), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+            c.drawText("Sharks/hr: " + formatter.format(caughtPerHour / 40), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+        }
 
         y += 10;
         c.drawText("Fishing XP: " + formatter.format(fishingXp), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
@@ -222,6 +237,12 @@ public class dAIOFisher extends Script {
         if (cookMode) {
             c.drawText("Cooking XP: " + formatter.format(cookingXp), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
             c.drawText("Cooking XP/hr: " + formatter.format(cookingXpPerHour), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+        }
+        if (fishingLocation.equals(FishingLocation.Karambwans)) {
+            y += 10;
+            c.drawText("Cooking XP banked: " + formatter.format(cookingXpBanked), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+            c.drawText("Bank method: " + bankOption, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+            c.drawText("Travel method: " + fairyOption, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
         }
         y += 10;
 
@@ -241,11 +262,31 @@ public class dAIOFisher extends Script {
 
         bankMode = ui.getSelectedHandlingMethod().equals(HandlingMode.BANK) || ui.getSelectedHandlingMethod().equals(HandlingMode.COOKnBANK);
         dropMode = ui.getSelectedHandlingMethod().equals(HandlingMode.DROP) || ui.getSelectedHandlingMethod().equals(HandlingMode.COOK);
-        cookMode = ui.getSelectedHandlingMethod().equals(HandlingMode.COOK) || ui.getSelectedHandlingMethod().equals(HandlingMode.COOKnBANK);
+        cookMode = ui.getSelectedHandlingMethod().equals(HandlingMode.COOK) || ui.getSelectedHandlingMethod().equals(HandlingMode.COOKnBANK) || ui.getSelectedHandlingMethod().equals(HandlingMode.COOKnNOTE);
+        noteMode = ui.getSelectedHandlingMethod().equals(HandlingMode.NOTE) || ui.getSelectedHandlingMethod().equals(HandlingMode.COOKnNOTE);
         fishingMethod = ui.getSelectedMethod();
         fishingLocation = ui.getSelectedLocation();
         menuHook = fishingMethod.getMenuEntry();
         handlingMode = ui.getSelectedHandlingMethod();
+
+        if (fishingLocation.equals(FishingLocation.Karambwans)) {
+            KarambwanUI wambamUI = new KarambwanUI(this);
+            Scene wambamScene = wambamUI.buildScene(this);
+            getStageController().show(wambamScene, "Karambwan Options", false);
+
+            bankOption = wambamUI.getSelectedBankingOption();
+            fairyOption = wambamUI.getSelectedFairyRingOption();
+
+            log(getClass(), "Bank option: " + bankOption + " | Fairy ring option: " + fairyOption);
+        }
+
+        if (fishingLocation.equals(FishingLocation.Minnows)) {
+            SearchableImage[] itemImages = getItemManager().getItem(ItemID.MINNOW, true);
+            minnowTileImageTop = itemImages[itemImages.length - 1];
+            minnowTileImageBottom = new SearchableImage(minnowTileImageTop.copy(), minnowTileImageTop.getToleranceComparator(), minnowTileImageTop.getColorModel());
+            makeHalfTransparent(minnowTileImageTop, true);
+            makeHalfTransparent(minnowTileImageBottom, false);
+        }
 
         webhookEnabled = ui.isWebhookEnabled();
         webhookUrl = ui.getWebhookUrl();
@@ -264,14 +305,35 @@ public class dAIOFisher extends Script {
 
         checkForUpdates();
 
-        tasks = Arrays.asList(
-                new Setup(this),
-                new Travel(this),
-                new Fish(this),
-                new Cook(this),
-                new Drop(this),
-                new Bank(this)
-        );
+        List<Task> taskList = new ArrayList<>();
+
+        if (fishingLocation == FishingLocation.Karambwans) {
+            taskList.add(new dkTravel(this));
+            taskList.add(new dkFish(this));
+            taskList.add(new dkBank(this));
+        } else if (fishingLocation == FishingLocation.Minnows) {
+            taskList.add(new dmFish(this));
+        } //else if (fishingLocation == FishingLocation.Wilderness_Resource_Area) {
+         //   taskList.add(new dCrabs(this));
+        //}
+        else {
+            taskList.add(new Setup(this));
+            taskList.add(new Travel(this));
+            taskList.add(new Fish(this));
+            taskList.add(new Cook(this));
+            taskList.add(new Drop(this));
+            taskList.add(new Bank(this));
+        }
+
+        // Build a readable list of task class names
+        List<String> taskNames = taskList.stream()
+                .map(task -> task.getClass().getSimpleName())
+                .collect(Collectors.toList());
+
+        log(getClass(), "Loaded " + taskList.size() + " task(s) for location: " + fishingLocation +
+                " -> " + String.join(", ", taskNames));
+
+        tasks = taskList;
     }
 
     @Override
@@ -403,6 +465,7 @@ public class dAIOFisher extends Script {
             int caughtPerHour = elapsed > 0 ? (int) ((caughtCount * 3600000L) / elapsed) : 0;
             int fishingXpPerHour = elapsed > 0 ? (int) ((fishingXp * 3600000L) / elapsed) : 0;
             int cookingXpPerHour = elapsed > 0 ? (int) ((cookingXp * 3600000L) / elapsed) : 0;
+            int cookingXpBanked = caughtCount * 190;
             String formattedRuntime = formatDuration(elapsed);
 
             DecimalFormat formatter = new DecimalFormat("#,###");
@@ -428,6 +491,11 @@ public class dAIOFisher extends Script {
                 if (cookMode) {
                     payloadBuilder.append("{\"name\": \"Cooking XP\", \"value\": \"").append(formatter.format(cookingXp)).append("\", \"inline\": true},")
                             .append("{\"name\": \"Cooking XP/hr\", \"value\": \"").append(formatter.format(cookingXpPerHour)).append("\", \"inline\": true},");
+                }
+                if (fishingLocation.equals(FishingLocation.Karambwans)) {
+                    payloadBuilder.append("{\"name\": \"Cooking XP banked\", \"value\": \"").append(formatter.format(cookingXpBanked)).append("\", \"inline\": true},")
+                            .append("{\"name\": \"Methods\", \"value\": \"Bank: ").append(escapeJson(bankOption))
+                            .append("\\nTravel: ").append(escapeJson(fairyOption)).append("\", \"inline\": true},");
                 }
 
                 payloadBuilder.append("{\"name\": \"Current task\", \"value\": \"").append(escapeJson(task)).append("\", \"inline\": true},")
@@ -493,6 +561,16 @@ public class dAIOFisher extends Script {
             return String.format("%02dd %02d:%02d:%02d", days, hours, minutes, secs);
         } else {
             return String.format("%02d:%02d:%02d", hours, minutes, secs);
+        }
+    }
+
+    private void makeHalfTransparent(SearchableImage image, boolean topHalf) {
+        int startY = topHalf ? 0 : image.getHeight() / 2;
+        int endY = topHalf ? image.getHeight() / 2 : image.getHeight();
+        for (int x = 0; x < image.getWidth(); x++) {
+            for (int y = startY; y < endY; y++) {
+                image.setRGB(x, y, ColorUtils.TRANSPARENT_PIXEL);
+            }
         }
     }
 }

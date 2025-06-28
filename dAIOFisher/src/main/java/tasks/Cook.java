@@ -15,6 +15,7 @@ import utils.Task;
 
 import java.awt.Color;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 
 import static main.dAIOFisher.*;
@@ -46,7 +47,7 @@ public class Cook extends Task {
         }
 
         // Different cooking method for eels
-        if (fishingLocation.equals(FishingLocation.Zul_Andra)) { //|| fishingLocation.equals(FishingLocation.Mor_Ul_Rek)) {
+        if (fishingLocation.equals(FishingLocation.Zul_Andra) || fishingLocation.equals(FishingLocation.Mor_Ul_Rek_East) || fishingLocation.equals(FishingLocation.Mor_Ul_Rek_West)) {
             // Select which tool/fish to use
             int toolToUse = 0;
             int fishToUse = 0;
@@ -63,6 +64,11 @@ public class Cook extends Task {
             if (inventory == null) {
                 script.log(getClass(), "Inventory could not be found");
                 return false;
+            }
+
+            if (!alreadyCountedFish) {
+                fish1Caught += inventory.getAmount(fishToUse);
+                alreadyCountedFish = true;
             }
 
             boolean clickSuccess;
@@ -159,6 +165,11 @@ public class Cook extends Task {
         task = "Wait until cooking finish";
         Timer amountChangeTimer = new Timer();
 
+        if (switchTabTimer.timeLeft() < TimeUnit.MINUTES.toMillis(1)) {
+            script.log("PREVENT-LOG", "Timer was under 1 minute – resetting as we just performed an action.");
+            switchTabTimer.reset(script.random(TimeUnit.MINUTES.toMillis(3), TimeUnit.MINUTES.toMillis(5)));
+        }
+
         BooleanSupplier condition = () -> {
             DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
             if (type == DialogueType.TAP_HERE_TO_CONTINUE) {
@@ -194,6 +205,12 @@ public class Cook extends Task {
 
     private void waitUntilFinishedCutting(int itemIdToWatch) {
         task = "Wait until cooking finish";
+
+        if (switchTabTimer.timeLeft() < TimeUnit.MINUTES.toMillis(1)) {
+            script.log("PREVENT-LOG", "Timer was under 1 minute – resetting as we just performed an action.");
+            switchTabTimer.reset(script.random(TimeUnit.MINUTES.toMillis(3), TimeUnit.MINUTES.toMillis(5)));
+        }
+
         Timer amountChangeTimer = new Timer();
 
         BooleanSupplier condition = () -> {
@@ -224,7 +241,7 @@ public class Cook extends Task {
                 readCookingXp();
             }
 
-            return inventorySnapshot.contains(itemIdToWatch);
+            return !inventorySnapshot.contains(itemIdToWatch);
         };
 
         script.log(getClass(), "Using human task to wait until cooking finishes.");

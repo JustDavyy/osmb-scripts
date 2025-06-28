@@ -3,6 +3,7 @@ package tasks;
 import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.script.Script;
+import data.FishingLocation;
 import utils.Task;
 import java.util.*;
 

@@ -5,6 +5,7 @@ import com.osmb.api.item.ItemID;
 import com.osmb.api.location.area.Area;
 import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSTile;
+import com.osmb.api.script.Script;
 import com.osmb.api.shape.Polygon;
 import com.osmb.api.shape.Rectangle;
 import com.osmb.api.ui.chatbox.dialogue.DialogueType;
@@ -19,19 +20,18 @@ import com.osmb.api.walker.WalkConfig;
 import data.FishingLocation;
 import data.FishingSpot;
 import utils.Task;
-import com.osmb.api.script.Script;
 
-import java.awt.Color;
-import java.util.*;
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static main.dAIOFisher.*;
 
-public class Fish extends Task {
+public class dCrabs extends Task {
     private static final SearchablePixel[] FISHING_SPOT_PIXELS = new SearchablePixel[]{
-            // Normal spots
             new SearchablePixel(-11366999, new SingleThresholdComparator(2), ColorModel.HSL),
             new SearchablePixel(-7555094, new SingleThresholdComparator(2), ColorModel.HSL),
             new SearchablePixel(-8605987, new SingleThresholdComparator(2), ColorModel.HSL),
@@ -39,85 +39,71 @@ public class Fish extends Task {
             new SearchablePixel(-6702368, new SingleThresholdComparator(2), ColorModel.HSL),
             new SearchablePixel(-12288621, new SingleThresholdComparator(2), ColorModel.HSL),
             new SearchablePixel(-12617586, new SingleThresholdComparator(2), ColorModel.HSL),
-            new SearchablePixel(-12420721, new SingleThresholdComparator(2), ColorModel.HSL),
-
-            // Sacred eels
-            new SearchablePixel(-13146533, new SingleThresholdComparator(2), ColorModel.HSL),
-            new SearchablePixel(-13080483, new SingleThresholdComparator(2), ColorModel.HSL),
-            new SearchablePixel(-13343911, new SingleThresholdComparator(2), ColorModel.HSL),
-            new SearchablePixel(-13475753, new SingleThresholdComparator(2), ColorModel.HSL),
-            new SearchablePixel(-12883106, new SingleThresholdComparator(2), ColorModel.HSL),
-
-            // Infernal eels
-            new SearchablePixel(-7299223, new SingleThresholdComparator(2), ColorModel.HSL),
-            new SearchablePixel(-7964334, new SingleThresholdComparator(2), ColorModel.HSL),
-            new SearchablePixel(-1850468, new SingleThresholdComparator(2), ColorModel.HSL),
-            new SearchablePixel(-1587295, new SingleThresholdComparator(2), ColorModel.HSL),
-            new SearchablePixel(-7702703, new SingleThresholdComparator(2), ColorModel.HSL)
+            new SearchablePixel(-12420721, new SingleThresholdComparator(2), ColorModel.HSL)
     };
     private FishingSpot lastFishingSpot = null;
     private int consecutiveNoSpotChecks = 0;
     private int relocationAttempts = 0;
-    private final Map<WorldPosition, Long> fishingSpotBlacklist = new HashMap<>();
 
-    public Fish(Script script) {
+    public dCrabs(Script script) {
         super(script);
     }
 
     public boolean activate() {
-        if (script.getWidgetManager().getDepositBox().isVisible()) {
-            return false;
-        }
+        return true;
+    }
 
-        if (fishingLocation.equals(FishingLocation.Karamja_West)) {
-            return true;
-        }
+    public boolean execute() {
 
-        ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.copyOf(fishingMethod.getRequiredTools()));
+        // Retrieve inventory
+        task = "Get inventory snapshot";
+        ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(ItemID.DARK_FISHING_BAIT, ItemID.LOBSTER_POT, ItemID.COINS_995, ItemID.RAW_DARK_CRAB, ItemID.DARK_CRAB, ItemID.BURNT_DARK_CRAB));
         if (inventorySnapshot == null) {
             script.log(getClass().getSimpleName(), "Inventory not visible.");
             return false;
         }
 
+        // Retrieve player position
+        task = "Get player position";
         WorldPosition myPos = script.getWorldPosition();
         if (myPos == null) {
             return false;
         }
 
-        // Always require being inside the fishing area
-        if (!fishingLocation.getFishingArea().contains(myPos)) {
+        // Check if we have required items
+        task = "Check required items";
+        if (!inventorySnapshot.containsAll(Set.of(ItemID.DARK_FISHING_BAIT, ItemID.LOBSTER_POT, ItemID.COINS_995))) {
+            script.log(getClass().getSimpleName(), "Not all required tools could be located in inventory, logging out and stopping script!");
+            script.getWidgetManager().getLogoutTab().logout();
+            script.stop();
             return false;
-        }
-
-        // Special case, fishing net is textured.
-        if (fishingMethod.getRequiredTools().contains(ItemID.SMALL_FISHING_NET) || fishingMethod.getRequiredTools().contains(ItemID.BIG_FISHING_NET)) {
-            return !inventorySnapshot.isFull();
-        }
-
-        // For other locations: require all tools
-        if (!inventorySnapshot.containsAll(Set.copyOf(fishingMethod.getRequiredTools()))) {
-            script.log(getClass().getSimpleName(), "Not all required tools could be located in inventory, stopping script!");
+        } else if (inventorySnapshot.getAmount(ItemID.COINS_995) < 10000) {
+            script.log(getClass().getSimpleName(), "We have less than 10k coins, stopping script!");
             script.getWidgetManager().getLogoutTab().logout();
             script.stop();
             return false;
         }
 
-        return !inventorySnapshot.isFull();
-    }
+        // If outside, enter resource area
+        if (!fishingLocation.getFishingArea().contains(myPos)) {
+            script.log(getClass(), "Outside resource area, entering it!");
+            task = "Enter resource area";
 
-    public boolean execute() {
-        task = getClass().getSimpleName();
+            // Interact with door object
 
-        if (alreadyCountedFish) {
-            alreadyCountedFish = false;
+            return script.getWalker().walkTo(fishingLocation.getFishingArea().getRandomPosition());
         }
 
-        // Special case: for Karamja_West, count remaining stackable raw fish
-        if (fishingLocation.equals(FishingLocation.Karamja_West)) {
-            ItemGroupResult afterDrop = script.getWidgetManager().getInventory().search(Set.of(ItemID.RAW_KARAMBWANJI));
-            if (afterDrop != null) {
-                fish3Caught = afterDrop.getAmount(ItemID.RAW_KARAMBWANJI) - startAmount;
+        // If inventory full, go cook or note
+        if (inventorySnapshot.isFull()) {
+            if (cookMode) {
+
             }
+        }
+
+        // If inventory not full, go fish
+        if (alreadyCountedFish) {
+            alreadyCountedFish = false;
         }
 
         if (!isCurrentlyFishing()) {
@@ -125,9 +111,7 @@ public class Fish extends Task {
         }
 
         // We're currently fishing; monitor exit conditions
-        script.submitHumanTask(this::earlyExitCheck, script.random(6000, 7000));
-
-        return false;
+        return script.submitHumanTask(this::earlyExitCheck, script.random(6000, 7000));
     }
 
     private boolean isCurrentlyFishing() {
@@ -285,10 +269,6 @@ public class Fish extends Task {
         boolean clicked = script.getFinger().tap(fishingSpot.getFishingSpotPoly().getResized(0.85), menuHook);
         if (!clicked) {
             script.log(getClass(), "Failed to click fishing spot.");
-
-            // Add to blacklist for 10 seconds
-            fishingSpotBlacklist.put(fishingSpot.getPosition(), System.currentTimeMillis() + 10_000);
-
             lastFishingSpot = null;
             return false;
         }
@@ -325,16 +305,10 @@ public class Fish extends Task {
     private FishingSpot getFishingSpot(WorldPosition worldPosition) {
         long start = System.currentTimeMillis();
 
-        long currentTime = System.currentTimeMillis();
-        fishingSpotBlacklist.entrySet().removeIf(entry -> entry.getValue() < currentTime);
-
         Area spotArea = fishingLocation.getFishingArea();
         Set<WorldPosition> fishingSpotPositions = fishingMethod.getFishingSpots();
 
-        List<FishingSpot> activeFishingSpotsOnScreen = getFishingSpots(fishingSpotPositions).stream()
-                .filter(spot -> !fishingSpotBlacklist.containsKey(spot.getPosition()))
-                .toList();
-
+        List<FishingSpot> activeFishingSpotsOnScreen = getFishingSpots(fishingSpotPositions);
         if (activeFishingSpotsOnScreen.isEmpty()) {
             consecutiveNoSpotChecks++;
             script.log(getClass(), "No fishing spots found (" + consecutiveNoSpotChecks + " check(s) in a row)");

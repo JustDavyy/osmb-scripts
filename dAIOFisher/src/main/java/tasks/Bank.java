@@ -6,6 +6,7 @@ import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
 import com.osmb.api.utils.timing.Timer;
+import data.FishingLocation;
 import data.FishingMethod;
 import utils.Task;
 
@@ -84,6 +85,10 @@ public class Bank extends Task {
             } else {
                 script.log(getClass(), "Deposit box interface is visible.");
             }
+        } else if (fishingMethod.getBankObjectType().equals(FishingMethod.BankObjectType.NPC)) {
+
+
+            return false;
         }
 
         // Deposit items

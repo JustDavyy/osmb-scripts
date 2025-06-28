@@ -1,16 +1,16 @@
 package tasks;
 
 import com.osmb.api.item.ItemGroupResult;
-import com.osmb.api.item.ItemID;
 import com.osmb.api.location.area.Area;
 import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSTile;
+import com.osmb.api.script.Script;
 import com.osmb.api.shape.Polygon;
 import com.osmb.api.shape.Rectangle;
 import com.osmb.api.ui.chatbox.dialogue.DialogueType;
 import com.osmb.api.ui.component.ComponentSearchResult;
 import com.osmb.api.ui.component.minimap.xpcounter.XPDropsComponent;
-import com.osmb.api.ui.tabs.Tab;
+import com.osmb.api.visual.PixelAnalyzer;
 import com.osmb.api.visual.SearchablePixel;
 import com.osmb.api.visual.color.ColorModel;
 import com.osmb.api.visual.color.tolerance.impl.SingleThresholdComparator;
@@ -19,19 +19,19 @@ import com.osmb.api.walker.WalkConfig;
 import data.FishingLocation;
 import data.FishingSpot;
 import utils.Task;
-import com.osmb.api.script.Script;
 
-import java.awt.Color;
-import java.util.*;
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-
+import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 import static main.dAIOFisher.*;
 
-public class Fish extends Task {
+public class dkFish extends Task {
     private static final SearchablePixel[] FISHING_SPOT_PIXELS = new SearchablePixel[]{
-            // Normal spots
             new SearchablePixel(-11366999, new SingleThresholdComparator(2), ColorModel.HSL),
             new SearchablePixel(-7555094, new SingleThresholdComparator(2), ColorModel.HSL),
             new SearchablePixel(-8605987, new SingleThresholdComparator(2), ColorModel.HSL),
@@ -39,40 +39,22 @@ public class Fish extends Task {
             new SearchablePixel(-6702368, new SingleThresholdComparator(2), ColorModel.HSL),
             new SearchablePixel(-12288621, new SingleThresholdComparator(2), ColorModel.HSL),
             new SearchablePixel(-12617586, new SingleThresholdComparator(2), ColorModel.HSL),
-            new SearchablePixel(-12420721, new SingleThresholdComparator(2), ColorModel.HSL),
-
-            // Sacred eels
-            new SearchablePixel(-13146533, new SingleThresholdComparator(2), ColorModel.HSL),
-            new SearchablePixel(-13080483, new SingleThresholdComparator(2), ColorModel.HSL),
-            new SearchablePixel(-13343911, new SingleThresholdComparator(2), ColorModel.HSL),
-            new SearchablePixel(-13475753, new SingleThresholdComparator(2), ColorModel.HSL),
-            new SearchablePixel(-12883106, new SingleThresholdComparator(2), ColorModel.HSL),
-
-            // Infernal eels
-            new SearchablePixel(-7299223, new SingleThresholdComparator(2), ColorModel.HSL),
-            new SearchablePixel(-7964334, new SingleThresholdComparator(2), ColorModel.HSL),
-            new SearchablePixel(-1850468, new SingleThresholdComparator(2), ColorModel.HSL),
-            new SearchablePixel(-1587295, new SingleThresholdComparator(2), ColorModel.HSL),
-            new SearchablePixel(-7702703, new SingleThresholdComparator(2), ColorModel.HSL)
+            new SearchablePixel(-12420721, new SingleThresholdComparator(2), ColorModel.HSL)
     };
+
     private FishingSpot lastFishingSpot = null;
     private int consecutiveNoSpotChecks = 0;
     private int relocationAttempts = 0;
-    private final Map<WorldPosition, Long> fishingSpotBlacklist = new HashMap<>();
 
-    public Fish(Script script) {
+    private long lastAnimationDetected = System.currentTimeMillis();
+    private long currentIdleThreshold = getRandomIdleThreshold();
+    private final PixelAnalyzer pixelAnalyzer = script.getPixelAnalyzer();
+
+    public dkFish(Script script) {
         super(script);
     }
 
     public boolean activate() {
-        if (script.getWidgetManager().getDepositBox().isVisible()) {
-            return false;
-        }
-
-        if (fishingLocation.equals(FishingLocation.Karamja_West)) {
-            return true;
-        }
-
         ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.copyOf(fishingMethod.getRequiredTools()));
         if (inventorySnapshot == null) {
             script.log(getClass().getSimpleName(), "Inventory not visible.");
@@ -89,12 +71,7 @@ public class Fish extends Task {
             return false;
         }
 
-        // Special case, fishing net is textured.
-        if (fishingMethod.getRequiredTools().contains(ItemID.SMALL_FISHING_NET) || fishingMethod.getRequiredTools().contains(ItemID.BIG_FISHING_NET)) {
-            return !inventorySnapshot.isFull();
-        }
-
-        // For other locations: require all tools
+        // Require all tools
         if (!inventorySnapshot.containsAll(Set.copyOf(fishingMethod.getRequiredTools()))) {
             script.log(getClass().getSimpleName(), "Not all required tools could be located in inventory, stopping script!");
             script.getWidgetManager().getLogoutTab().logout();
@@ -106,81 +83,42 @@ public class Fish extends Task {
     }
 
     public boolean execute() {
-        task = getClass().getSimpleName();
 
         if (alreadyCountedFish) {
             alreadyCountedFish = false;
         }
 
-        // Special case: for Karamja_West, count remaining stackable raw fish
-        if (fishingLocation.equals(FishingLocation.Karamja_West)) {
-            ItemGroupResult afterDrop = script.getWidgetManager().getInventory().search(Set.of(ItemID.RAW_KARAMBWANJI));
-            if (afterDrop != null) {
-                fish3Caught = afterDrop.getAmount(ItemID.RAW_KARAMBWANJI) - startAmount;
+        task = "Check animation";
+        boolean isAnimating = pixelAnalyzer.isPlayerAnimating(0.4);
+
+        if (isAnimating) {
+            lastAnimationDetected = System.currentTimeMillis(); // reset animation timer
+            script.submitHumanTask(this::earlyExitCheck, script.random(10000, 15000));
+            return false;
+        }
+
+        long idleTime = System.currentTimeMillis() - lastAnimationDetected;
+
+        if (idleTime >= currentIdleThreshold) {
+            script.log(getClass().getSimpleName(), "No animation detected for " + idleTime + "ms. Re-initiating fishing.");
+            boolean initiated = initiateFishingAction();
+            if (initiated) {
+                lastAnimationDetected = System.currentTimeMillis(); // reset timer
+                currentIdleThreshold = getRandomIdleThreshold();    // randomize next threshold
             }
+            return initiated;
         }
-
-        if (!isCurrentlyFishing()) {
-            return initiateFishingAction();
-        }
-
-        // We're currently fishing; monitor exit conditions
-        script.submitHumanTask(this::earlyExitCheck, script.random(6000, 7000));
 
         return false;
     }
 
-    private boolean isCurrentlyFishing() {
-        task = "Check for level-up";
-        if (script.getWidgetManager().getDialogue().getDialogueType() == DialogueType.TAP_HERE_TO_CONTINUE) {
-            script.log(getClass().getSimpleName(), "Early exit, TAP_HERE_TO_CONTINUE dialogue detected (inventory full or leveled up)");
-            return false;
-        }
-
-        if (!readyToReadFishingXP) {
-            List<Integer> fishIds = fishingMethod.getCatchableFish();
-            ItemGroupResult inv = script.getWidgetManager().getInventory().search(Set.copyOf(fishingMethod.getCatchableFish()));
-            if (inv != null) {
-                for (int id : fishIds) {
-                    if (inv.getAmount(id) > 0) {
-                        script.log(getClass(), "Initial fish catch detected in inventory, setting readyToReadFishingXP = true");
-                        readyToReadFishingXP = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        task = "Check last fishing spot";
-        if (lastFishingSpot == null) return false;
-
-        boolean stillValid = isValidFishingSpot(lastFishingSpot.getPosition()) != null;
-        task = "Check XP Gained";
-        boolean xpRecently = !readyToReadFishingXP || System.currentTimeMillis() - lastXpGained <= fishingMethod.getFishingDelay();
-
-        if (readyToReadFishingXP) {
-            readFishingXp();
-        }
-
-        task = "Check if currently fishing";
-        return stillValid && xpRecently;
-    }
-
     private boolean earlyExitCheck() {
-        task = "Check for level-up";
+        task = "Monitor wait condition";
         if (script.getWidgetManager().getDialogue().getDialogueType() == DialogueType.TAP_HERE_TO_CONTINUE) {
             script.log(getClass().getSimpleName(), "Early exit, TAP_HERE_TO_CONTINUE dialogue detected (inventory full or leveled up)");
             return true;
         }
 
-        task = "Check AFK timer";
-        if (switchTabTimer.hasFinished()) {
-            script.log("PREVENT-LOG", "Switching tabs...");
-            script.getWidgetManager().getTabManager().openTab(Tab.Type.values()[script.random(Tab.Type.values().length)]);
-            switchTabTimer.reset(script.random(TimeUnit.MINUTES.toMillis(3), TimeUnit.MINUTES.toMillis(5)));
-            script.getWidgetManager().getTabManager().openTab(Tab.Type.INVENTORY);
-        }
-
         if (!readyToReadFishingXP) {
             List<Integer> fishIds = fishingMethod.getCatchableFish();
             ItemGroupResult inv = script.getWidgetManager().getInventory().search(Set.copyOf(fishingMethod.getCatchableFish()));
@@ -195,41 +133,34 @@ public class Fish extends Task {
             }
         }
 
-        task = "Check inventory";
+        if (readyToReadFishingXP) {
+            readFishingXp();
+        }
+
         ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Collections.emptySet());
         if (inventorySnapshot == null) {
             script.log(getClass().getSimpleName(), "Inventory not visible.");
             return false;
         }
 
-        if (!fishingLocation.equals(FishingLocation.Karamja_West)) {
-            if (inventorySnapshot.isFull()) {
-                script.log(getClass().getSimpleName(), "Early exit, Inventory is full");
-                return true;
-            }
-        }
-
-        task = "Check last fishing spot";
-        if (lastFishingSpot != null) {
-            FishingSpot current = isValidFishingSpot(lastFishingSpot.getPosition());
-            if (current == null) {
-                script.log(getClass(), "Fishing spot no longer valid — early exit.");
-                return true;
-            }
-        }
-
-        task = "Check XP gained";
-        long idleSinceXp = System.currentTimeMillis() - lastXpGained;
-        if (readyToReadFishingXP && idleSinceXp > fishingMethod.getFishingDelay()) {
-            int delay = (int) (fishingMethod.getFishingDelay() / 1000);
-            script.log(getClass(), "No XP gained in last " + delay + "s — early exit.");
+        if (inventorySnapshot.isFull()) {
+            script.log(getClass().getSimpleName(), "Early exit, Inventory is full");
             return true;
         }
 
-        if (readyToReadFishingXP) {
-            readFishingXp();
+        boolean isAnimating = pixelAnalyzer.isPlayerAnimating(0.4);
+
+        if (isAnimating) {
+            lastAnimationDetected = System.currentTimeMillis(); // refresh animation timer
+            return false;
         }
-        task = "Check if currently fishing";
+
+        long idleTime = System.currentTimeMillis() - lastAnimationDetected;
+        if (idleTime >= currentIdleThreshold) {
+            script.log(getClass().getSimpleName(), "Early exit due to inactivity for " + idleTime + "ms.");
+            return true;
+        }
+
         return false;
     }
 
@@ -285,10 +216,6 @@ public class Fish extends Task {
         boolean clicked = script.getFinger().tap(fishingSpot.getFishingSpotPoly().getResized(0.85), menuHook);
         if (!clicked) {
             script.log(getClass(), "Failed to click fishing spot.");
-
-            // Add to blacklist for 10 seconds
-            fishingSpotBlacklist.put(fishingSpot.getPosition(), System.currentTimeMillis() + 10_000);
-
             lastFishingSpot = null;
             return false;
         }
@@ -325,16 +252,9 @@ public class Fish extends Task {
     private FishingSpot getFishingSpot(WorldPosition worldPosition) {
         long start = System.currentTimeMillis();
 
-        long currentTime = System.currentTimeMillis();
-        fishingSpotBlacklist.entrySet().removeIf(entry -> entry.getValue() < currentTime);
-
-        Area spotArea = fishingLocation.getFishingArea();
         Set<WorldPosition> fishingSpotPositions = fishingMethod.getFishingSpots();
 
-        List<FishingSpot> activeFishingSpotsOnScreen = getFishingSpots(fishingSpotPositions).stream()
-                .filter(spot -> !fishingSpotBlacklist.containsKey(spot.getPosition()))
-                .toList();
-
+        List<FishingSpot> activeFishingSpotsOnScreen = getFishingSpots(fishingSpotPositions);
         if (activeFishingSpotsOnScreen.isEmpty()) {
             consecutiveNoSpotChecks++;
             script.log(getClass(), "No fishing spots found (" + consecutiveNoSpotChecks + " check(s) in a row)");
@@ -417,21 +337,6 @@ public class Fish extends Task {
         return tilePoly;
     }
 
-    private void walkToFishingSpot() {
-        script.log(getClass(), "No fishing spots visible on screen, walking to one...");
-        WalkConfig.Builder walkConfig = new WalkConfig.Builder();
-        walkConfig.breakCondition(() -> {
-            WorldPosition myPosition = script.getWorldPosition();
-            if (myPosition == null) {
-                return false;
-            }
-            // keep polling for fishing spots and break out as soon as one is visible
-            FishingSpot fishingSpot1 = getFishingSpot(myPosition);
-            return fishingSpot1 != null;
-        });
-        script.getWalker().walkTo(getDestination(), walkConfig.build());
-    }
-
     private WorldPosition getDestination() {
         WorldPosition myPosition = script.getWorldPosition();
 
@@ -477,8 +382,8 @@ public class Fish extends Task {
         ComponentSearchResult<Integer> result = xpComponent.getResult();
         if (result == null || result.getComponentImage().getGameFrameStatusType() != 1) return;
 
-        Rectangle componentBounds = result.getBounds();
-        Rectangle xpTextRect = new Rectangle(componentBounds.x - 140, componentBounds.y - 1, 119, 38);
+        com.osmb.api.shape.Rectangle componentBounds = result.getBounds();
+        com.osmb.api.shape.Rectangle xpTextRect = new Rectangle(componentBounds.x - 140, componentBounds.y - 1, 119, 38);
 
         script.submitTask(() -> false, script.random(200, 400));
         String xpText = script.getOCR().getText(Font.SMALL_FONT, xpTextRect, Color.WHITE.getRGB());
@@ -507,5 +412,9 @@ public class Fish extends Task {
         } catch (NumberFormatException e) {
             script.log(getClass(), "Failed to parse Fishing XP text: " + xpText);
         }
+    }
+
+    private long getRandomIdleThreshold() {
+        return ThreadLocalRandom.current().nextLong(8_000, 13_000); // 8 to 13 sec
     }
 }
