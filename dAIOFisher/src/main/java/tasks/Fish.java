@@ -53,7 +53,10 @@ public class Fish extends Task {
             new SearchablePixel(-7964334, new SingleThresholdComparator(2), ColorModel.HSL),
             new SearchablePixel(-1850468, new SingleThresholdComparator(2), ColorModel.HSL),
             new SearchablePixel(-1587295, new SingleThresholdComparator(2), ColorModel.HSL),
-            new SearchablePixel(-7702703, new SingleThresholdComparator(2), ColorModel.HSL)
+            new SearchablePixel(-7702703, new SingleThresholdComparator(2), ColorModel.HSL),
+
+            // Yellow highlight after interacting
+            new SearchablePixel(-2171876, new SingleThresholdComparator(2), ColorModel.HSL)
     };
     private FishingSpot lastFishingSpot = null;
     private int consecutiveNoSpotChecks = 0;
