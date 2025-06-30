@@ -37,11 +37,11 @@ import javax.imageio.ImageIO;
         name = "dAIOFisher",
         description = "AIO Fisher that fishes, banks and/or drops to get those gains!",
         skillCategory = SkillCategory.FISHING,
-        version = 1.91,
+        version = 1.92,
         author = "JustDavyy"
 )
 public class dAIOFisher extends Script {
-    public static String scriptVersion = "1.91";
+    public static String scriptVersion = "1.92";
     public static boolean setupDone = false;
     public static boolean usingBarrel = false;
     private static final java.awt.Font ARIEL = java.awt.Font.getFont("Ariel");
@@ -156,7 +156,6 @@ public class dAIOFisher extends Script {
             case Seers_SinclairMansion -> new int[]{
                     10807, 10806
             };
-            // Fishing_Guild case left commented intentionally
             case Rellekka_MiddlePier, Rellekka_NorthPier, Rellekka_WestPier -> new int[]{
                     10553, 10554
             };
@@ -323,6 +322,7 @@ public class dAIOFisher extends Script {
             taskList.add(new Cook(this));
             taskList.add(new Drop(this));
             taskList.add(new Bank(this));
+            taskList.add(new FailSafe(this));
         }
 
         // Build a readable list of task class names
