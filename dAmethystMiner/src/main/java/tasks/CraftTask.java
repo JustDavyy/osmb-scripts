@@ -4,6 +4,7 @@ import com.osmb.api.item.ItemID;
 import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.script.Script;
 import com.osmb.api.ui.chatbox.dialogue.DialogueType;
+import com.osmb.api.utils.UIResult;
 import com.osmb.api.utils.timing.Timer;
 import utils.Task;
 
@@ -29,7 +30,16 @@ public class CraftTask extends Task {
 
     @Override
     public boolean execute() {
-        task = getClass().getSimpleName();
+        task = "Check tapToDrop";
+        UIResult<Boolean> tapToDropResult = script.getWidgetManager().getHotkeys().isTapToDropEnabled();
+        if (tapToDropResult.isFound() && tapToDropResult.get()) {
+            script.log(getClass(), "⚠️ Tap-to-drop is enabled — disabling it.");
+            boolean success = script.getWidgetManager().getHotkeys().setTapToDropEnabled(false);
+            if (!success) {
+                script.log(getClass(), "❌ Failed to disable Tap-to-drop!");
+                return false;
+            }
+        }
 
         task = "Get inventory snapshot";
         // tap the deposit first in our inventory
