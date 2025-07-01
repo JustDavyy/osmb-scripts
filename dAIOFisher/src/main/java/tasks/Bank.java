@@ -86,8 +86,6 @@ public class Bank extends Task {
                 script.log(getClass(), "Deposit box interface is visible.");
             }
         } else if (fishingMethod.getBankObjectType().equals(FishingMethod.BankObjectType.NPC)) {
-
-
             return false;
         }
 
@@ -103,22 +101,44 @@ public class Bank extends Task {
             fish1Caught += 28;
         }
 
+        boolean usesTexturedItem = fishingMethod.getRequiredTools().contains(ItemID.SMALL_FISHING_NET)
+                || fishingMethod.getRequiredTools().contains(ItemID.BIG_FISHING_NET);
+
         if (fishingMethod.getBankObjectType().equals(FishingMethod.BankObjectType.BANK)) {
-            if (!script.getWidgetManager().getBank().depositAll(Set.copyOf(ignoreItems))) {
-                script.log(getClass().getSimpleName(), "Deposit items failed.");
-                return false;
+            if (usesTexturedItem) {
+                script.log(getClass(), "Using textured item (small/big net). Excluding slot 0 from bank deposit.");
+                if (!script.getWidgetManager().getBank().depositAll(Set.copyOf(ignoreItems), Set.of(0))) {
+                    script.log(getClass(), "Deposit items failed (slot 0 excluded).");
+                    return false;
+                } else {
+                    script.log(getClass(), "Deposit items successful (slot 0 excluded).");
+                }
             } else {
-                script.log(getClass(), "Deposit items was successful.");
+                if (!script.getWidgetManager().getBank().depositAll(Set.copyOf(ignoreItems))) {
+                    script.log(getClass(), "Deposit items failed.");
+                    return false;
+                } else {
+                    script.log(getClass(), "Deposit items successful.");
+                }
             }
         } else if (fishingMethod.getBankObjectType().equals(FishingMethod.BankObjectType.DEPOSIT_BOX)) {
-            if (!script.getWidgetManager().getDepositBox().depositAll(Set.copyOf(ignoreItems))) {
-                script.log(getClass().getSimpleName(), "Deposit items failed.");
-                return false;
+            if (usesTexturedItem) {
+                script.log(getClass(), "Using textured item (small/big net). Excluding slot 0 from deposit box deposit.");
+                if (!script.getWidgetManager().getDepositBox().depositAll(Set.copyOf(ignoreItems), Set.of(0))) {
+                    script.log(getClass(), "Deposit items failed (slot 0 excluded).");
+                    return false;
+                } else {
+                    script.log(getClass(), "Deposit items successful (slot 0 excluded).");
+                }
             } else {
-                script.log(getClass(), "Deposit items was successful.");
+                if (!script.getWidgetManager().getDepositBox().depositAll(Set.copyOf(ignoreItems))) {
+                    script.log(getClass(), "Deposit items failed.");
+                    return false;
+                } else {
+                    script.log(getClass(), "Deposit items successful.");
+                }
             }
         }
-
 
         task = "Close bank";
         if (fishingMethod.getBankObjectType().equals(FishingMethod.BankObjectType.BANK)) {
