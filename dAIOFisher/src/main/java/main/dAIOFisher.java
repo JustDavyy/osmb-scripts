@@ -37,11 +37,11 @@ import javax.imageio.ImageIO;
         name = "dAIOFisher",
         description = "AIO Fisher that fishes, banks and/or drops to get those gains!",
         skillCategory = SkillCategory.FISHING,
-        version = 1.95,
+        version = 1.96,
         author = "JustDavyy"
 )
 public class dAIOFisher extends Script {
-    public static String scriptVersion = "1.95";
+    public static String scriptVersion = "1.96";
     public static boolean setupDone = false;
     public static boolean usingBarrel = false;
     private static final java.awt.Font ARIEL = java.awt.Font.getFont("Ariel");
@@ -316,7 +316,6 @@ public class dAIOFisher extends Script {
          //   taskList.add(new dCrabs(this));
         //}
         else {
-            taskList.add(new Setup(this));
             taskList.add(new Travel(this));
             taskList.add(new Fish(this));
             taskList.add(new Cook(this));
@@ -324,6 +323,7 @@ public class dAIOFisher extends Script {
             taskList.add(new Bank(this));
             taskList.add(new FailSafe(this));
         }
+        taskList.add(new Setup(this));
 
         // Build a readable list of task class names
         List<String> taskNames = taskList.stream()
