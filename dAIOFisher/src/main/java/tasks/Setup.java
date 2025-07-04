@@ -117,6 +117,8 @@ public class Setup extends Task {
         if (inventorySnapshot2.containsAny(ItemID.FISH_BARREL, ItemID.OPEN_FISH_BARREL)) {
             script.log(getClass().getSimpleName(), "Fishing barrel detected in inventory, marking usage as TRUE");
             usingBarrel = true;
+        } else {
+            script.log(getClass(), "No fishing barrel detected (closed or opened), usage kept marked as FALSE.");
         }
 
         // Reset timer
