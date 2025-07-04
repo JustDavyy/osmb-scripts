@@ -75,7 +75,9 @@ public class dkBank extends Task {
         if (usingBarrel && inventorySnapshot.contains(ItemID.RAW_KARAMBWAN)) {
             task = "Empty fish barrel";
             script.log(getClass().getSimpleName(), "Emptying fish barrel in the bank");
-            inventorySnapshot.getItem(ItemID.FISH_BARREL, ItemID.OPEN_FISH_BARREL).interact("Empty");
+            if (!inventorySnapshot.getItem(ItemID.FISH_BARREL, ItemID.OPEN_FISH_BARREL).interact("Empty")) {
+                return false;
+            }
 
             // Add inventory karambwan amount + 28 from fishing barrel
             fish1Caught += inventorySnapshot.getAmount(ItemID.RAW_KARAMBWAN) + 28;
