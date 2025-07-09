@@ -68,11 +68,13 @@ public class Bank extends Task {
         }
 
         WorldPosition myPos = script.getWorldPosition();
-        if (myPos != null && !bankArea.contains(myPos)) {
+        if (myPos != null && !bankArea.contains(myPos) && !isBankChestInteractable()) {
             task = "Walk to bank area";
             if (useShortcut) {
+                script.log(getClass(), "Walking to bank area (shortcut)");
                 return walkWithShortcut();
             } else {
+                script.log(getClass(), "Walking to bank area");
                 return walkWithoutShortcut();
             }
         }
@@ -133,10 +135,15 @@ public class Bank extends Task {
                 return false;
             }
 
-            return script.submitHumanTask(() -> {
+            boolean done = script.submitHumanTask(() -> {
                 WorldPosition currentPos = script.getWorldPosition();
                 return currentPos != null && !choppingArea.contains(currentPos);
             }, script.random(7000, 12000));
+            if (done) {
+                return walkWithoutShortcut();
+            } else {
+                return false;
+            }
         } else {
             return walkWithoutShortcut();
         }
@@ -278,5 +285,24 @@ public class Bank extends Task {
         script.getWidgetManager().getBank().close();
         script.log(getClass(), "Banked items and closed bank.");
         return true;
+    }
+
+    private boolean isBankChestInteractable() {
+        List<RSObject> chests = script.getObjectManager().getObjects(obj -> {
+            if (obj.getName() == null || obj.getActions() == null) {
+                return false;
+            }
+            return obj.getName().equals("Chest pieces")
+                    && Arrays.asList(obj.getActions()).contains("Build")
+                    && obj.getWorldPosition().getX() == 3742
+                    && obj.getWorldPosition().getY() == 3805;
+        });
+
+        if (chests.isEmpty()) {
+            return false;
+        }
+
+        RSObject chest = (RSObject) script.getUtils().getClosest(chests);
+        return chest != null && chest.isInteractableOnScreen();
     }
 }
