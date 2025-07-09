@@ -32,17 +32,19 @@ import java.util.Set;
         name = "dCamTorumMiner",
         description = "Mines blessed bone shards in the Cam Torum mine",
         skillCategory = SkillCategory.MINING,
-        version = 1.6,
+        version = 1.7,
         author = "JustDavyy"
 )
 public class dCamTorumMiner extends Script {
-    public static final String scriptVersion = "1.6";
+    public static final String scriptVersion = "1.7";
     public static boolean setupDone = false;
     public static boolean hasReqs;
     public static int blessedShardCount = 0;
     public static int miningXpGained = 0;
     public static boolean dropMode = false;
     public static boolean smithMode = false;
+    public static boolean readyToReadXP = false;
+    public static double previousXPRead = -1;
     public static final Area miningArea = new RectangleArea(1498, 9541, 3, 3, 1);
     public static final Area bankWalkArea = new RectangleArea(1449, 9567, 4, 1, 1);
     public static final Area bankArea = new RectangleArea(1448, 9564, 11, 7, 1);

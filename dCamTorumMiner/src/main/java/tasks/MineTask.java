@@ -10,9 +10,12 @@ import com.osmb.api.script.Script;
 import com.osmb.api.shape.Polygon;
 import com.osmb.api.shape.Rectangle;
 import com.osmb.api.shape.triangle.Triangle;
+import com.osmb.api.ui.component.ComponentSearchResult;
+import com.osmb.api.ui.component.minimap.xpcounter.XPDropsComponent;
 import com.osmb.api.ui.tabs.Tab;
 import com.osmb.api.utils.UIResultList;
 import com.osmb.api.utils.timing.Timer;
+import com.osmb.api.visual.ocr.fonts.Font;
 import utils.Task;
 
 import java.awt.*;
@@ -224,6 +227,10 @@ public class MineTask extends Task {
         final long maxNoAnimTime = script.random(6000, 8000);
 
         script.submitHumanTask(() -> {
+            if (readyToReadXP) {
+                readXp();
+            }
+
             ItemGroupResult currentInv = script.getWidgetManager().getInventory()
                     .search(Set.of(ItemID.BLESSED_BONE_SHARDS));
 
@@ -257,17 +264,19 @@ public class MineTask extends Task {
                 // Allow large increments that are exact multiples of 1000
                 boolean isStackedIncrement = lastCount >= 100_000 && gained % 1000 == 0 && gained <= 10_000;
 
-                if (gained > 10 && !isStackedIncrement) {
+                if (gained > 200 && !isStackedIncrement) {
                     script.log(getClass(), "Ignored suspicious shard jump: +" + gained +
                             " (from " + lastCount + " to " + currentCount + ")");
                 } else {
                     previousCount.set(currentCount);
                     blessedShardCount += gained;
-                    miningXpGained += 33 * gained;
                     localMinedCount.addAndGet(gained);
                     animationTimer.reset();
                     debounceTimer.reset();
                     lastXpGain.reset();
+                    if (!readyToReadXP) {
+                        readyToReadXP = true;
+                    }
                     script.log(getClass(), "+" + gained + " blessed shard(s) mined! (" + blessedShardCount + " in total)");
                 }
             } else if (currentCount < lastCount) {
@@ -295,5 +304,49 @@ public class MineTask extends Task {
         }, maxMiningDuration);
 
         script.submitTask(() -> false, script.random(300, 800));
+    }
+
+    private void readXp() {
+        task = "Read XP";
+        XPDropsComponent xpComponent = (XPDropsComponent) script.getWidgetManager().getComponent(XPDropsComponent.class);
+
+        if (xpComponent == null) {
+            script.log(getClass(), "XP button component not found.");
+            return;
+        }
+
+        ComponentSearchResult<Integer> result = xpComponent.getResult();
+        if (result == null || result.getComponentImage().getGameFrameStatusType() != 1) return;
+
+        Rectangle componentBounds = result.getBounds();
+        Rectangle xpTextRect = new Rectangle(componentBounds.x - 140, componentBounds.y - 1, 119, 38);
+
+        script.submitTask(() -> false, script.random(200, 400));
+        String xpText = script.getOCR().getText(Font.SMALL_FONT, xpTextRect, Color.WHITE.getRGB());
+
+        if (xpText == null || xpText.isBlank()) return;
+        xpText = xpText.replaceAll("[^\\d]", "");
+        if (xpText.isEmpty()) return;
+
+        try {
+            double currentXp = Double.parseDouble(xpText);
+            if (currentXp <= 0) return;
+
+            if (previousXPRead < 0) {
+                previousXPRead = currentXp;
+                return;
+            }
+
+            double xpGained = currentXp - previousXPRead;
+            if (xpGained > 0 && xpGained <= 15000) {
+                miningXpGained += (int) xpGained;
+                script.log(getClass(), "Mining XP gained: " + xpGained + " (" + miningXpGained + ")");
+                previousXPRead = currentXp;
+            }
+
+        } catch (NumberFormatException e) {
+            script.log(getClass(), "Failed to parse Fishing XP text: " + xpText);
+        }
+
     }
 }

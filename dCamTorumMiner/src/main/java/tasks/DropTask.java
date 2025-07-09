@@ -18,12 +18,6 @@ import java.util.function.Predicate;
 import static main.dCamTorumMiner.*;
 
 public class DropTask extends Task {
-    private int prevClueBeginner = 0;
-    private int prevClueEasy = 0;
-    private int prevClueMedium = 0;
-    private int prevClueHard = 0;
-    private int prevClueElite = 0;
-    private int prevLoopKey = 0;
 
     public static final Set<Integer> ITEM_IDS_TO_NOT_DEPOSIT2 = new HashSet<>(Set.of(
             ItemID.PAYDIRT, ItemID.BRONZE_PICKAXE, ItemID.IRON_PICKAXE,
@@ -54,8 +48,6 @@ public class DropTask extends Task {
         task = getClass().getSimpleName();
         ItemGroupResult inv = script.getWidgetManager().getInventory().search(getTrackedItemIDs());
         if (inv == null) return false;
-
-        int totalXp = 0;
 
         int deposits = safeAmount(inv.getAmount(ItemID.CALCIFIED_DEPOSIT));
         int sapphires = safeAmount(inv.getAmount(ItemID.UNCUT_SAPPHIRE));
@@ -90,7 +82,6 @@ public class DropTask extends Task {
         if (deposits > 0) {
             script.log(getClass(), "Dropping " + deposits + " calcified deposit(s).");
             script.getWidgetManager().getInventory().dropItems(ItemID.CALCIFIED_DEPOSIT);
-            totalXp += deposits * 33;
         }
 
         inv = script.getWidgetManager().getInventory().search(getTrackedItemIDs());
@@ -102,12 +93,6 @@ public class DropTask extends Task {
             script.log(getClass().getSimpleName(), "Not enough to bank, walking back to mining area.");
             script.getWalker().walkTo(miningArea.getRandomPosition());
         }
-
-        miningXpGained += totalXp;
-        script.log(getClass(), "Total mining XP added: " + totalXp);
-
-        // Update previous counts for kept items
-        updatePreviousCounts(inv);
 
         return true;
     }
@@ -161,15 +146,6 @@ public class DropTask extends Task {
         script.getWidgetManager().getDepositBox().close();
         script.log(getClass(), "Banked items and closed deposit box.");
         return true;
-    }
-
-    private void updatePreviousCounts(ItemGroupResult inv) {
-        prevClueBeginner = safeAmount(inv.getAmount(ItemID.CLUE_GEODE_BEGINNER));
-        prevClueEasy = safeAmount(inv.getAmount(ItemID.CLUE_GEODE_EASY));
-        prevClueMedium = safeAmount(inv.getAmount(ItemID.CLUE_GEODE_MEDIUM));
-        prevClueHard = safeAmount(inv.getAmount(ItemID.CLUE_GEODE_HARD));
-        prevClueElite = safeAmount(inv.getAmount(ItemID.CLUE_GEODE_ELITE));
-        prevLoopKey = safeAmount(inv.getAmount(ItemID.LOOP_HALF_OF_KEY_30107));
     }
 
     private int getNewBankThreshold() {
