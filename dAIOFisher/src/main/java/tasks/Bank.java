@@ -29,7 +29,12 @@ public class Bank extends Task {
     }
 
     public boolean activate() {
-        return bankMode;
+        ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Collections.emptySet());
+        if (inventorySnapshot == null) {
+            script.log(getClass().getSimpleName(), "Inventory not visible.");
+            return false;
+        }
+        return bankMode && inventorySnapshot.isFull();
     }
 
     public boolean execute() {
