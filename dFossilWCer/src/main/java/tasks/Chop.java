@@ -148,7 +148,7 @@ public class Chop extends Task {
             clusterFailCount = 0;
             script.log(getClass(), "Found " + clusters.size() + " tree cluster(s). Time taken: " + elapsed + " ms.");
 
-            // Find closest cluster to (260,190)
+            // Find closest cluster to center of screen
             PixelCluster closest = clusters.stream()
                     .min((a, b) -> {
                         Point ca = a.getCenter();
