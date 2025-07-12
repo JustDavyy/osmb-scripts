@@ -274,13 +274,18 @@ public class Chop extends Task {
             // === Check for nearby tree cluster presence ===
             PixelCluster.ClusterQuery query = new PixelCluster.ClusterQuery(10, 400,
                     logsId == ItemID.TEAK_LOGS ? TEAK_PIXEL_CLUSTER : MAHOGANY_PIXEL_CLUSTER);
+
             PixelCluster.ClusterSearchResult clusterResult = script.getPixelAnalyzer().findClusters(query);
+
+            if (clusterResult == null || clusterResult.getClusters() == null) {
+                return false;
+            }
 
             boolean clusterNearby = clusterResult.getClusters().stream()
                     .anyMatch(c -> {
                         Point p = c.getCenter();
                         double distance = Math.hypot(p.x - centerX, p.y - centerY);
-                        return distance <= 125; // Adjust as needed
+                        return distance <= 125;
                     });
 
             if (!clusterNearby) {

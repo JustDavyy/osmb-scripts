@@ -27,11 +27,11 @@ import java.util.List;
         name = "dFossilWCer",
         description = "Cuts and drops/banks Teak or Mahogany logs on Fossil Island",
         skillCategory = SkillCategory.WOODCUTTING,
-        version = 1.2,
+        version = 1.3,
         author = "JustDavyy"
 )
 public class dFossilWCer extends Script {
-    public static final String scriptVersion = "1.2";
+    public static final String scriptVersion = "1.3";
 
     public static boolean dropMode = false;
     public static boolean bankMode = false;
