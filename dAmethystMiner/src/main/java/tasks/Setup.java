@@ -7,7 +7,6 @@ import com.osmb.api.ui.tabs.Tab;
 import com.osmb.api.script.Script;
 
 // OTHER CLASS IMPORTS
-import main.dAmethystMiner;
 import utils.Task;
 import static main.dAmethystMiner.*;
 
@@ -22,10 +21,8 @@ public class Setup extends Task {
     }
 
     public boolean execute() {
-        task = getClass().getSimpleName();
-
         task = "Open inventory";
-        script.log(dAmethystMiner.class, "Opening inventory tab");
+        script.log(getClass(), "Opening inventory tab");
         script.getWidgetManager().getTabManager().openTab(Tab.Type.INVENTORY);
 
         task = "Update flags";

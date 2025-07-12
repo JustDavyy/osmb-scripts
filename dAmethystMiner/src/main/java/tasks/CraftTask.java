@@ -57,7 +57,7 @@ public class CraftTask extends Task {
         if (!inventorySnapshot.contains(ItemID.CHISEL)) {
             for (int i = 0; i < 20; i++) {
                 script.log(getClass().getSimpleName(), "Chisel not found in inventory, fail-over to banking mode!");
-                script.submitTask(() -> false, script.random(100, 250));
+                script.submitHumanTask(() -> false, script.random(100, 250));
             }
 
             craftMode = false;
