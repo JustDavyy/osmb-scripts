@@ -211,7 +211,7 @@ public class dkTravel extends Task {
         }
 
         doneBanking = false;
-        script.submitTask(() -> false, script.random(4500, 5500));
+        script.submitHumanTask(() -> false, script.random(4000, 5000));
 
         AtomicReference<Timer> positionChangeTimer = new AtomicReference<>(new Timer());
         AtomicReference<WorldPosition> previousPosition = new AtomicReference<>(null);
@@ -245,7 +245,7 @@ public class dkTravel extends Task {
             }
 
             doneBanking = false;
-            script.submitTask(() -> false, script.random(3500, 4500));
+            script.submitHumanTask(() -> false, script.random(3000, 4000));
 
             // Interaction seems successful, wait till we arrive at the guild
             AtomicReference<Timer> positionChangeTimer = new AtomicReference<>(new Timer());
@@ -285,7 +285,7 @@ public class dkTravel extends Task {
         }
 
         doneBanking = false;
-        script.submitTask(() -> false, script.random(4500, 5500));
+        script.submitHumanTask(() -> false, script.random(4000, 5000));
 
         // Reset afk timer
         switchTabTimer.reset(script.random(TimeUnit.MINUTES.toMillis(3), TimeUnit.MINUTES.toMillis(5)));

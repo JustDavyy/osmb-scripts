@@ -88,7 +88,7 @@ public class Drop extends Task {
                 break; // All items successfully dropped
             }
 
-            script.submitTask(() -> false, script.random(150, 400));
+            script.submitHumanTask(() -> false, script.random(150, 400));
         }
 
         if (switchTabTimer.timeLeft() < TimeUnit.MINUTES.toMillis(1)) {

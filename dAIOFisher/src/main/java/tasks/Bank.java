@@ -148,10 +148,10 @@ public class Bank extends Task {
         task = "Close bank";
         if (fishingMethod.getBankObjectType().equals(FishingMethod.BankObjectType.BANK)) {
             script.getWidgetManager().getBank().close();
-            script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(4000, 6000));
+            script.submitHumanTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(4000, 6000));
         } else if (fishingMethod.getBankObjectType().equals(FishingMethod.BankObjectType.DEPOSIT_BOX)) {
             script.getWidgetManager().getDepositBox().close();
-            script.submitTask(() -> !script.getWidgetManager().getDepositBox().isVisible(), script.random(4000, 6000));
+            script.submitHumanTask(() -> !script.getWidgetManager().getDepositBox().isVisible(), script.random(4000, 6000));
         }
 
         return false;
@@ -196,7 +196,7 @@ public class Bank extends Task {
         AtomicReference<WorldPosition> previousPosition = new AtomicReference<>(null);
 
         task = "Wait for bank to open";
-        script.submitTask(() -> {
+        script.submitHumanTask(() -> {
             WorldPosition current = script.getWorldPosition();
             if (current == null) return false;
 
@@ -248,7 +248,7 @@ public class Bank extends Task {
         AtomicReference<WorldPosition> previousPosition = new AtomicReference<>(null);
 
         task = "Wait for deposit box to open";
-        script.submitTask(() -> {
+        script.submitHumanTask(() -> {
             WorldPosition current = script.getWorldPosition();
             if (current == null) return false;
 

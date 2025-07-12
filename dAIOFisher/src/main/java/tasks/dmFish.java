@@ -140,7 +140,7 @@ public class dmFish extends Task {
             }
         }
 
-        script.submitTask(() -> {
+        script.submitHumanTask(() -> {
 
             if (isFlyingFish()) {
                 script.log(getClass(), "Flying fish text detected, dodging...");

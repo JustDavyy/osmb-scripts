@@ -94,7 +94,7 @@ public class dkBank extends Task {
 
         task = "Close bank";
         script.getWidgetManager().getBank().close();
-        script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(4000, 6000));
+        script.submitHumanTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(4000, 6000));
 
         doneBanking = true;
         return false;
@@ -121,7 +121,7 @@ public class dkBank extends Task {
         AtomicReference<Timer> positionChangeTimer = new AtomicReference<>(new Timer());
         AtomicReference<WorldPosition> previousPosition = new AtomicReference<>(null);
 
-        script.submitTask(() -> {
+        script.submitHumanTask(() -> {
             WorldPosition current = script.getWorldPosition();
             if (current == null) return false;
 
