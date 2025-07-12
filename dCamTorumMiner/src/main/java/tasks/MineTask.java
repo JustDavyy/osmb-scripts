@@ -303,7 +303,7 @@ public class MineTask extends Task {
             return false;
         }, maxMiningDuration);
 
-        script.submitTask(() -> false, script.random(300, 800));
+        script.submitHumanTask(() -> false, script.random(300, 800));
     }
 
     private void readXp() {
