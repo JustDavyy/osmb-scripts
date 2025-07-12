@@ -213,7 +213,7 @@ public class Sawmiller extends Task {
                 boolean selected = script.getWidgetManager().getDialogue().selectItem(neededLogs);
                 if (!selected) {
                     script.log(getClass(), "Initial log selection failed, retrying...");
-                    script.submitTask(() -> false, script.random(150, 300));
+                    script.submitHumanTask(() -> false, script.random(150, 300));
                     selected = script.getWidgetManager().getDialogue().selectItem(neededLogs);
                 }
 
@@ -461,7 +461,7 @@ public class Sawmiller extends Task {
             }
 
             if (type != null && type.equals(DialogueType.TAP_HERE_TO_CONTINUE)) {
-                script.submitTask(() -> false, script.random(1000, 3000));
+                script.submitHumanTask(() -> false, script.random(1000, 3000));
                 return true;
             }
 
@@ -546,6 +546,6 @@ public class Sawmiller extends Task {
             return;
         }
 
-        script.submitTask(() -> script.getWidgetManager().getBank().isVisible(), script.random(5000, 8000));
+        script.submitHumanTask(() -> script.getWidgetManager().getBank().isVisible(), script.random(5000, 8000));
     }
 }
