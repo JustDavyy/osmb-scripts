@@ -264,7 +264,7 @@ public class Chop extends Task {
 
                 // === If using log basket and readyToReadXP is false, schedule it after 29s ===
                 if (useLogBasket && !readyToReadXP) {
-                    script.submitTask(() -> {
+                    script.submitHumanTask(() -> {
                         readyToReadXP = true;
                         return false;
                     }, script.random(12000, 15000));
@@ -306,7 +306,7 @@ public class Chop extends Task {
             return false;
         }, maxChopDuration);
 
-        script.submitTask(() -> false, script.random(300, 800));
+        script.submitHumanTask(() -> false, script.random(300, 800));
     }
 
     private boolean readXp() {
