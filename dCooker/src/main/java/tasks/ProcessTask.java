@@ -74,11 +74,7 @@ public class ProcessTask extends Task {
             return type == DialogueType.ITEM_OPTION;
         };
 
-        if (script.random(10) < 3) {
-            script.submitHumanTask(condition, script.random(4000, 6000));
-        } else {
-            script.submitTask(condition, script.random(4000, 6000));
-        }
+        script.submitHumanTask(condition, script.random(4000, 6000));
 
         DialogueType dialogueType = script.getWidgetManager().getDialogue().getDialogueType();
         if (dialogueType == DialogueType.ITEM_OPTION) {
@@ -87,7 +83,7 @@ public class ProcessTask extends Task {
 
             if (!selected) {
                 script.log(getClass(), "Initial food selection failed, retrying...");
-                script.submitTask(() -> false, script.random(150, 300));
+                script.submitHumanTask(() -> false, script.random(150, 300));
 
                 selected = script.getWidgetManager().getDialogue().selectItem(cookingItemID)
                         || script.getWidgetManager().getDialogue().selectItem(cookedItemID);
@@ -164,7 +160,7 @@ public class ProcessTask extends Task {
         BooleanSupplier condition = () -> {
             DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
             if (type == DialogueType.TAP_HERE_TO_CONTINUE) {
-                script.submitTask(() -> false, script.random(1000, 3000));
+                script.submitHumanTask(() -> false, script.random(1000, 3000));
                 return true;
             }
 

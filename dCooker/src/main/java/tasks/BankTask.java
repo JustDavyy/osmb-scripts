@@ -62,7 +62,7 @@ public class BankTask extends Task {
         if (amountNeeded == 0) {
             task = "Close bank";
             script.getWidgetManager().getBank().close();
-            script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(4000, 6000));
+            script.submitHumanTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(4000, 6000));
         } else if (amountNeeded > 0) {
             ItemGroupResult bankSnapshot = script.getWidgetManager().getBank().search(Set.of(cookingItemID));
             if (!bankSnapshot.contains(cookingItemID)) {
@@ -86,7 +86,7 @@ public class BankTask extends Task {
             }
 
             script.getWidgetManager().getBank().close();
-            script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(4000, 6000));
+            script.submitHumanTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(4000, 6000));
         } else {
             if (bankMethod.equals("Deposit all")) {
                 if (!script.getWidgetManager().getBank().depositAll(Collections.emptySet())) {
@@ -147,7 +147,7 @@ public class BankTask extends Task {
         AtomicReference<Timer> positionChangeTimer = new AtomicReference<>(new Timer());
         AtomicReference<WorldPosition> previousPosition = new AtomicReference<>(null);
 
-        script.submitTask(() -> {
+        script.submitHumanTask(() -> {
             WorldPosition current = script.getWorldPosition();
             if (current == null) return false;
 
