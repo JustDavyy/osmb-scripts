@@ -128,7 +128,7 @@ public class Fish extends Task {
         }
 
         // We're currently fishing; monitor exit conditions
-        script.submitHumanTask(this::earlyExitCheck, script.random(6000, 7000));
+        script.submitHumanTask(this::earlyExitCheck, script.random(25000, 40000));
 
         return false;
     }
