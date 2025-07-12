@@ -59,7 +59,7 @@ public class FirstBank extends Task {
         if (!hasMould) {
             task = "Deposit all";
             script.getWidgetManager().getBank().depositAll(Set.of(ItemID.AMMO_MOULD, ItemID.DOUBLE_AMMO_MOULD));
-            script.submitTask(() -> false, script.random(300, 600));
+            script.submitHumanTask(() -> false, script.random(300, 600));
             bankSnapshot = script.getWidgetManager().getBank().search(Set.of(ItemID.DOUBLE_AMMO_MOULD));
             if (bankSnapshot.contains(ItemID.DOUBLE_AMMO_MOULD)) {
                 task = "Withdraw double mould";
@@ -90,7 +90,7 @@ public class FirstBank extends Task {
         script.getWidgetManager().getBank().withdraw(ItemID.STEEL_BAR, 27);
         task = "Close bank";
         script.getWidgetManager().getBank().close();
-        script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(5000, 7500));
+        script.submitHumanTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(5000, 7500));
 
         inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(ItemID.AMMO_MOULD, ItemID.DOUBLE_AMMO_MOULD, ItemID.STEEL_BAR));
 
@@ -122,7 +122,7 @@ public class FirstBank extends Task {
         AtomicReference<Timer> positionChangeTimer = new AtomicReference<>(new Timer());
         AtomicReference<WorldPosition> previousPosition = new AtomicReference<>(null);
 
-        script.submitTask(() -> {
+        script.submitHumanTask(() -> {
             WorldPosition current = script.getWorldPosition();
             if (current == null) return false;
 

@@ -38,7 +38,7 @@ public class BankTask extends Task {
         boolean withdrawed = script.getWidgetManager().getBank().withdraw(ItemID.STEEL_BAR, 27);
         task = "Close bank";
         script.getWidgetManager().getBank().close();
-        script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(5000, 7500));
+        script.submitHumanTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(5000, 7500));
 
         task = "Check inventory";
         ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(ItemID.STEEL_BAR));
@@ -69,7 +69,7 @@ public class BankTask extends Task {
         AtomicReference<WorldPosition> previousPosition = new AtomicReference<>(null);
 
         task = "Wait for open bank";
-        script.submitTask(() -> {
+        script.submitHumanTask(() -> {
             WorldPosition current = script.getWorldPosition();
             if (current == null) return false;
 

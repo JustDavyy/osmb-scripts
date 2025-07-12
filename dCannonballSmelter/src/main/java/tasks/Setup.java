@@ -7,7 +7,6 @@ import com.osmb.api.ui.tabs.Tab;
 import com.osmb.api.script.Script;
 
 // OTHER CLASS IMPORTS
-import main.dCannonballSmelter;
 import utils.Task;
 import static main.dCannonballSmelter.*;
 

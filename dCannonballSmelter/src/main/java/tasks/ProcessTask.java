@@ -76,7 +76,7 @@ public class ProcessTask extends Task {
             if (!selected) {
                 task = "Retry interaction";
                 script.log(getClass(), "Initial cannonball selection failed, retrying...");
-                script.submitTask(() -> false, script.random(150, 300));
+                script.submitHumanTask(() -> false, script.random(150, 300));
                 selected = script.getWidgetManager().getDialogue().selectItem(ItemID.CANNONBALL);
             }
 
