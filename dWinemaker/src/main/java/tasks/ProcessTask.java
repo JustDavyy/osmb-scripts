@@ -113,9 +113,7 @@ public class ProcessTask extends Task {
         };
 
         task = "Wait for dialogue";
-        return useHumanTask
-                ? script.submitHumanTask(condition, script.random(3000, 5000))
-                : script.submitTask(condition, script.random(3000, 5000));
+        return script.submitHumanTask(condition, script.random(3000, 5000));
     }
 
     private void waitUntilFinishedProducing() {
@@ -124,7 +122,7 @@ public class ProcessTask extends Task {
         BooleanSupplier condition = () -> {
             DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
             if (type == DialogueType.TAP_HERE_TO_CONTINUE) {
-                script.submitTask(() -> false, script.random(1000, 3000));
+                script.submitHumanTask(() -> false, script.random(1000, 3000));
                 return true;
             }
 
@@ -137,16 +135,8 @@ public class ProcessTask extends Task {
             return !inventorySnapshot.containsAny(grapeID, ItemID.JUG_OF_WATER);
         };
 
-        boolean useHumanTask = script.random(10) < 3; // 30% chance
-
         task = "Checking wait condition";
-        if (useHumanTask) {
-            script.log(getClass(), "Using human task to wait until processing finishes.");
-            script.submitHumanTask(condition, script.random(18000, 20000));
-        } else {
-            script.log(getClass(), "Using regular task to wait until processing finishes.");
-            script.submitTask(condition, script.random(18000, 20000));
-        }
+        script.submitHumanTask(condition, script.random(18000, 20000));
     }
 
     private void printStats() {

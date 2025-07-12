@@ -22,10 +22,8 @@ public class Setup extends Task {
     }
 
     public boolean execute() {
-        task = getClass().getSimpleName();
-
         task = "Open inventory";
-        script.log(dWinemaker.class, "Opening inventory tab");
+        script.log(getClass(), "Opening inventory tab");
         script.getWidgetManager().getTabManager().openTab(Tab.Type.INVENTORY);
 
         task = "Update flags";
