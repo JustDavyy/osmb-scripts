@@ -61,7 +61,7 @@ public class Bank extends Task {
 
         task = "Close bank";
         closeBankWithRetry();
-        script.submitTask(() -> !script.getWidgetManager().getBank().isVisible(), 5000);
+        script.submitHumanTask(() -> !script.getWidgetManager().getBank().isVisible(), 5000);
         needToBank = false;
 
         return false;
@@ -87,7 +87,7 @@ public class Bank extends Task {
         AtomicReference<WorldPosition> previousPosition = new AtomicReference<>(null);
 
         task = "Wait for open bank";
-        script.submitTask(() -> {
+        script.submitHumanTask(() -> {
             WorldPosition current = script.getWorldPosition();
             if (current == null) return false;
 
