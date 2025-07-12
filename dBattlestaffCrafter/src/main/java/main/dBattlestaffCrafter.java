@@ -36,12 +36,12 @@ import javax.imageio.ImageIO;
         name = "dBattlestaffCrafter",
         description = "Attaches orbs to battlestaves for quick crafting experience",
         skillCategory = SkillCategory.CRAFTING,
-        version = 1.5,
+        version = 1.6,
         author = "JustDavyy"
 )
 
 public class dBattlestaffCrafter extends Script {
-    public static final String scriptVersion = "1.5";
+    public static final String scriptVersion = "1.6";
     public static boolean setupDone = false;
     public static int staffID;
 

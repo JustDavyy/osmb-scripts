@@ -65,7 +65,7 @@ public class ProcessTask extends Task {
             boolean selected = script.getWidgetManager().getDialogue().selectItem(staffID);
             if (!selected) {
                 script.log(getClass().getSimpleName(), "Initial staff selection failed, retrying...");
-                script.submitTask(() -> false, script.random(150, 300));
+                script.submitHumanTask(() -> false, script.random(150, 300));
                 selected = script.getWidgetManager().getDialogue().selectItem(staffID);
             }
 
@@ -79,7 +79,7 @@ public class ProcessTask extends Task {
             waitUntilFinishedProducing();
             if (script.random(10) < 3) {
                 script.log(getClass().getSimpleName(), "Adding extra randomized delay");
-                script.submitTask(() -> false, script.random(500, 2000));
+                script.submitHumanTask(() -> false, script.random(250, 1200));
             }
             craftedCount += 14;
             printStats();
@@ -96,7 +96,7 @@ public class ProcessTask extends Task {
             }
         }
 
-        script.submitTask(() -> false, script.random(150, 300));
+        script.submitHumanTask(() -> false, script.random(25, 50));
 
         if (!staff.interact()) {
             script.log(getClass(), "Staff interaction failed, retrying...");
@@ -110,9 +110,7 @@ public class ProcessTask extends Task {
             return type == DialogueType.ITEM_OPTION;
         };
 
-        return script.random(10) < 3
-                ? script.submitHumanTask(condition, 3000)
-                : script.submitTask(condition, 3000);
+        return script.submitHumanTask(condition, 3000);
     }
 
     private void waitUntilFinishedProducing() {
@@ -121,7 +119,7 @@ public class ProcessTask extends Task {
         BooleanSupplier condition = () -> {
             DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
             if (type == DialogueType.TAP_HERE_TO_CONTINUE) {
-                script.submitTask(() -> false, script.random(1000, 3000));
+                script.submitHumanTask(() -> false, script.random(500, 2500));
                 return true;
             }
 
