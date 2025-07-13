@@ -4,7 +4,7 @@ import com.osmb.api.ScriptCore;
 import com.osmb.api.item.ItemID;
 import com.osmb.api.javafx.JavaFXUtils;
 import com.osmb.api.script.Script;
-import com.osmb.api.ui.spellbook.ArceeusSpellbook;
+import com.osmb.api.ui.spellbook.ArceuusSpellbook;
 import com.osmb.api.ui.spellbook.Spell;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -277,9 +277,9 @@ public class ScriptUI {
 
     public int getXpPerSpellCast() {
         String selectedSpell = getSelectedSpell();
-        if (selectedSpell.equals(ArceeusSpellbook.DEMONIC_OFFERING.name())) {
+        if (selectedSpell.equals(ArceuusSpellbook.DEMONIC_OFFERING.name())) {
             return 175;
-        } else if (selectedSpell.equals(ArceeusSpellbook.SINISTER_OFFERING.name())) {
+        } else if (selectedSpell.equals(ArceuusSpellbook.SINISTER_OFFERING.name())) {
             return 180;
         } else {
             return 0; // fallback
@@ -288,10 +288,10 @@ public class ScriptUI {
 
     public Spell getSpellToCast() {
         String selectedSpell = getSelectedSpell();
-        if (selectedSpell.equals(ArceeusSpellbook.DEMONIC_OFFERING.name())) {
-            return ArceeusSpellbook.DEMONIC_OFFERING;
+        if (selectedSpell.equals(ArceuusSpellbook.DEMONIC_OFFERING.name())) {
+            return ArceuusSpellbook.DEMONIC_OFFERING;
         } else {
-            return ArceeusSpellbook.SINISTER_OFFERING;
+            return ArceuusSpellbook.SINISTER_OFFERING;
         }
     }
 
