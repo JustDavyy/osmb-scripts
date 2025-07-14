@@ -25,6 +25,10 @@ public class ProcessTask extends Task {
 
     @Override
     public boolean activate() {
+        if (script.getWidgetManager().getBank().isVisible()) {
+            return script.getWidgetManager().getBank().close();
+        }
+
         ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(cookingItemID));
         if (inventorySnapshot == null) {
             script.log(getClass().getSimpleName(), "Inventory not visible.");
