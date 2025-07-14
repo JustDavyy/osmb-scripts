@@ -68,7 +68,7 @@ public class ScriptUI {
         put(ItemID.WYVERN_BONES, 216);
         put(ItemID.DRAKE_BONES, 240);
         put(ItemID.FAYRG_BONES, 252);
-        put(ItemID.LAVA_DRAGON_BONES, 255);
+        //put(ItemID.LAVA_DRAGON_BONES, 255); Disabled as it's textured, unsupported for now
         put(ItemID.RAURG_BONES, 288);
         put(ItemID.HYDRA_BONES, 330);
         put(ItemID.DAGANNOTH_BONES, 375);
