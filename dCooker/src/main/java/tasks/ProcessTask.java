@@ -18,6 +18,7 @@ import java.util.function.BooleanSupplier;
 import static main.dCooker.*;
 
 public class ProcessTask extends Task {
+    private static int failCount = 0;
 
     public ProcessTask(Script script) {
         super(script);
@@ -25,10 +26,6 @@ public class ProcessTask extends Task {
 
     @Override
     public boolean activate() {
-        if (script.getWidgetManager().getBank().isVisible()) {
-            return script.getWidgetManager().getBank().close();
-        }
-
         ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(cookingItemID));
         if (inventorySnapshot == null) {
             script.log(getClass().getSimpleName(), "Inventory not visible.");
@@ -47,6 +44,10 @@ public class ProcessTask extends Task {
             return false;
         }
 
+        if (script.getWidgetManager().getBank().isVisible()) {
+            return script.getWidgetManager().getBank().close();
+        }
+
         ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(cookingItemID));
         if (inventorySnapshot == null) {
             script.log(getClass(), "Inventory not visible.");
@@ -54,6 +55,17 @@ public class ProcessTask extends Task {
         }
 
         if (!script.getWidgetManager().getInventory().unSelectItemIfSelected()) {
+            return false;
+        }
+
+        if (!inventorySnapshot.contains(cookingItemID)) {
+            if (failCount >= 3) {
+                script.log(getClass(), "No cookable fish found for three times in a row, stopping script!");
+                script.stop();
+                return false;
+            }
+            script.log(getClass(), "No fish to cook found in inventory, returning!");
+            failCount++;
             return false;
         }
 
@@ -124,8 +136,6 @@ public class ProcessTask extends Task {
                     totalXpGained += cookedNow * getXpForFood(cookingItemID);
                 }
             }
-
-            printStats();
         }
 
         return false;
@@ -181,22 +191,6 @@ public class ProcessTask extends Task {
 
         script.log(getClass(), "Using human task to wait until cooking finishes.");
         script.submitHumanTask(condition, script.random(66000, 70000));
-    }
-
-    private void printStats() {
-        long elapsed = System.currentTimeMillis() - startTime;
-        int totalCooked = cookCount + burnCount;
-        int cooksPerHour = (int) ((totalCooked * 3600000L) / elapsed);
-        int xpPerHour = (int) ((totalXpGained * 3600000L) / elapsed);
-
-        String rate = (totalCooked > 0)
-                ? (int) ((cookCount * 100.0) / totalCooked) + "%"
-                : "N/A";
-
-        script.log("STATS", String.format(
-                "Food cooked: C: %,d  B: %,d (%s) | Food/hr: %,d | XP gained: %,d | XP/hr: %,d",
-                cookCount, burnCount, rate, cooksPerHour, (int) totalXpGained, xpPerHour
-        ));
     }
 
     private double getXpForFood(int itemId) {

@@ -35,6 +35,7 @@ public class BankTask extends Task {
         task = getClass().getSimpleName();
         ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(cookingItemID));
         if (!script.getWidgetManager().getBank().isVisible()) {
+            script.log(getClass(), "Bank is not visible, opening bank!");
             openBank();
             return false;
         }
@@ -45,11 +46,13 @@ public class BankTask extends Task {
                 script.log(getClass().getSimpleName(), "Deposit all action failed.");
                 return false;
             }
+            script.log(getClass(), "Deposit all succeeded.");
         } else {
             if (!script.getWidgetManager().getBank().depositAll(Set.of(cookingItemID))) {
                 script.log(getClass().getSimpleName(), "Deposit item by item action failed.");
                 return false;
             }
+            script.log(getClass(), "Deposit item by item succeeded.");
         }
 
         int targetAmount = script.getWidgetManager().getInventory().getGroupSize();
