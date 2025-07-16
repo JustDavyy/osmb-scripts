@@ -152,7 +152,7 @@ public class RangeTask extends Task {
         lastTaskRanAt = System.currentTimeMillis();
 
         // Step 2: Wait for target interface to disappear
-        if (!script.submitHumanTask(() -> !targetInterface.isVisible(), script.random(1750, 2500), true, true)) {
+        if (!script.submitTask(() -> !targetInterface.isVisible(), script.random(1750, 2500), true, true)) {
             script.log(getClass().getSimpleName(), "❌ Target interface did not disappear.");
             return false;
         }
@@ -212,7 +212,11 @@ public class RangeTask extends Task {
             currentScore = 0;
             totalRounds++;
         } else {
-            script.submitHumanTask(() -> false, script.random(1, 150));
+            if (script.random(0, 99) < 30) {
+                script.submitHumanTask(() -> false, script.random(1, 150));
+            } else {
+                script.submitTask(() -> false, script.random(50, 350));
+            }
         }
 
         return true;
