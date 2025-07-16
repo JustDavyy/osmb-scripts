@@ -127,7 +127,7 @@ public class RangeTask extends Task {
                     }
                 }
 
-                if (dialogueText.contains("that score you will".toLowerCase())) {
+                if (dialogueText.contains("that score you will".toLowerCase()) || dialogueText.contains("use the targets for".toLowerCase())) {
                     readyToShoot = false;
                     shotsLeft = 0;
                     return false;
@@ -152,7 +152,7 @@ public class RangeTask extends Task {
         lastTaskRanAt = System.currentTimeMillis();
 
         // Step 2: Wait for target interface to disappear
-        if (!script.submitTask(() -> !targetInterface.isVisible(), script.random(1750, 2500), true, true)) {
+        if (!script.submitHumanTask(() -> !targetInterface.isVisible(), script.random(1750, 2500), true, true)) {
             script.log(getClass().getSimpleName(), "❌ Target interface did not disappear.");
             return false;
         }
