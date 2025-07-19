@@ -34,7 +34,7 @@ public class Bank extends Task {
             script.log(getClass().getSimpleName(), "Inventory not visible.");
             return false;
         }
-        return bankMode && inventorySnapshot.isFull();
+        return bankMode && inventorySnapshot.isFull() || bankMode && script.getWidgetManager().getDepositBox().isVisible();
     }
 
     public boolean execute() {
