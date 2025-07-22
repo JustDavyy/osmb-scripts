@@ -27,11 +27,11 @@ import java.util.List;
         name = "dOffering",
         description = "Performs the Sinister or Demonic offering spell for prayer gains",
         skillCategory = SkillCategory.PRAYER,
-        version = 1.3,
+        version = 1.4,
         author = "JustDavyy"
 )
 public class dOffering extends Script {
-    public static final String scriptVersion = "1.3";
+    public static final String scriptVersion = "1.4";
 
     // Script state trackers
     public static boolean setupDone = false;

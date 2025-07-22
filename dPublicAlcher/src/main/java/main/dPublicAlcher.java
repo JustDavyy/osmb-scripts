@@ -31,11 +31,11 @@ import javax.imageio.ImageIO;
         name = "dPublic Alcher",
         description = "Alchs items (both high & low) until out of items or runes.",
         skillCategory = SkillCategory.MAGIC,
-        version = 1.8,
+        version = 1.9,
         author = "JustDavyy"
 )
 public class dPublicAlcher extends Script {
-    public static final String scriptVersion = "1.8";
+    public static final String scriptVersion = "1.9";
     public static boolean setupDone = false;
     public static StandardSpellbook spellToCast;
     public static int alchItemID;

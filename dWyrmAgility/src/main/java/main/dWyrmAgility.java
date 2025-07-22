@@ -31,12 +31,12 @@ import java.util.concurrent.atomic.AtomicReference;
 @ScriptDefinition(
         name = "dWyrmAgility",
         author = "JustDavyy",
-        version = 1.5,
+        version = 1.6,
         description = "Does the Wyrm basic or advanced agility course.",
         skillCategory = SkillCategory.AGILITY
 )
 public class dWyrmAgility extends Script {
-    public static final String scriptVersion = "1.5";
+    public static final String scriptVersion = "1.6";
     private Course selectedCourse;
     private int nextRunActivate;
     public int noMovementTimeout = RandomUtils.weightedRandom(6000, 9000);
@@ -245,9 +245,8 @@ public class dWyrmAgility extends Script {
     }
 
     @Override
-    public int onRelog() {
+    public void onRelog() {
         failCount = 0;
-        return 0;
     }
 
     @Override

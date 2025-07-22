@@ -27,11 +27,11 @@ import java.util.List;
         name = "dTeleporter",
         description = "Trains magic by continuously casting teleportation spells.",
         skillCategory = SkillCategory.MAGIC,
-        version = 1.4,
+        version = 1.5,
         author = "JustDavyy"
 )
 public class dTeleporter extends Script {
-    public static final String scriptVersion = "1.4";
+    public static final String scriptVersion = "1.5";
     public static boolean setupDone = false;
     public static StandardSpellbook spellToCast;
     public static boolean hasReqs = true;

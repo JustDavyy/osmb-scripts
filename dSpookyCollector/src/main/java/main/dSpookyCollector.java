@@ -26,11 +26,11 @@ import java.util.List;
         name = "dSpookyCollector",
         description = "Collects spooky stuff at varrock west bank for u smelly fetish people",
         skillCategory = SkillCategory.OTHER,
-        version = 1.0,
+        version = 1.1,
         author = "JustDavyy"
 )
 public class dSpookyCollector extends Script {
-    public static final String scriptVersion = "1.0";
+    public static final String scriptVersion = "1.1";
     public static boolean setupDone = false;
 
     public static String itemToCollect = "N/A";

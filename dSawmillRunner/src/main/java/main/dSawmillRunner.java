@@ -26,11 +26,11 @@ import java.util.List;
         name = "dSawmillRunner",
         description = "Creates planks of your choice at multiple sawmills",
         skillCategory = SkillCategory.CONSTRUCTION,
-        version = 1.1,
+        version = 1.2,
         author = "JustDavyy"
 )
 public class dSawmillRunner extends Script {
-    public static final String scriptVersion = "1.1";
+    public static final String scriptVersion = "1.2";
     public static boolean setupDone = false;
 
     public static boolean useVouchers = false;
