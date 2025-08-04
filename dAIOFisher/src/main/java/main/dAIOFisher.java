@@ -37,13 +37,14 @@ import javax.imageio.ImageIO;
         name = "dAIOFisher",
         description = "AIO Fisher that fishes, banks and/or drops to get those gains!",
         skillCategory = SkillCategory.FISHING,
-        version = 2.3,
+        version = 2.4,
         author = "JustDavyy"
 )
 public class dAIOFisher extends Script {
-    public static String scriptVersion = "2.3";
+    public static String scriptVersion = "2.4";
     public static boolean setupDone = false;
     public static boolean usingBarrel = false;
+    public static boolean skipMinnowDelay = false;
     private static final java.awt.Font ARIEL = java.awt.Font.getFont("Ariel");
     public static String task = "N/A";
     public static final Stopwatch switchTabTimer = new Stopwatch();
@@ -268,6 +269,7 @@ public class dAIOFisher extends Script {
         fishingLocation = ui.getSelectedLocation();
         menuHook = fishingMethod.getMenuEntry();
         handlingMode = ui.getSelectedHandlingMethod();
+        skipMinnowDelay = ui.isSkippingMinnowDelay();
 
         if (fishingLocation.equals(FishingLocation.Karambwans)) {
             KarambwanUI wambamUI = new KarambwanUI(this);

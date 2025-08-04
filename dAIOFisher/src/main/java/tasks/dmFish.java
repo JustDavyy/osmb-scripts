@@ -184,14 +184,16 @@ public class dmFish extends Task {
         }, script.random(16000, 22000));
         // random delay before next fishing attempt
         int randomDelay = RandomUtils.gaussianRandom(300, 5000, 500, 1500);
-        if (!justDodgedFlyingFish) {
-            script.log(getClass(), "⏳ - Executing humanised delay before next fishing attempt: " + randomDelay + "ms");
-            script.submitTask(() -> false, randomDelay);
-        } else {
-            int dodgeDelay = RandomUtils.gaussianRandom(5, 300, 140, 40);
-            dodgeDelay = Math.max(5, Math.min(300, dodgeDelay));
-            script.log(getClass(), "Dodging fish, using smaller humanised delay for speed! Delay: " + dodgeDelay + "ms");
-            script.submitTask(() -> false, dodgeDelay);
+        if (!skipMinnowDelay) {
+            if (!justDodgedFlyingFish) {
+                script.log(getClass(), "⏳ - Executing humanised delay before next fishing attempt: " + randomDelay + "ms");
+                script.submitTask(() -> false, randomDelay);
+            } else {
+                int dodgeDelay = RandomUtils.gaussianRandom(5, 300, 140, 40);
+                dodgeDelay = Math.max(5, Math.min(300, dodgeDelay));
+                script.log(getClass(), "Dodging fish, using smaller humanised delay for speed! Delay: " + dodgeDelay + "ms");
+                script.submitTask(() -> false, dodgeDelay);
+            }
         }
     }
 

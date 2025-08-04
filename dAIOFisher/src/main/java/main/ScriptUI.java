@@ -37,6 +37,8 @@ public class ScriptUI {
     private ComboBox<FishingLocation> locationComboBox;
     private ComboBox<FishingMethod> methodComboBox;
     private ComboBox<HandlingMode> handlingComboBox;
+    private CheckBox skipMinnowDelayCheckBox;
+    private Label minnowWarningLabel;
 
     private HBox fishPreviewBox;
     private Timeline fishCycleTimeline;
@@ -81,12 +83,32 @@ public class ScriptUI {
         fishPreviewBox = new HBox(10);
         fishPreviewBox.setStyle("-fx-padding: 5; -fx-alignment: center;");
 
+        handlingComboBox = new ComboBox<>();
+        // Optional Minnow skip delay checkbox and warning label
+        skipMinnowDelayCheckBox = new CheckBox("Disable human delay on Minnow spot switch");
+        skipMinnowDelayCheckBox.setStyle("-fx-text-fill: white;");
+        minnowWarningLabel = new Label("⚠ Might result in a higher ban rate\nUse at your own risk.");
+        minnowWarningLabel.setStyle("-fx-font-style: italic; -fx-text-fill: orange;");
+
+        // Initially hide
+        skipMinnowDelayCheckBox.setVisible(false);
+        minnowWarningLabel.setVisible(false);
+        skipMinnowDelayCheckBox.setSelected(prefs.getBoolean("daiofisher_minnow_skip_delay", false));
+
         // === Listeners ===
         locationComboBox.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 methodComboBox.setItems(FXCollections.observableArrayList(newVal.getMethods()));
                 methodComboBox.getSelectionModel().selectFirst();
+
+                boolean isMinnows = newVal == FishingLocation.Minnows;
+                skipMinnowDelayCheckBox.setVisible(isMinnows);
+                minnowWarningLabel.setVisible(isMinnows && skipMinnowDelayCheckBox.isSelected());
             }
+        });
+        skipMinnowDelayCheckBox.setOnAction(e -> {
+            boolean isMinnows = locationComboBox.getValue() == FishingLocation.Minnows;
+            minnowWarningLabel.setVisible(isMinnows && skipMinnowDelayCheckBox.isSelected());
         });
 
         methodComboBox.valueProperty().addListener((obs, oldVal, newVal) -> {
@@ -124,7 +146,8 @@ public class ScriptUI {
                 locationLabel, locationComboBox,
                 methodLabel, methodComboBox,
                 previewLabel, fishPreviewBox,
-                handlingLabel, handlingComboBox
+                handlingLabel, handlingComboBox,
+                skipMinnowDelayCheckBox, minnowWarningLabel
         );
 
         Tab mainTab = new Tab("Main", mainBox);
@@ -233,6 +256,7 @@ public class ScriptUI {
         prefs.putInt(PREF_WEBHOOK_INTERVAL, getWebhookInterval());
         prefs.putBoolean(PREF_WEBHOOK_INCLUDE_USER, isUsernameIncluded());
         prefs.putBoolean(PREF_WEBHOOK_INCLUDE_STATS, isStatsIncluded());
+        prefs.putBoolean("daiofisher_minnow_skip_delay", skipMinnowDelayCheckBox.isSelected());
 
         if (fishCycleTimeline != null) {
             fishCycleTimeline.stop();
@@ -265,6 +289,10 @@ public class ScriptUI {
         return webhookIntervalComboBox != null && webhookIntervalComboBox.getValue() != null
                 ? webhookIntervalComboBox.getValue()
                 : 5;
+    }
+
+    public boolean isSkippingMinnowDelay() {
+        return skipMinnowDelayCheckBox != null && skipMinnowDelayCheckBox.isVisible() && skipMinnowDelayCheckBox.isSelected();
     }
 
     public boolean isUsernameIncluded() {
