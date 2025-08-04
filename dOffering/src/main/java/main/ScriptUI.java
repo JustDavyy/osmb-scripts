@@ -104,16 +104,20 @@ public class ScriptUI {
         spellComboBox = new ComboBox<>();
         spellComboBox.getItems().addAll(DEMONIC_OFFERING, SINISTER_OFFERING);
 
-        String savedSpell = prefs.get(PREF_SELECTED_SPELL, SINISTER_OFFERING);
-        spellComboBox.getSelectionModel().select(savedSpell);
-
         // Item dropdown
         Label itemLabel = new Label("Select Item to Offer");
         itemComboBox = createItemComboBox(core);
 
-        populateItems(core, savedSpell);
+        // When spell is selected (either on launch or by user), populate items accordingly
+        spellComboBox.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                populateItems(newVal);
+            }
+        });
 
-        spellComboBox.setOnAction(e -> populateItems(core, spellComboBox.getSelectionModel().getSelectedItem()));
+        // Load and apply saved spell (triggers listener above)
+        String savedSpell = prefs.get(PREF_SELECTED_SPELL, SINISTER_OFFERING);
+        spellComboBox.getSelectionModel().select(savedSpell);
 
         mainBox.getChildren().addAll(spellLabel, spellComboBox, itemLabel, itemComboBox);
         Tab mainTab = new Tab("Main", mainBox);
@@ -172,12 +176,12 @@ public class ScriptUI {
         layout.setSpacing(10);
         layout.setStyle("-fx-background-color: #2d3436; -fx-padding: 10;");
 
-        Scene scene = new Scene(layout, 320, 360);
+        Scene scene = new Scene(layout, 320, 375);
         scene.getStylesheets().add("style.css");
         return scene;
     }
 
-    private void populateItems(ScriptCore core, String spell) {
+    private void populateItems(String spell) {
         itemComboBox.getItems().clear();
 
         Map<Integer, Integer> itemsMap;
@@ -186,21 +190,31 @@ public class ScriptUI {
 
         if (DEMONIC_OFFERING.equals(spell)) {
             itemsMap = DEMONIC_ITEMS_XP;
-            itemPrefKey = PREF_SELECTED_ITEM;
+            itemPrefKey = PREF_SELECTED_ITEM + "_demonic";
             defaultItem = ItemID.VILE_ASHES;
         } else {
             itemsMap = SINISTER_ITEMS_XP;
-            itemPrefKey = PREF_SELECTED_ITEM;
+            itemPrefKey = PREF_SELECTED_ITEM + "_sinister";
             defaultItem = ItemID.DRAGON_BONES;
         }
 
-        itemComboBox.getItems().addAll(itemsMap.keySet());
+        LinkedHashMap<Integer, Integer> sortedItems = sortItemsByXp(itemsMap);
+        itemComboBox.getItems().addAll(sortedItems.keySet());
 
         int savedItem = prefs.getInt(itemPrefKey, defaultItem);
-        if (itemComboBox.getItems().contains(savedItem)) {
-            itemComboBox.getSelectionModel().select(savedItem);
-        } else {
-            itemComboBox.getSelectionModel().select(defaultItem);
+
+        // Use index-based fallback if select() fails
+        boolean selected = false;
+        for (int i = 0; i < itemComboBox.getItems().size(); i++) {
+            if (itemComboBox.getItems().get(i).equals(savedItem)) {
+                itemComboBox.getSelectionModel().select(i);
+                selected = true;
+                break;
+            }
+        }
+
+        if (!selected) {
+            itemComboBox.getSelectionModel().selectFirst();
         }
     }
 
@@ -247,7 +261,11 @@ public class ScriptUI {
 
     private void saveSettings() {
         prefs.put(PREF_SELECTED_SPELL, getSelectedSpell());
-        prefs.putInt(PREF_SELECTED_ITEM, getSelectedItem());
+        String spell = getSelectedSpell();
+        String itemPrefKey = DEMONIC_OFFERING.equals(spell)
+                ? PREF_SELECTED_ITEM + "_demonic"
+                : PREF_SELECTED_ITEM + "_sinister";
+        prefs.putInt(itemPrefKey, getSelectedItem());
 
         prefs.putBoolean(PREF_WEBHOOK_ENABLED, isWebhookEnabled());
         prefs.put(PREF_WEBHOOK_URL, getWebhookUrl());
@@ -289,8 +307,10 @@ public class ScriptUI {
     public Spell getSpellToCast() {
         String selectedSpell = getSelectedSpell();
         if (selectedSpell.equals(ArceuusSpellbook.DEMONIC_OFFERING.name())) {
+            script.log(getClass(), "Demonic offering spell is selected to be cast.");
             return ArceuusSpellbook.DEMONIC_OFFERING;
         } else {
+            script.log(getClass(), "Sinister offering spell is selected to be cast.");
             return ArceuusSpellbook.SINISTER_OFFERING;
         }
     }
