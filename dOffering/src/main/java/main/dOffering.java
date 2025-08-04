@@ -27,18 +27,18 @@ import java.util.List;
         name = "dOffering",
         description = "Performs the Sinister or Demonic offering spell for prayer gains",
         skillCategory = SkillCategory.PRAYER,
-        version = 1.5,
+        version = 1.6,
         author = "JustDavyy"
 )
 public class dOffering extends Script {
-    public static final String scriptVersion = "1.5";
+    public static final String scriptVersion = "1.6";
 
     // Script state trackers
     public static boolean setupDone = false;
     public static int castsDone = 0;
     public static int castsThisInvent = 0;
     public static int castsPerInvent = 0;
-    public static boolean needToBank = true;
+    public static boolean needToBank = false;
     public static Spell spellToCast;
 
     // Offering selection
@@ -215,7 +215,7 @@ public class dOffering extends Script {
         int x = 5;
         int y = 40;
         int width = 280;
-        int height = 240; // Adjusted for added lines
+        int height = 250;
         int borderThickness = 2;
 
         // Draw outer white border as highlight
