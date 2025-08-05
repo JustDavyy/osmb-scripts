@@ -1,7 +1,10 @@
 package tasks;
 
+import com.osmb.api.input.MenuEntry;
+import com.osmb.api.input.MenuHook;
 import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.item.ItemID;
+import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
 import com.osmb.api.ui.chatbox.dialogue.DialogueType;
@@ -10,6 +13,7 @@ import com.osmb.api.utils.timing.Timer;
 import main.dCooker;
 import utils.Task;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -77,7 +81,21 @@ public class ProcessTask extends Task {
         }
 
         task = "Interact with object";
-        if (!cookObject.interact(COOKING_ACTIONS)) {
+        if (script.getWorldPosition() != null && script.getWorldPosition().getRegionID() == 12588) {
+            script.log(getClass(), "Interacting with Ruins of Unkah fire, custom logic...");
+            if (!inventorySnapshot.getItem(cookingItemID).interact()) {
+                script.log(getClass(), "Failed to interact with cooking item. Retrying...");
+                if (!inventorySnapshot.getItem(cookingItemID).interact()) {
+                    return false;
+                }
+            }
+            if (!cookObject.interact(getFireMenuHook())) {
+                script.log(getClass(), "Failed to interact with cooking object. Retrying...");
+                if (!cookObject.interact(getFireMenuHook())) {
+                    return false;
+                }
+            }
+        } else if (!cookObject.interact(COOKING_ACTIONS)) {
             script.log(getClass(), "Failed to interact with cooking object. Retrying...");
             if (!cookObject.interact(COOKING_ACTIONS)) {
                 return false;
@@ -142,11 +160,30 @@ public class ProcessTask extends Task {
     }
 
     private RSObject getClosestCookObject() {
+        if (script.getWorldPosition() != null && script.getWorldPosition().getRegionID() == 12588) {
+            // Special case: Inside region 12588, use the action less fire at (3159, 2842, 0)
+            List<RSObject> fires = script.getObjectManager().getObjects(gameObject ->
+                    "Fire".equals(gameObject.getName())
+                            && (gameObject.getActions() == null || Arrays.stream(gameObject.getActions()).allMatch(Objects::isNull))
+                            && gameObject.getWorldPosition() != null
+                            && gameObject.getWorldPosition().equals(new WorldPosition(3159, 2842, 0))
+            );
+
+            if (!fires.isEmpty()) {
+                return fires.get(0);
+            } else {
+                script.log(ProcessTask.class, "No matching Fire object found at 3159, 2842, 0 with no actions.");
+                return null;
+            }
+        }
+
         List<RSObject> objects = script.getObjectManager().getObjects(gameObject -> {
             if (gameObject.getName() == null || gameObject.getActions() == null) {
                 return false;
             }
-            return Objects.equals(gameObject.getName(), "Range") || Objects.equals(gameObject.getName(), "Fire") || Objects.equals(gameObject.getName(), "Clay oven");
+            return Objects.equals(gameObject.getName(), "Range")
+                    || Objects.equals(gameObject.getName(), "Fire")
+                    || Objects.equals(gameObject.getName(), "Clay oven");
         });
 
         if (objects.isEmpty()) {
@@ -159,11 +196,13 @@ public class ProcessTask extends Task {
             script.log(ProcessTask.class, "No reachable objects inside the loaded scene..");
             return null;
         }
+
         RSObject closest = (RSObject) script.getUtils().getClosest(objects);
         if (closest == null) {
             script.log(ProcessTask.class, "Closest object is null.");
             return null;
         }
+
         return closest;
     }
 
@@ -191,6 +230,18 @@ public class ProcessTask extends Task {
 
         script.log(getClass(), "Using human task to wait until cooking finishes.");
         script.submitHumanTask(condition, script.random(66000, 70000));
+    }
+
+    private MenuHook getFireMenuHook() {
+        return menuEntries -> {
+            for (MenuEntry entry : menuEntries) {
+                String text = entry.getRawText().toLowerCase();
+                if (text.startsWith("use ") && text.endsWith("-> fire")) {
+                    return entry;
+                }
+            }
+            return null;
+        };
     }
 
     private double getXpForFood(int itemId) {

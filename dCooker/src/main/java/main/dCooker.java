@@ -35,11 +35,11 @@ import java.util.function.Predicate;
         name = "dCooker",
         description = "Cooks a wide variety of fish and other items at cookable objects.",
         skillCategory = SkillCategory.COOKING,
-        version = 2.4,
+        version = 2.5,
         author = "JustDavyy"
 )
 public class dCooker extends Script {
-    public static String scriptVersion = "2.4";
+    public static String scriptVersion = "2.5";
     public static final String[] BANK_NAMES = {"Bank", "Chest", "Bank booth", "Bank chest", "Grand Exchange booth", "Bank counter", "Bank table"};
     public static final String[] BANK_ACTIONS = {"bank", "open", "use", "bank banker"};
     public static final String[] COOKING_ACTIONS = {"cook"};
@@ -51,6 +51,8 @@ public class dCooker extends Script {
     };
     public static long startTime = System.currentTimeMillis();
     private static final java.awt.Font ARIEL = java.awt.Font.getFont("Ariel");
+    private static final Font ARIEL_BOLD = Font.getFont("Arial Bold", null);
+    private static final Font ARIEL_ITALIC = Font.getFont("Arial Italic", null);
     public static String task = "N/A";
     public static int cookCount = 0;
     public static int burnCount = 0;
@@ -98,19 +100,18 @@ public class dCooker extends Script {
                 13151, // Priff NE
                 9541,  // Zanaris
                 12084, // Falador East
+                12588, // Ruins of Unkah
         };
     }
 
     @Override
     public void onPaint(Canvas c) {
-        c.fillRect(5, 40, 220, 190, Color.BLACK.getRGB(), 0.85f);
-        c.drawRect(5, 40, 220, 190, Color.BLACK.getRGB());
-
         long elapsed = System.currentTimeMillis() - startTime;
+        double hours = elapsed / 3600000.0;
 
         int totalCooked = cookCount + burnCount;
-        int totalPerHour = (int) ((totalCooked * 3600000L) / elapsed);
-        int xpPerHour = (int) ((totalXpGained * 3600000L) / elapsed);
+        int totalPerHour = (int) (totalCooked / hours);
+        int xpPerHour = (int) (totalXpGained / hours);
 
         DecimalFormat f = new DecimalFormat("#,###");
         DecimalFormatSymbols s = new DecimalFormatSymbols();
@@ -121,11 +122,53 @@ public class dCooker extends Script {
                 ? String.format("%d%%", (int) ((cookCount * 100.0) / totalCooked))
                 : "N/A";
 
+        int x = 5;
         int y = 40;
-        c.drawText("Cooked: C: " + f.format(cookCount) + "  B: " + f.format(burnCount) + " (" + rate + ")", 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Actions/hr: " + f.format(totalPerHour), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("XP gained: " + f.format(totalXpGained), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("XP/hr: " + f.format(xpPerHour), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+        int width = 300;
+        int height = 205;
+        int borderThickness = 2;
+
+        // Draw outer white border
+        c.fillRect(x - borderThickness, y - borderThickness, width + (borderThickness * 2), height + (borderThickness * 2), Color.WHITE.getRGB(), 1);
+
+        // Inner black background
+        c.fillRect(x, y, width, height, Color.BLACK.getRGB(), 1);
+
+        // Inner white outline
+        c.drawRect(x, y, width, height, Color.WHITE.getRGB());
+
+        // Gradient header
+        int headerHeight = 25;
+        for (int i = 0; i < headerHeight; i++) {
+            // Interpolate between purple (128, 0, 128) and red (220, 20, 60)
+            int r = 128 + (int) ((220 - 128) * (i / (double) headerHeight));
+            int g = 0 + (int) ((20 - 0) * (i / (double) headerHeight));
+            int b = 128 - (int) ((128 - 60) * (i / (double) headerHeight));
+            int gradientColor = new Color(r, g, b, 255).getRGB();
+            c.drawLine(x + 1, y + 1 + i, x + width - 2, y + 1 + i, gradientColor);
+        }
+
+        // Header bottom white border
+        for (int i = 0; i < borderThickness; i++) {
+            c.drawLine(x + 1, y + headerHeight + i, x + width - 2, y + headerHeight + i, Color.WHITE.getRGB());
+        }
+
+        // Title centered
+        String title = "🍳 dCooker 🍳";
+        int approxCharWidth = 7;
+        int titleWidth = title.length() * approxCharWidth;
+        int titleX = x + (width / 2) - (titleWidth / 2);
+        c.drawText(title, titleX, y + 18, Color.BLACK.getRGB(), ARIEL_BOLD);
+
+        y += headerHeight + 5;
+
+        // Stat lines
+        c.drawText("Cooked: " + f.format(cookCount), x + 10, y += 20, new Color(144, 238, 144).getRGB(), ARIEL);
+        c.drawText("Burned: " + f.format(burnCount), x + 10, y += 20, new Color(255, 102, 102).getRGB(), ARIEL);
+        c.drawText("Cook rate: " + rate, x + 10, y += 20, new Color(255, 255, 255).getRGB(), ARIEL);
+        c.drawText("Total/hr: " + f.format(totalPerHour), x + 10, y += 20, new Color(255, 215, 0).getRGB(), ARIEL);
+        c.drawText("XP gained: " + f.format(totalXpGained), x + 10, y += 20, new Color(173, 216, 230).getRGB(), ARIEL);
+        c.drawText("XP/hr: " + f.format(xpPerHour), x + 10, y += 20, new Color(255, 182, 193).getRGB(), ARIEL);
 
         if (isMultipleMode) {
             int remaining = selectedItemIDs.size() - selectedItemIndex - 1;
@@ -135,12 +178,12 @@ public class dCooker extends Script {
                 nextFishName = getItemManager().getItemName(nextId) + " (" + nextId + ")";
             }
 
-            c.drawText("Fish types left: " + remaining, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-            c.drawText("Next fish: " + nextFishName, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+            c.drawText("Next fish: " + nextFishName, x + 10, y += 25, new Color(0, 255, 255).getRGB(), ARIEL_BOLD);
+            c.drawText("Types left: " + remaining, x + 10, y += 20, new Color(255, 140, 0).getRGB(), ARIEL_BOLD);
         }
 
-        c.drawText("Current task: " + task, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Script version: " + scriptVersion, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+        c.drawText("Task: " + task, x + 10, y += 25, new Color(255, 255, 255).getRGB(), ARIEL_BOLD);
+        c.drawText("Version: " + scriptVersion, x + 10, y += 20, new Color(180, 180, 180).getRGB(), ARIEL_ITALIC);
     }
 
     @Override
@@ -161,6 +204,7 @@ public class dCooker extends Script {
         if (webhookEnabled) {
             user = getWidgetManager().getChatbox().getUsername();
             webhookTimer.reset(webhookIntervalMinutes * 60_000L);
+            sendWebhook();
         }
 
         isMultipleMode = ui.isMultipleSelectionMode();
