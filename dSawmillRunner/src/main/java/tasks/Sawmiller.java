@@ -38,6 +38,10 @@ public class Sawmiller extends Task {
     private static final WorldPosition prifSOperatorTile = new WorldPosition(3315, 6116, 0);
     private static final Area prifSBankArea = new RectangleArea(3292, 6056, 8, 8, 0);
 
+    // Auburnvale
+    private static final WorldPosition auburnvaleOperatorTile = new WorldPosition(1395, 3369, 0);
+    private static final Area auburnvaleBankArea = new RectangleArea(1412, 3348, 8, 9, 0);
+
     // Banking stuff
     public static final String[] BANK_NAMES = {"Bank booth", "Bank chest"};
     public static final String[] BANK_ACTIONS = {"bank", "use"};
@@ -53,6 +57,8 @@ public class Sawmiller extends Task {
     private boolean plankCountChecked = false;
     private int ringTeleportFailCount = 0;
     private int bankFailCount = 0;
+    private int failedOperatorAttempts = 0;
+    private static final int MAX_OPERATOR_ATTEMPTS = 5;
 
     // Additional travel stuff
     private static final Area ringArrivalArea = new RectangleArea(3283, 3461, 16, 15, 0);
@@ -67,7 +73,7 @@ public class Sawmiller extends Task {
 
     public boolean execute() {
 
-        // 1. Check logs + coins in inventory
+        // 1. Check logs and coins in inventory
         if (hasLogs() && hasCoins() && !atOperator()) {
             if (useRingOfElements && !atRingArrival()) {
                 task = "Teleporting with Ring of Elements";
@@ -142,7 +148,7 @@ public class Sawmiller extends Task {
         }
 
         // 2. If at operator, interact with operator tile
-        if (hasLogs() && atOperator()) {
+        if (hasLogs() && atOperator() && !isItemOptionDialogueOpen()) {
             if (useVouchers) {
                 task = "Check vouchers";
                 ItemGroupResult inv = script.getWidgetManager().getInventory().search(Set.of(ItemID.SAWMILL_VOUCHER));
@@ -154,48 +160,57 @@ public class Sawmiller extends Task {
                     script.log(getClass(), "Sawmill vouchers left: " + inv.getAmount(ItemID.SAWMILL_VOUCHER));
                 }
             }
+
             task = "Interacting with operator";
-            DialogueType dialogueType = null;
-            if (script.getWidgetManager().getDialogue() != null) {
-                dialogueType = script.getWidgetManager().getDialogue().getDialogueType();
+            script.log(getClass(), "At operator. Interacting...");
+            WorldPosition operatorTilePosition = getOperatorTile();
+            RSTile operatorTile = script.getSceneManager().getTile(operatorTilePosition);
+
+            if (operatorTile == null) {
+                script.log(getClass(), "Operator tile is null, cannot interact.");
+                return false;
             }
 
-            // Skip this step if ITEM_OPTION dialogue is already shown
-            if (dialogueType != null && dialogueType.equals(DialogueType.ITEM_OPTION)) {
-                script.log(getClass(), "Item option dialogue already open, skipping operator interaction.");
-            } else {
-                task = "Interacting with operator";
-                script.log(getClass(), "At operator. Interacting...");
+            if (!operatorTile.isOnGameScreen()) {
+                script.log(getClass(), "Operator tile not on screen, walking...");
+                script.getWalker().walkTo(operatorTilePosition);
+                return false;
+            }
 
-                WorldPosition operatorTilePosition = getOperatorTile();
-                RSTile operatorTile = script.getSceneManager().getTile(operatorTilePosition);
+            if (!script.getFinger().tap(operatorTile.getTileCube(120).getResized(0.7), operatorAction)) {
+                script.log(getClass(), "Failed to tap '" + operatorAction + "' on operator tile. Attempt " + (failedOperatorAttempts + 1));
+                failedOperatorAttempts++;
 
-                if (operatorTile == null) {
-                    script.log(getClass(), "Operator tile is null, cannot interact.");
-                    return false;
+                if (failedOperatorAttempts >= MAX_OPERATOR_ATTEMPTS) {
+                    script.log(getClass(), "Too many failed attempts. Walking to operator again to reset...");
+                    failedOperatorAttempts = 0;
+
+                    WalkConfig config = new WalkConfig.Builder()
+                            .breakCondition(() -> {
+                                RSTile tileCheck = script.getSceneManager().getTile(operatorTilePosition);
+                                return tileCheck != null && tileCheck.isOnGameScreen();
+                            })
+                            .enableRun(true)
+                            .build();
+
+                    script.getWalker().walkTo(operatorTilePosition, config);
                 }
-
-                if (!operatorTile.isOnGameScreen()) {
-                    script.log(getClass(), "Operator tile not on screen, walking...");
-                    script.getWalker().walkTo(operatorTilePosition);
-                    return false;
-                }
-
-                if (!script.getFinger().tap(operatorTile.getTileCube(120).getResized(0.7), operatorAction)) {
-                    script.log(getClass(), "Failed to tap '" + operatorAction + "' on operator tile.");
-                    return false;
-                }
-
-                // Wait until ITEM_OPTION dialogue is shown
-                script.log(getClass(), "Waiting for item option dialogue after tapping operator...");
-                script.submitHumanTask(() -> {
-                    if (script.getWidgetManager().getDialogue() == null) return false;
-                    DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
-                    return type != null && type.equals(DialogueType.ITEM_OPTION);
-                }, script.random(3000, 5000));
 
                 return false;
             }
+
+            // Successful interaction, reset failed attempt counter
+            failedOperatorAttempts = 0;
+
+            // Wait until ITEM_OPTION dialogue is shown
+            script.log(getClass(), "Waiting for item option dialogue after tapping operator...");
+            script.submitHumanTask(() -> {
+                if (script.getWidgetManager().getDialogue() == null) return false;
+                DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
+                return type != null && type.equals(DialogueType.ITEM_OPTION);
+            }, script.random(3000, 5000));
+
+            return false;
         }
 
         // 3. Search for log ID in dialogue
@@ -261,7 +276,7 @@ public class Sawmiller extends Task {
             return false;
         }
 
-        // 6. At bank, deposit planks and withdraw logs
+        // 6. At the bank, deposit planks and withdraw logs
         if (atBank()) {
             task = "Banking: depositing and withdrawing logs";
             script.log(getClass(), "At bank. Starting deposit and withdraw sequence...");
@@ -441,6 +456,8 @@ public class Sawmiller extends Task {
             return prifSOperatorTile;
         } else if (location.equalsIgnoreCase("WOODCUTTING_GUILD")) {
             return wcGuildOperatorTile;
+        } else if (location.equalsIgnoreCase("AUBURNVALE")) {
+            return auburnvaleOperatorTile;
         } else {
             script.log(getClass(), "Unknown location selected: " + location + ". Stopping script.");
             script.stop();
@@ -513,7 +530,9 @@ public class Sawmiller extends Task {
             return prifSBankArea;
         } else if (loc.equalsIgnoreCase("WOODCUTTING_GUILD")) {
             return wcGuildBankArea;
-        } else {
+        } else if (location.equalsIgnoreCase("AUBURNVALE")) {
+            return auburnvaleBankArea;
+        }else {
             script.log(getClass(), "Unknown location selected for bank: " + location + ". Stopping script.");
             script.stop();
             return null;
@@ -547,5 +566,10 @@ public class Sawmiller extends Task {
         }
 
         script.submitHumanTask(() -> script.getWidgetManager().getBank().isVisible(), script.random(5000, 8000));
+    }
+
+    private boolean isItemOptionDialogueOpen() {
+        return script.getWidgetManager().getDialogue() != null &&
+                script.getWidgetManager().getDialogue().getDialogueType() == DialogueType.ITEM_OPTION;
     }
 }

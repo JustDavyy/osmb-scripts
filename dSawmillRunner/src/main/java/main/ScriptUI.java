@@ -39,6 +39,7 @@ public class ScriptUI {
     private CheckBox includeStatsCheckBox;
 
     public enum Location {
+        AUBURNVALE,
         PRIFDDINAS_NORTH,
         PRIFDDINAS_SOUTH,
         VARROCK,

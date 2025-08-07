@@ -26,11 +26,11 @@ import java.util.List;
         name = "dSawmillRunner",
         description = "Creates planks of your choice at multiple sawmills",
         skillCategory = SkillCategory.CONSTRUCTION,
-        version = 1.2,
+        version = 1.3,
         author = "JustDavyy"
 )
 public class dSawmillRunner extends Script {
-    public static final String scriptVersion = "1.2";
+    public static final String scriptVersion = "1.3";
     public static boolean setupDone = false;
 
     public static boolean useVouchers = false;
@@ -41,7 +41,9 @@ public class dSawmillRunner extends Script {
     public static int plankCount = 0;
     public static String task = "Initialize";
     public static long startTime = System.currentTimeMillis();
-    private static final Font ARIEL = Font.getFont("Ariel");
+    private static final Font ARIEL = Font.getFont("Arial", null);
+    private static final Font ARIEL_BOLD = Font.getFont("Arial Bold", null);
+    private static final Font ARIEL_ITALIC = Font.getFont("Arial Italic", null);
 
     private static boolean webhookEnabled = false;
     private static boolean webhookShowUser = false;
@@ -121,7 +123,9 @@ public class dSawmillRunner extends Script {
     @Override
     public void onPaint(Canvas c) {
         long elapsed = System.currentTimeMillis() - startTime;
-        int planksPerHour = (int) ((plankCount * 3600000L) / elapsed);
+        double hours = elapsed / 3600000.0;
+
+        int planksPerHour = (int) (plankCount / hours);
 
         double regularXp = plankCount * getRegularXpPerPlank();
         double mhXp = plankCount * getMhXpPerPlank();
@@ -133,22 +137,62 @@ public class dSawmillRunner extends Script {
         s.setGroupingSeparator('.');
         f.setDecimalFormatSymbols(s);
 
+        int x = 5;
         int y = 40;
-        c.fillRect(5, y, 250, 220, Color.BLACK.getRGB(), 1);
-        c.drawRect(5, y, 250, 220, Color.BLACK.getRGB());
+        int width = 300;
+        int height = 225;
+        int borderThickness = 2;
 
-        c.drawText("Planks made: " + f.format(plankCount), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Planks/hr: " + f.format(planksPerHour), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        y += 10;
+        // Outer white border highlight
+        c.fillRect(x - borderThickness, y - borderThickness, width + (borderThickness * 2), height + (borderThickness * 2), Color.WHITE.getRGB(), 1);
 
-        c.drawText("Regular XP banked: " + f.format((int) regularXp), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("MH XP banked: " + f.format((int) mhXp), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("MH with outfit: " + f.format((int) mhXpOutfit), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        y += 10;
+        // Black background box
+        int innerX = x;
+        int innerY = y;
+        int innerWidth = width;
+        int innerHeight = height;
+        c.fillRect(innerX, innerY, innerWidth, innerHeight, Color.BLACK.getRGB(), 1);
 
-        c.drawText("Location: " + location, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Task: " + task, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Version: " + scriptVersion, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+        // White inner border
+        c.drawRect(innerX, innerY, innerWidth, innerHeight, Color.WHITE.getRGB());
+
+        // Gradient header
+        int headerHeight = 25;
+        for (int i = 0; i < headerHeight; i++) {
+            int gradientColor = new Color(80 + (i * 3), 150 + (i * 3), 255, 255).getRGB();
+            c.drawLine(innerX + 1, innerY + 1 + i, innerX + innerWidth - 2, innerY + 1 + i, gradientColor);
+        }
+
+        // Header bottom border
+        int bottomBorderY = innerY + headerHeight + 1;
+        for (int i = 0; i < borderThickness; i++) {
+            c.drawLine(innerX + 1, bottomBorderY + i, innerX + innerWidth - 2, bottomBorderY + i, Color.WHITE.getRGB());
+        }
+
+        // Script title
+        String title = "\uD83C\uDF33 dSawmillRunner \uD83C\uDF33";
+        int titlePixelWidth = title.length() * 7;
+        int titleX = innerX + (innerWidth / 2) - (titlePixelWidth / 2);
+        c.drawText(title, titleX, innerY + 18, Color.BLACK.getRGB(), ARIEL_BOLD);
+
+        y = innerY + headerHeight + 5;
+
+        // Stats
+        c.drawText("Planks made: " + f.format(plankCount), innerX + 10, y += 20, new Color(144, 238, 144).getRGB(), ARIEL);
+        c.drawText("Planks/hr: " + f.format(planksPerHour), innerX + 10, y += 20, new Color(255, 215, 0).getRGB(), ARIEL);
+
+        y += 5;
+
+        c.drawText("Regular XP banked: " + f.format((int) regularXp), innerX + 10, y += 20, new Color(173, 216, 230).getRGB(), ARIEL);
+        c.drawText("MH XP banked: " + f.format((int) mhXp), innerX + 10, y += 20, new Color(255, 182, 193).getRGB(), ARIEL);
+        c.drawText("MH with outfit: " + f.format((int) mhXpOutfit), innerX + 10, y += 20, new Color(186, 85, 211).getRGB(), ARIEL);
+
+        y += 5;
+
+        c.drawText("Location: " + location, innerX + 10, y += 20, new Color(240, 128, 128).getRGB(), ARIEL);
+        c.drawText("Task: " + task, innerX + 10, y += 25, new Color(0, 255, 255).getRGB(), ARIEL_BOLD);
+
+        c.drawText("Version: " + scriptVersion, innerX + 10, y += 20, new Color(180, 180, 180).getRGB(), ARIEL_ITALIC);
     }
 
     private double getRegularXpPerPlank() {
