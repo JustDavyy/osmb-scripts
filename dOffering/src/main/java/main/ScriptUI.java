@@ -306,7 +306,7 @@ public class ScriptUI {
 
     public Spell getSpellToCast() {
         String selectedSpell = getSelectedSpell();
-        if (selectedSpell.equals(ArceuusSpellbook.DEMONIC_OFFERING.name())) {
+        if (DEMONIC_OFFERING.equals(selectedSpell)) {
             script.log(getClass(), "Demonic offering spell is selected to be cast.");
             return ArceuusSpellbook.DEMONIC_OFFERING;
         } else {
