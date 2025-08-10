@@ -58,23 +58,25 @@ public class DropTask extends Task {
 
         int totalBankable = sapphires + emeralds + rubies + diamonds + loopKeys;
 
-        script.log(getClass(), String.format("Detected: Sapphires=%d, Emeralds=%d, Rubies=%d, Diamonds=%d, LoopKeys=%d (Total bankable = %d, Threshold = %d)",
-                sapphires, emeralds, rubies, diamonds, loopKeys, totalBankable, currentBankThreshold));
+        if (!dropAllMode) {
+            script.log(getClass(), String.format("Detected: Sapphires=%d, Emeralds=%d, Rubies=%d, Diamonds=%d, LoopKeys=%d (Total bankable = %d, Threshold = %d)",
+                    sapphires, emeralds, rubies, diamonds, loopKeys, totalBankable, currentBankThreshold));
 
-        // Bank if total bankable meets/exceeds threshold
-        task = "Check bankable items";
-        if (totalBankable >= currentBankThreshold) {
-            task = "Check position";
-            WorldPosition myPos = script.getWorldPosition();
-            if (myPos != null && !bankArea.contains(myPos)) {
-                task = "Walk to bank area";
-                return script.getWalker().walkTo(bankWalkArea.getRandomPosition());
-            }
+            // Bank if total bankable meets/exceeds threshold
+            task = "Check bankable items";
+            if (totalBankable >= currentBankThreshold) {
+                task = "Check position";
+                WorldPosition myPos = script.getWorldPosition();
+                if (myPos != null && !bankArea.contains(myPos)) {
+                    task = "Walk to bank area";
+                    return script.getWalker().walkTo(bankWalkArea.getRandomPosition());
+                }
 
-            boolean success = bankItems(inv);
-            if (success) {
-                currentBankThreshold = getNewBankThreshold();
-                return true;
+                boolean success = bankItems(inv);
+                if (success) {
+                    currentBankThreshold = getNewBankThreshold();
+                    return true;
+                }
             }
         }
 
@@ -84,14 +86,26 @@ public class DropTask extends Task {
             script.getWidgetManager().getInventory().dropItems(ItemID.CALCIFIED_DEPOSIT);
         }
 
+        // Drop other stuff
+        if (dropAllMode) {
+            if (sapphires > 0 || emeralds > 0 || rubies > 0 || diamonds > 0 || loopKeys > 0) {
+                script.log(getClass(), "Dropping gems/keys.");
+                script.getWidgetManager().getInventory().dropItems(ItemID.UNCUT_SAPPHIRE, ItemID.UNCUT_EMERALD, ItemID.UNCUT_RUBY, ItemID.UNCUT_DIAMOND, ItemID.LOOP_HALF_OF_KEY_30107);
+            }
+        }
+
         inv = script.getWidgetManager().getInventory().search(getTrackedItemIDs());
 
-        if (!inv.containsAny(getTrackedItemIDs())) {
-            script.log(getClass().getSimpleName(), "Nothing to drop/deposit anymore, walking back!");
-            return script.getWalker().walkTo(miningArea.getRandomPosition());
+        if (!dropAllMode) {
+            if (!inv.containsAny(getTrackedItemIDs())) {
+                script.log(getClass().getSimpleName(), "Nothing to drop/deposit anymore, walking back!");
+                return script.getWalker().walkTo(miningArea.getRandomPosition());
+            } else {
+                script.log(getClass().getSimpleName(), "Not enough to bank, walking back to mining area.");
+                script.getWalker().walkTo(miningArea.getRandomPosition());
+            }
         } else {
-            script.log(getClass().getSimpleName(), "Not enough to bank, walking back to mining area.");
-            script.getWalker().walkTo(miningArea.getRandomPosition());
+            script.log(getClass(), "Drop task completed, returning...");
         }
 
         return true;

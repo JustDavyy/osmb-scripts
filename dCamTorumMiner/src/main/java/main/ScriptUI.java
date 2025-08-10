@@ -12,6 +12,7 @@ import java.util.prefs.Preferences;
 public class ScriptUI {
     private final Preferences prefs = Preferences.userNodeForPackage(ScriptUI.class);
     private static final String PREF_DEPOSIT_ACTION = "dcamtorumminer_deposit_action";
+    private static final String PREF_DROP_ALSO_GEMS_CLUES = "dcamtorumminer_drop_also_gems_clues";
 
     private static final String PREF_WEBHOOK_ENABLED = "dcamtorumminer_webhook_enabled";
     private static final String PREF_WEBHOOK_URL = "dcamtorumminer_webhook_url";
@@ -21,6 +22,7 @@ public class ScriptUI {
 
     private final Script script;
     private ComboBox<String> depositActionComboBox;
+    private CheckBox dropAlsoGemsCluesCheckBox;
 
     private CheckBox webhookEnabledCheckBox;
     private TextField webhookUrlField;
@@ -43,7 +45,23 @@ public class ScriptUI {
         depositActionComboBox = new ComboBox<>();
         depositActionComboBox.getItems().addAll("Drop", "Smith");
         depositActionComboBox.getSelectionModel().select(prefs.get(PREF_DEPOSIT_ACTION, "Drop"));
-        mainBox.getChildren().addAll(actionLabel, depositActionComboBox);
+
+        // Conditionally shown when "Drop" is selected
+        dropAlsoGemsCluesCheckBox = new CheckBox("Also drop gems & keys");
+        dropAlsoGemsCluesCheckBox.setSelected(prefs.getBoolean(PREF_DROP_ALSO_GEMS_CLUES, false));
+
+        // Show/hide logic tied to deposit action
+        boolean showExtraDrop = "Drop".equals(depositActionComboBox.getValue());
+        dropAlsoGemsCluesCheckBox.setVisible(showExtraDrop);
+        dropAlsoGemsCluesCheckBox.setManaged(showExtraDrop);
+
+        depositActionComboBox.valueProperty().addListener((obs, oldVal, newVal) -> {
+            boolean show = "Drop".equals(newVal);
+            dropAlsoGemsCluesCheckBox.setVisible(show);
+            dropAlsoGemsCluesCheckBox.setManaged(show);
+        });
+
+        mainBox.getChildren().addAll(actionLabel, depositActionComboBox, dropAlsoGemsCluesCheckBox);
 
         Tab mainTab = new Tab("Main", mainBox);
         mainTab.setClosable(false);
@@ -101,13 +119,14 @@ public class ScriptUI {
         layout.setSpacing(10);
         layout.setStyle("-fx-background-color: #2d3436; -fx-padding: 10;");
 
-        Scene scene = new Scene(layout, 300, 320);
+        Scene scene = new Scene(layout, 300, 340);
         scene.getStylesheets().add("style.css");
         return scene;
     }
 
     private void saveSettings() {
         prefs.put(PREF_DEPOSIT_ACTION, getDepositAction());
+        prefs.putBoolean(PREF_DROP_ALSO_GEMS_CLUES, isAlsoDropGemsAndClues());
 
         prefs.putBoolean(PREF_WEBHOOK_ENABLED, isWebhookEnabled());
         prefs.put(PREF_WEBHOOK_URL, getWebhookUrl());
@@ -121,6 +140,12 @@ public class ScriptUI {
     // Getters
     public String getDepositAction() {
         return depositActionComboBox.getSelectionModel().getSelectedItem();
+    }
+
+    public boolean isAlsoDropGemsAndClues() {
+        return "Drop".equals(getDepositAction())
+                && dropAlsoGemsCluesCheckBox != null
+                && dropAlsoGemsCluesCheckBox.isSelected();
     }
 
     public boolean isWebhookEnabled() {

@@ -32,17 +32,18 @@ import java.util.Set;
         name = "dCamTorumMiner",
         description = "Mines blessed bone shards in the Cam Torum mine",
         skillCategory = SkillCategory.MINING,
-        version = 1.9,
+        version = 2.0,
         author = "JustDavyy"
 )
 public class dCamTorumMiner extends Script {
-    public static final String scriptVersion = "1.9";
+    public static final String scriptVersion = "2.0";
     public static boolean setupDone = false;
     public static boolean hasReqs;
     public static int blessedShardCount = 0;
     public static int miningXpGained = 0;
     public static boolean dropMode = false;
     public static boolean smithMode = false;
+    public static boolean dropAllMode = false;
     public static boolean readyToReadXP = false;
     public static double previousXPRead = -1;
     public static final Area miningArea = new RectangleArea(1498, 9541, 3, 3, 1);
@@ -94,6 +95,7 @@ public class dCamTorumMiner extends Script {
 
         smithMode = ui.getDepositAction().equals("Smith");
         dropMode = ui.getDepositAction().equals("Drop");
+        dropAllMode = ui.isAlsoDropGemsAndClues();
 
         webhookEnabled = ui.isWebhookEnabled();
         webhookUrl = ui.getWebhookUrl();
