@@ -3,6 +3,7 @@ package main;
 import com.osmb.api.script.Script;
 import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
+import com.osmb.api.ui.chatbox.dialogue.DialogueType;
 import com.osmb.api.ui.spellbook.Spell;
 import com.osmb.api.visual.drawing.Canvas;
 import javafx.scene.Scene;
@@ -27,11 +28,11 @@ import java.util.List;
         name = "dOffering",
         description = "Performs the Sinister or Demonic offering spell for prayer gains",
         skillCategory = SkillCategory.PRAYER,
-        version = 1.7,
+        version = 1.8,
         author = "JustDavyy"
 )
 public class dOffering extends Script {
-    public static final String scriptVersion = "1.7";
+    public static final String scriptVersion = "1.8";
 
     // Script state trackers
     public static boolean setupDone = false;
@@ -184,6 +185,14 @@ public class dOffering extends Script {
         if (webhookEnabled && System.currentTimeMillis() - lastWebhookSent >= webhookIntervalMinutes * 60_000L) {
             sendWebhook();
             lastWebhookSent = System.currentTimeMillis();
+        }
+
+        DialogueType type = getWidgetManager().getDialogue().getDialogueType();
+        if (type == DialogueType.TAP_HERE_TO_CONTINUE) {
+            log(getClass().getSimpleName(), "Dialogue detected, leveled up? HANDLING...");
+            getWidgetManager().getDialogue().continueChatDialogue();
+            submitHumanTask(() -> false, random(1, 1500));
+            return 0;
         }
 
         for (Task task : tasks) {

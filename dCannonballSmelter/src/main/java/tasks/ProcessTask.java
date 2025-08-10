@@ -119,7 +119,7 @@ public class ProcessTask extends Task {
         Timer amountChangeTimer = new Timer();
 
         BooleanSupplier condition = () -> {
-            // This is the level level up check
+            // This is the level up check
             DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
             if (type == DialogueType.TAP_HERE_TO_CONTINUE) {
                 script.log(getClass().getSimpleName(), "Dialogue detected, leveled up?");
