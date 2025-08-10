@@ -193,6 +193,15 @@ public class Chop extends Task {
                         return false;
                     }
                     waitUntilFinishedChopping();
+
+                    // 15% chance to add a small additional post-chop humanized delay
+                    if (script.random(1, 100) <= 15) {
+                        int delay = script.random(400, 800);
+                        script.log(getClass(), "Adding extra humanized delay");
+                        script.submitHumanTask(() -> false, script.random(1, 2000));
+                    }
+
+                    return false;
                 } else {
                     script.log(getClass(), "Closest cluster has no bounds.");
                 }
@@ -310,8 +319,6 @@ public class Chop extends Task {
 
             return false;
         }, maxChopDuration);
-
-        script.submitHumanTask(() -> false, script.random(300, 800));
     }
 
     private boolean readXp() {
