@@ -100,7 +100,6 @@ public class dCooker extends Script {
                 13151, // Priff NE
                 9541,  // Zanaris
                 12084, // Falador East
-                12588, // Ruins of Unkah
         };
     }
 
