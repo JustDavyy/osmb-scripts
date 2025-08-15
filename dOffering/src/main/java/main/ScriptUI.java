@@ -295,12 +295,10 @@ public class ScriptUI {
 
     public int getXpPerSpellCast() {
         String selectedSpell = getSelectedSpell();
-        if (selectedSpell.equals(ArceuusSpellbook.DEMONIC_OFFERING.name())) {
+        if (DEMONIC_OFFERING.equals(selectedSpell)) {
             return 175;
-        } else if (selectedSpell.equals(ArceuusSpellbook.SINISTER_OFFERING.name())) {
-            return 180;
         } else {
-            return 0; // fallback
+            return 180;
         }
     }
 
