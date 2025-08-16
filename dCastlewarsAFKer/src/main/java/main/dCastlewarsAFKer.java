@@ -28,11 +28,11 @@ import java.util.List;
         name = "dCastlewarsAFKer",
         description = "AFKs the castle wars minigame on mass worlds",
         skillCategory = SkillCategory.OTHER,
-        version = 1.1,
+        version = 1.2,
         author = "JustDavyy"
 )
 public class dCastlewarsAFKer extends Script {
-    public static final String scriptVersion = "1.1";
+    public static final String scriptVersion = "1.2";
     public static boolean setupDone = false;
     public static int tickets = 0;
     public static int plaudits = 0;

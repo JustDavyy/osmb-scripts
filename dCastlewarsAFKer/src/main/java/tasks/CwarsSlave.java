@@ -52,6 +52,11 @@ public class CwarsSlave extends Task {
 
     // Chat history stuff
     private static final List<String> PREVIOUS_CHATBOX_LINES = new ArrayList<>();
+    private int lastTicketsTotalSeen  = -1;
+    private int lastPlauditsTotalSeen = -1;
+    private int pendingTicketsAddedFromAwarded  = 0;
+    private int pendingPlauditsAddedFromAwarded = 0;
+
 
     public CwarsSlave(Script script) {
         super(script);
@@ -560,31 +565,53 @@ public class CwarsSlave extends Task {
         for (String message : newLines) {
             if (message == null || message.isEmpty()) continue;
 
+            // 1) "You've been awarded X plaudits and Y tickets ..."
             java.util.regex.Matcher mAwarded = AWARDED.matcher(message);
             if (mAwarded.find()) {
                 int plauditsThisGame = safeParseInt(mAwarded.group(1));
                 int ticketsThisGame  = safeParseInt(mAwarded.group(2));
 
-                // Log what we gained this game
                 script.log(getClass(), "Awarded this game: +" + plauditsThisGame + " plaudits, +" + ticketsThisGame + " tickets.");
 
-                // Accumulate gains for this session/run
+                // Add to session gains immediately...
                 plauditsGained += plauditsThisGame;
                 ticketsGained  += ticketsThisGame;
 
+                // ...and remember what we already counted for this round.
+                pendingPlauditsAddedFromAwarded += plauditsThisGame;
+                pendingTicketsAddedFromAwarded  += ticketsThisGame;
                 continue;
             }
 
+            // 2) "You now have X plaudits and Y tickets."
             java.util.regex.Matcher mNowHave = NOW_HAVE.matcher(message);
             if (mNowHave.find()) {
                 int newPlaudits = safeParseInt(mNowHave.group(1));
                 int newTickets  = safeParseInt(mNowHave.group(2));
 
-                // Update totals (current overall amounts)
+                // If we have previous totals, compute deltas.
+                if (lastPlauditsTotalSeen >= 0 && lastTicketsTotalSeen >= 0) {
+                    int plauditsDelta = newPlaudits - lastPlauditsTotalSeen;
+                    int ticketsDelta  = newTickets  - lastTicketsTotalSeen;
+
+                    // Only add any EXTRA amounts not already counted from "awarded" this cycle.
+                    int extraPlaudits = plauditsDelta - pendingPlauditsAddedFromAwarded;
+                    int extraTickets  = ticketsDelta  - pendingTicketsAddedFromAwarded;
+
+                    if (extraPlaudits > 0) plauditsGained += extraPlaudits;
+                    if (extraTickets  > 0) ticketsGained  += extraTickets;
+                }
+
+                // Update current totals
                 plaudits = newPlaudits;
                 tickets  = newTickets;
-
                 script.log(getClass(), "Totals updated: " + plaudits + " plaudits, " + tickets + " tickets.");
+
+                // Advance the "last seen" totals and clear pending.
+                lastPlauditsTotalSeen = newPlaudits;
+                lastTicketsTotalSeen  = newTickets;
+                pendingPlauditsAddedFromAwarded = 0;
+                pendingTicketsAddedFromAwarded  = 0;
             }
         }
     }
