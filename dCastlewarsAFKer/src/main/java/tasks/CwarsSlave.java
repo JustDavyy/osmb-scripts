@@ -73,9 +73,14 @@ public class CwarsSlave extends Task {
 
         // 1. If within castle wars outside the lobby
         if (castleWarsArea.contains(currentPos.get())) {
+            monitorChatbox();
             canBreakNow = true;
             canHopNow = true;
             updateLocation();
+            if (script.getProfileManager().isDueToBreak()) {
+                monitorChatbox();
+                return false;
+            }
             // Join guthix portal
             if (!handleObject("Guthix Portal", "Enter", null, guthixPortalWalkArea)) {
                 return false;
@@ -198,6 +203,7 @@ public class CwarsSlave extends Task {
     }
 
     private boolean handleObject(String objectName, String objectAction, WorldPosition objectLocation, Area objectArea) {
+        monitorChatbox();
         task = "Validate " + objectName + " request";
         // Basic validation
         if (objectName == null || objectName.isBlank() || objectAction == null || objectAction.isBlank()) {
@@ -244,6 +250,8 @@ public class CwarsSlave extends Task {
             }
         }
 
+        monitorChatbox();
+
         task = "Interact with " + objectName + " object (" + objectAction + ")";
         // Try interaction
         if (target.interact(objectAction)) {
@@ -268,6 +276,8 @@ public class CwarsSlave extends Task {
                     .build();
             walkTowardTarget(target, cfg, objectLocation, objectArea);
         }
+
+        monitorChatbox();
 
         task = "Interact with " + objectName + " object (" + objectAction + ")";
         resetAntiAfkTimer();
