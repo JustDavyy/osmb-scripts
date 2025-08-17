@@ -1,5 +1,7 @@
 package tasks;
 
+import com.osmb.api.item.ItemGroupResult;
+import com.osmb.api.item.ItemID;
 import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
@@ -38,6 +40,16 @@ public class Bank extends Task {
         task = getClass().getSimpleName();
         if (!script.getWidgetManager().getBank().isVisible()) {
             openBank();
+            return false;
+        }
+
+        ItemGroupResult inv = script.getWidgetManager().getInventory().search(Collections.emptySet());
+        if (inv == null) return false;
+
+        if (inv.isFull()) {
+            script.log(getClass(), "Inventory already full in bank process, marking need to bank false and returning!");
+            needToBank = false;
+            withdrawFailCount = 0;
             return false;
         }
 
