@@ -50,6 +50,10 @@ public class CwarsSlave extends Task {
     // Position
     private static AtomicReference<WorldPosition> currentPos;
 
+    // Trackers
+    private int upstairsWalkFailures = 0;
+    private boolean upstairsWalkBlocked = false;
+
     // Chat history stuff
     private static final List<String> PREVIOUS_CHATBOX_LINES = new ArrayList<>();
     private int lastTicketsTotalSeen  = -1;
@@ -81,6 +85,8 @@ public class CwarsSlave extends Task {
             monitorChatbox();
             canBreakNow = true;
             canHopNow = true;
+            upstairsWalkBlocked = true;
+            upstairsWalkFailures = 0;
             updateLocation();
             if (script.getProfileManager().isDueToBreak()) {
                 monitorChatbox();
@@ -107,6 +113,8 @@ public class CwarsSlave extends Task {
         if (redLobbyArea.contains(currentPos.get()) || blueLobbyArea.contains(currentPos.get())) {
             canBreakNow = true;
             canHopNow = true;
+            upstairsWalkBlocked = true;
+            upstairsWalkFailures = 0;
             task = "Check dialogue";
             if (isTextOptionDialogueOpen()) {
                 script.log(getClass(), "Early join dialogue detected, joining!");
@@ -163,6 +171,8 @@ public class CwarsSlave extends Task {
         if (redSideUpstairsAFKArea.contains(currentPos.get()) || blueSideUpstairsAFKArea.contains(currentPos.get())) {
             canBreakNow = false;
             canHopNow = false;
+            upstairsWalkBlocked = true;
+            upstairsWalkFailures = 0;
             updateLocation();
 
             task = "Check AFK timer & Handle";
@@ -189,7 +199,27 @@ public class CwarsSlave extends Task {
             canBreakNow = false;
             canHopNow = false;
             updateLocation();
-            // We are upstairs, go to AFK area
+
+            // If we previously failed too many times, just idle here instead of trying again
+            if (upstairsWalkBlocked) {
+                task = "AFKing upstairs (walk possibly blocked)";
+                doAntiAfk(false, null);
+
+                // Wait until: left AFK area OR anti-AFK timer finished
+                BooleanSupplier condition = () -> {
+                    currentPos.set(script.getWorldPosition());
+                    var pos = currentPos.get();
+
+                    boolean inAfkArea = (pos != null) && getUpstairsAFKArea().contains(pos);
+                    boolean timerDone = (switchTabTimer != null) && switchTabTimer.hasFinished();
+
+                    // proceed when either we left the AFK area OR it's time to do a new AFK action
+                    return (!inAfkArea) || timerDone;
+                };
+
+                return script.submitHumanTask(condition, script.random(120_000, 270_000));
+            }
+
             WalkConfig precise = new WalkConfig.Builder()
                     .enableRun(true)
                     .breakDistance(0)
@@ -200,7 +230,20 @@ public class CwarsSlave extends Task {
                     .build();
 
             task = "Walk to upstairs AFK area";
-            return script.getWalker().walkTo(getUpstairsAFKArea().getRandomPosition(), precise);
+            boolean walked = script.getWalker().walkTo(getUpstairsAFKArea().getRandomPosition(), precise);
+
+            if (!walked) {
+                upstairsWalkFailures++;
+                if (upstairsWalkFailures >= 5) {
+                    upstairsWalkBlocked = true;
+                    script.log(getClass(), "Too many walk failures upstairs (likely barricades). Will AFK here instead.");
+                }
+            } else {
+                // reset on success
+                upstairsWalkFailures = 0;
+            }
+
+            return walked;
         }
 
         task = "Idle - nothing to do";
@@ -552,49 +595,57 @@ public class CwarsSlave extends Task {
     private void processNewChatboxMessages(List<String> newLines) {
         if (newLines == null || newLines.isEmpty()) return;
 
-        final java.util.regex.Pattern AWARDED = java.util.regex.Pattern.compile(
+        // P2P patterns (plaudits + tickets)
+        final java.util.regex.Pattern AWARDED_P2P = java.util.regex.Pattern.compile(
                 "been awarded\\s+(\\d{1,5})\\s+plaudits\\s+and\\s+(\\d{1,5})\\s+tickets\\b",
                 java.util.regex.Pattern.CASE_INSENSITIVE
         );
-
-        final java.util.regex.Pattern NOW_HAVE = java.util.regex.Pattern.compile(
+        final java.util.regex.Pattern NOW_HAVE_P2P = java.util.regex.Pattern.compile(
                 "you now have\\s+(\\d{1,5})\\s+plaudits\\s+and\\s+(\\d{1,5})\\s+tickets\\b",
+                java.util.regex.Pattern.CASE_INSENSITIVE
+        );
+
+        // F2P patterns (tickets only)
+        final java.util.regex.Pattern AWARDED_F2P = java.util.regex.Pattern.compile(
+                "been awarded\\s+(\\d{1,5})\\s+tickets\\b",
+                java.util.regex.Pattern.CASE_INSENSITIVE
+        );
+        final java.util.regex.Pattern NOW_HAVE_F2P = java.util.regex.Pattern.compile(
+                "you now have\\s+(\\d{1,5})\\s+tickets\\b",
                 java.util.regex.Pattern.CASE_INSENSITIVE
         );
 
         for (String message : newLines) {
             if (message == null || message.isEmpty()) continue;
 
-            // 1) "You've been awarded X plaudits and Y tickets ..."
-            java.util.regex.Matcher mAwarded = AWARDED.matcher(message);
-            if (mAwarded.find()) {
-                int plauditsThisGame = safeParseInt(mAwarded.group(1));
-                int ticketsThisGame  = safeParseInt(mAwarded.group(2));
+            // --- P2P: "You've been awarded X plaudits and Y tickets ..."
+            java.util.regex.Matcher mAwardedP2P = AWARDED_P2P.matcher(message);
+            if (mAwardedP2P.find()) {
+                int plauditsThisGame = safeParseInt(mAwardedP2P.group(1));
+                int ticketsThisGame  = safeParseInt(mAwardedP2P.group(2));
 
                 script.log(getClass(), "Awarded this game: +" + plauditsThisGame + " plaudits, +" + ticketsThisGame + " tickets.");
 
-                // Add to session gains immediately...
+                // Count immediately
                 plauditsGained += plauditsThisGame;
                 ticketsGained  += ticketsThisGame;
 
-                // ...and remember what we already counted for this round.
+                // Track what was already counted this cycle
                 pendingPlauditsAddedFromAwarded += plauditsThisGame;
                 pendingTicketsAddedFromAwarded  += ticketsThisGame;
                 continue;
             }
 
-            // 2) "You now have X plaudits and Y tickets."
-            java.util.regex.Matcher mNowHave = NOW_HAVE.matcher(message);
-            if (mNowHave.find()) {
-                int newPlaudits = safeParseInt(mNowHave.group(1));
-                int newTickets  = safeParseInt(mNowHave.group(2));
+            // --- P2P: "You now have X plaudits and Y tickets."
+            java.util.regex.Matcher mNowHaveP2P = NOW_HAVE_P2P.matcher(message);
+            if (mNowHaveP2P.find()) {
+                int newPlaudits = safeParseInt(mNowHaveP2P.group(1));
+                int newTickets  = safeParseInt(mNowHaveP2P.group(2));
 
-                // If we have previous totals, compute deltas.
                 if (lastPlauditsTotalSeen >= 0 && lastTicketsTotalSeen >= 0) {
                     int plauditsDelta = newPlaudits - lastPlauditsTotalSeen;
                     int ticketsDelta  = newTickets  - lastTicketsTotalSeen;
 
-                    // Only add any EXTRA amounts not already counted from "awarded" this cycle.
                     int extraPlaudits = plauditsDelta - pendingPlauditsAddedFromAwarded;
                     int extraTickets  = ticketsDelta  - pendingTicketsAddedFromAwarded;
 
@@ -602,16 +653,47 @@ public class CwarsSlave extends Task {
                     if (extraTickets  > 0) ticketsGained  += extraTickets;
                 }
 
-                // Update current totals
                 plaudits = newPlaudits;
                 tickets  = newTickets;
                 script.log(getClass(), "Totals updated: " + plaudits + " plaudits, " + tickets + " tickets.");
 
-                // Advance the "last seen" totals and clear pending.
                 lastPlauditsTotalSeen = newPlaudits;
                 lastTicketsTotalSeen  = newTickets;
                 pendingPlauditsAddedFromAwarded = 0;
                 pendingTicketsAddedFromAwarded  = 0;
+                continue;
+            }
+
+            // --- F2P: "You've been awarded X tickets ..."
+            java.util.regex.Matcher mAwardedF2P = AWARDED_F2P.matcher(message);
+            if (mAwardedF2P.find()) {
+                int ticketsThisGame = safeParseInt(mAwardedF2P.group(1));
+
+                script.log(getClass(), "Awarded this game: +" + ticketsThisGame + " tickets.");
+
+                ticketsGained += ticketsThisGame;
+                pendingTicketsAddedFromAwarded += ticketsThisGame;
+                // no plaudits in F2P
+                continue;
+            }
+
+            // --- F2P: "You now have X tickets."
+            java.util.regex.Matcher mNowHaveF2P = NOW_HAVE_F2P.matcher(message);
+            if (mNowHaveF2P.find()) {
+                int newTickets = safeParseInt(mNowHaveF2P.group(1));
+
+                if (lastTicketsTotalSeen >= 0) {
+                    int ticketsDelta = newTickets - lastTicketsTotalSeen;
+                    int extraTickets = ticketsDelta - pendingTicketsAddedFromAwarded;
+                    if (extraTickets > 0) ticketsGained += extraTickets;
+                }
+
+                tickets = newTickets;
+                script.log(getClass(), "Totals updated: " + tickets + " tickets.");
+
+                lastTicketsTotalSeen = newTickets;
+                // Reset only the tickets pending; plaudits pending is irrelevant here but keep it intact for P2P cycles.
+                pendingTicketsAddedFromAwarded = 0;
             }
         }
     }
