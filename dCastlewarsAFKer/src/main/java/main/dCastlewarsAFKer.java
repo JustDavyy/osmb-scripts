@@ -290,10 +290,16 @@ public class dCastlewarsAFKer extends Script {
 
     private String formatRuntime(long millis) {
         long seconds = millis / 1000;
+        long days = seconds / 86400;
         long hours = (seconds % 86400) / 3600;
         long minutes = (seconds % 3600) / 60;
         long secs = seconds % 60;
-        return String.format("%02d:%02d:%02d", hours, minutes, secs);
+
+        if (days > 0) {
+            return String.format("%dd %02d:%02d:%02d", days, hours, minutes, secs);
+        } else {
+            return String.format("%02d:%02d:%02d", hours, minutes, secs);
+        }
     }
 
     private void checkForUpdates() {
