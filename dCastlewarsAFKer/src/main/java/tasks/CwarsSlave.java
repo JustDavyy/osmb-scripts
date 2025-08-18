@@ -85,7 +85,7 @@ public class CwarsSlave extends Task {
             monitorChatbox();
             canBreakNow = true;
             canHopNow = true;
-            upstairsWalkBlocked = true;
+            upstairsWalkBlocked = false;
             upstairsWalkFailures = 0;
             updateLocation();
             if (script.getProfileManager().isDueToBreak()) {
@@ -113,7 +113,7 @@ public class CwarsSlave extends Task {
         if (redLobbyArea.contains(currentPos.get()) || blueLobbyArea.contains(currentPos.get())) {
             canBreakNow = true;
             canHopNow = true;
-            upstairsWalkBlocked = true;
+            upstairsWalkBlocked = false;
             upstairsWalkFailures = 0;
             task = "Check dialogue";
             if (isTextOptionDialogueOpen()) {
@@ -171,7 +171,7 @@ public class CwarsSlave extends Task {
         if (redSideUpstairsAFKArea.contains(currentPos.get()) || blueSideUpstairsAFKArea.contains(currentPos.get())) {
             canBreakNow = false;
             canHopNow = false;
-            upstairsWalkBlocked = true;
+            upstairsWalkBlocked = false;
             upstairsWalkFailures = 0;
             updateLocation();
 
