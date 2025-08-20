@@ -1,12 +1,7 @@
 package tasks;
 
-import com.osmb.api.item.ItemGroupResult;
-import com.osmb.api.item.ItemID;
-import com.osmb.api.ui.tabs.Tab;
 import com.osmb.api.script.Script;
 import utils.Task;
-
-import java.util.Set;
 
 import static main.dCastlewarsAFKer.*;
 
