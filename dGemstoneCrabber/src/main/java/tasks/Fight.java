@@ -461,8 +461,16 @@ public class Fight extends Task {
         // Read and process chat messages
         monitorChatbox();
 
+        // Check if we need to stop
+        task = "Check breaks/hops";
+        boolean needToStop = script.getProfileManager().isDueToBreak() || script.getProfileManager().isDueToHop();
+
         // Verify the NPC is still there
-        task = "Check crab active";
+        if (onlyHopAfterKill && needToStop) {
+            task = "Check crab - Hop/break after kill";
+        } else {
+            task = "Check crab active";
+        }
         boolean crabActive = findCrabNPC(false);
 
         // Send webhook if needed
@@ -472,11 +480,6 @@ public class Fight extends Task {
         }
 
         if (!crabActive) {
-
-            // Verify first if it is time to break or hop
-            task = "Check breaks/hops";
-            boolean needToStop = script.getProfileManager().isDueToBreak() || script.getProfileManager().isDueToHop();
-
             if (needToStop) {
                 if (onlyHopAfterKill) {
                     task = "Finish current kill before hop/break";
