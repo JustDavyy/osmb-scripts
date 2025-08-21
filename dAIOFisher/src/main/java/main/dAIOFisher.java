@@ -37,11 +37,11 @@ import javax.imageio.ImageIO;
         name = "dAIOFisher",
         description = "AIO Fisher that fishes, banks and/or drops to get those gains!",
         skillCategory = SkillCategory.FISHING,
-        version = 2.4,
+        version = 2.5,
         author = "JustDavyy"
 )
 public class dAIOFisher extends Script {
-    public static String scriptVersion = "2.4";
+    public static String scriptVersion = "2.5";
     public static boolean setupDone = false;
     public static boolean usingBarrel = false;
     public static boolean skipMinnowDelay = false;

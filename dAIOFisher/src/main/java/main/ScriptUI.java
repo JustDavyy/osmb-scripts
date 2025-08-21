@@ -59,6 +59,7 @@ public class ScriptUI {
 
         VBox mainBox = new VBox(10);
         mainBox.setStyle("-fx-background-color: #636E72; -fx-padding: 15; -fx-alignment: center");
+        mainBox.setMinHeight(425);
 
         Label locationLabel = new Label("Select location:");
         locationComboBox = new ComboBox<>();
@@ -84,32 +85,31 @@ public class ScriptUI {
         fishPreviewBox.setStyle("-fx-padding: 5; -fx-alignment: center;");
 
         handlingComboBox = new ComboBox<>();
-        // Optional Minnow skip delay checkbox and warning label
+        // AFTER creating the controls (keep your existing code), tweak initial state:
         skipMinnowDelayCheckBox = new CheckBox("Disable human delay on Minnow spot switch");
         skipMinnowDelayCheckBox.setStyle("-fx-text-fill: white;");
         minnowWarningLabel = new Label("⚠ Might result in a higher ban rate\nUse at your own risk.");
         minnowWarningLabel.setStyle("-fx-font-style: italic; -fx-text-fill: orange;");
 
-        // Initially hide
+        // Initially hide (and don't reserve layout space)
         skipMinnowDelayCheckBox.setVisible(false);
         minnowWarningLabel.setVisible(false);
+        skipMinnowDelayCheckBox.managedProperty().bind(skipMinnowDelayCheckBox.visibleProperty());
+        minnowWarningLabel.managedProperty().bind(minnowWarningLabel.visibleProperty());
+
+        // Restore saved state
         skipMinnowDelayCheckBox.setSelected(prefs.getBoolean("daiofisher_minnow_skip_delay", false));
+        updateMinnowControlsVisibility();
 
         // === Listeners ===
         locationComboBox.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 methodComboBox.setItems(FXCollections.observableArrayList(newVal.getMethods()));
                 methodComboBox.getSelectionModel().selectFirst();
-
-                boolean isMinnows = newVal == FishingLocation.Minnows;
-                skipMinnowDelayCheckBox.setVisible(isMinnows);
-                minnowWarningLabel.setVisible(isMinnows && skipMinnowDelayCheckBox.isSelected());
+                updateMinnowControlsVisibility();
             }
         });
-        skipMinnowDelayCheckBox.setOnAction(e -> {
-            boolean isMinnows = locationComboBox.getValue() == FishingLocation.Minnows;
-            minnowWarningLabel.setVisible(isMinnows && skipMinnowDelayCheckBox.isSelected());
-        });
+        skipMinnowDelayCheckBox.setOnAction(e -> updateMinnowControlsVisibility());
 
         methodComboBox.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
@@ -165,7 +165,7 @@ public class ScriptUI {
         webhookUrlField.setDisable(!webhookEnabledCheckBox.isSelected());
 
         webhookIntervalComboBox = new ComboBox<>();
-        for (int i = 1; i <= 15; i++) webhookIntervalComboBox.getItems().add(i);
+        for (int i = 1; i <= 60; i++) webhookIntervalComboBox.getItems().add(i);
         webhookIntervalComboBox.getSelectionModel().select(Integer.valueOf(prefs.getInt(PREF_WEBHOOK_INTERVAL, 5)) - 1);
         webhookIntervalComboBox.setDisable(!webhookEnabledCheckBox.isSelected());
 
@@ -205,9 +205,18 @@ public class ScriptUI {
 
         tabPane.getTabs().addAll(mainTab, webhookTab);
 
-        Scene scene = new Scene(layout, 330, 520);
+        Scene scene = new Scene(layout, 330, 475);
         scene.getStylesheets().add("style.css");
         return scene;
+    }
+
+    private void updateMinnowControlsVisibility() {
+        boolean isMinnows = locationComboBox.getValue() == FishingLocation.Minnows;
+
+        skipMinnowDelayCheckBox.setVisible(isMinnows);
+
+        boolean showWarn = isMinnows && skipMinnowDelayCheckBox.isSelected();
+        minnowWarningLabel.setVisible(showWarn);
     }
 
     private void startFishPreviewCycle(ScriptCore core, FishingMethod method) {
@@ -292,7 +301,7 @@ public class ScriptUI {
     }
 
     public boolean isSkippingMinnowDelay() {
-        return skipMinnowDelayCheckBox != null && skipMinnowDelayCheckBox.isVisible() && skipMinnowDelayCheckBox.isSelected();
+        return skipMinnowDelayCheckBox != null && skipMinnowDelayCheckBox.isSelected();
     }
 
     public boolean isUsernameIncluded() {
