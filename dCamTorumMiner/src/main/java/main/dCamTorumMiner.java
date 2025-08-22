@@ -27,16 +27,17 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @ScriptDefinition(
         name = "dCamTorumMiner",
         description = "Mines blessed bone shards in the Cam Torum mine",
         skillCategory = SkillCategory.MINING,
-        version = 2.0,
+        version = 2.1,
         author = "JustDavyy"
 )
 public class dCamTorumMiner extends Script {
-    public static final String scriptVersion = "2.0";
+    public static final String scriptVersion = "2.1";
     public static boolean setupDone = false;
     public static boolean hasReqs;
     public static int blessedShardCount = 0;
@@ -65,7 +66,11 @@ public class dCamTorumMiner extends Script {
     public static long startTime = System.currentTimeMillis();
 
     private List<Task> tasks;
-    private static final Font ARIEL = Font.getFont("Arial");
+
+    // Fixed-size, shared fonts (prevents layout jitter)
+    private static final Font ARIAL        = new Font("Arial", Font.PLAIN, 14);
+    private static final Font ARIAL_BOLD   = new Font("Arial", Font.BOLD, 14);
+    private static final Font ARIAL_ITALIC = new Font("Arial", Font.ITALIC, 14);
 
     // Webhook
     private static boolean webhookEnabled = false;
@@ -138,27 +143,139 @@ public class dCamTorumMiner extends Script {
     @Override
     public void onPaint(Canvas c) {
         long elapsed = System.currentTimeMillis() - startTime;
-        int shardsPerHour = (int) ((blessedShardCount * 3600000L) / elapsed);
-        int miningXpHr = (int) ((miningXpGained * 3600000L) / elapsed);
+        double hours = Math.max(1e-9, elapsed / 3_600_000.0); // avoid div-by-zero
+
+        // ---- Totals & rates ----
+        int shardsHr    = (int) Math.round(blessedShardCount / hours);
+        int miningXpHr  = (int) Math.round(miningXpGained   / hours);
         double prayerXp = blessedShardCount * 5.5;
-        int prayerXpHr = (int) ((prayerXp * 3600000L) / elapsed);
+        int prayerXpHr  = (int) Math.round(prayerXp / hours);
 
-        DecimalFormat f = new DecimalFormat("#,###");
-        DecimalFormatSymbols s = new DecimalFormatSymbols();
-        s.setGroupingSeparator('.');
-        f.setDecimalFormatSymbols(s);
+        // ---- Formatters ----
+        java.text.DecimalFormat fmt = new java.text.DecimalFormat("#,###");
+        java.text.DecimalFormatSymbols sy = new java.text.DecimalFormatSymbols();
+        sy.setGroupingSeparator('.');
+        fmt.setDecimalFormatSymbols(sy);
 
-        int y = 40;
-        c.fillRect(5, y, 270, 180, Color.BLACK.getRGB(), 1);
-        c.drawRect(5, y, 270, 180, Color.BLACK.getRGB());
-        c.drawText("Bone shards gained: " + f.format(blessedShardCount), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Bone shards/hr: " + f.format(shardsPerHour), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Mining XP gained: " + f.format(miningXpGained), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Mining XP/hr: " + f.format(miningXpHr), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Prayer XP gained: " + f.format(prayerXp), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Prayer XP/hr: " + f.format(prayerXpHr), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Task: " + task, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Version: " + scriptVersion, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+        // ---- Layout config (dynamic sizing via FontMetrics) ----
+        final int x = 5;
+        final int yTop = 40;
+        final int borderThickness = 2;
+        final int headerHeight = 25;
+        final int paddingLeft = 10, paddingRight = 10;
+        final int contentTopPad = 5, contentBottomPad = 8;
+        final int groupGap = 10;
+
+        FontMetrics fm       = c.getFontMetrics(ARIAL);
+        FontMetrics fmBold   = c.getFontMetrics(ARIAL_BOLD);
+        FontMetrics fmItalic = c.getFontMetrics(ARIAL_ITALIC);
+
+        // ---- Lines ----
+        String title       = "dCamTorumMiner";
+        String lineShards  = "Bone shards gained: " + fmt.format(blessedShardCount);
+        String lineShardsH = "Bone shards/hr: "    + fmt.format(shardsHr);
+        String lineMXPG    = "Mining XP gained: "  + fmt.format(miningXpGained);
+        String lineMXPH    = "Mining XP/hr: "      + fmt.format(miningXpHr);
+        String linePXPG    = "Prayer XP gained: "  + fmt.format(Math.round(prayerXp));
+        String linePXPH    = "Prayer XP/hr: "      + fmt.format(prayerXpHr);
+        String lineTask    = "Task: " + task;
+        String lineVer     = "Version: " + scriptVersion;
+
+        // ---- Measure max width ----
+        AtomicInteger maxWidth = new AtomicInteger(Math.max(fmBold.stringWidth(title), fmItalic.stringWidth(lineVer)));
+        java.util.function.Consumer<String> widen = s -> { if (s != null) maxWidth.set(Math.max(maxWidth.get(), fm.stringWidth(s))); };
+        widen.accept(lineShards);
+        widen.accept(lineShardsH);
+        widen.accept(lineMXPG);
+        widen.accept(lineMXPH);
+        widen.accept(linePXPG);
+        widen.accept(linePXPH);
+        maxWidth.set(Math.max(maxWidth.get(), fmBold.stringWidth(lineTask)));
+
+        // ---- Measure total height ----
+        int totalHeight = 0;
+        totalHeight += headerHeight + contentTopPad;
+
+        totalHeight += fm.getHeight(); // shards
+        totalHeight += fm.getHeight(); // shards/hr
+        totalHeight += groupGap;
+
+        totalHeight += fm.getHeight(); // mining xp gained
+        totalHeight += fm.getHeight(); // mining xp/hr
+        totalHeight += groupGap;
+
+        totalHeight += fm.getHeight(); // prayer xp gained
+        totalHeight += fm.getHeight(); // prayer xp/hr
+        totalHeight += groupGap;
+
+        totalHeight += fmBold.getHeight();   // task
+        totalHeight += fmItalic.getHeight(); // version
+        totalHeight += contentBottomPad;
+
+        int innerWidth  = maxWidth.get() + paddingLeft + paddingRight;
+        int innerHeight = totalHeight;
+
+        // ---- Outer white border highlight ----
+        c.fillRect(x - borderThickness, yTop - borderThickness,
+                innerWidth + (borderThickness * 2), innerHeight + (borderThickness * 2),
+                Color.WHITE.getRGB(), 1);
+
+        // ---- Black background box ----
+        int innerX = x;
+        int innerY = yTop;
+        c.fillRect(innerX, innerY, innerWidth, innerHeight, Color.BLACK.getRGB(), 1);
+
+        // ---- White inner border ----
+        c.drawRect(innerX, innerY, innerWidth, innerHeight, Color.WHITE.getRGB());
+
+        // ---- Gradient header ----
+        for (int i = 0; i < headerHeight; i++) {
+            int gradientColor = new Color(80 + (i * 3), 150 + (i * 3), 255, 255).getRGB();
+            c.drawLine(innerX + 1, innerY + 1 + i, innerX + innerWidth - 2, innerY + 1 + i, gradientColor);
+        }
+        // Header bottom border
+        for (int i = 0; i < borderThickness; i++) {
+            c.drawLine(innerX + 1, innerY + headerHeight + i + 1, innerX + innerWidth - 2, innerY + headerHeight + i + 1, Color.WHITE.getRGB());
+        }
+
+        // ---- Title ----
+        int titleWidth = fmBold.stringWidth(title);
+        int titleX = innerX + (innerWidth / 2) - (titleWidth / 2);
+        c.drawText(title, titleX, innerY + 18, Color.BLACK.getRGB(), ARIAL_BOLD);
+
+        // ---- Content ----
+        int cx = innerX + paddingLeft;
+        int y  = innerY + headerHeight + contentTopPad;
+
+        // shards
+        y += fm.getHeight();
+        c.drawText(lineShards,  cx, y, Color.WHITE.getRGB(), ARIAL);
+        y += fm.getHeight();
+        c.drawText(lineShardsH, cx, y, Color.WHITE.getRGB(), ARIAL);
+
+        y += groupGap;
+
+        // mining xp
+        y += fm.getHeight();
+        c.drawText(lineMXPG, cx, y, new Color(144, 238, 144).getRGB(), ARIAL); // light green
+        y += fm.getHeight();
+        c.drawText(lineMXPH, cx, y, new Color(255, 215, 0).getRGB(),   ARIAL); // gold
+
+        y += groupGap;
+
+        // prayer xp
+        y += fm.getHeight();
+        c.drawText(linePXPG, cx, y, new Color(173, 216, 230).getRGB(), ARIAL); // light blue
+        y += fm.getHeight();
+        c.drawText(linePXPH, cx, y, new Color(255, 182, 193).getRGB(), ARIAL); // pink
+
+        y += groupGap;
+
+        // footer
+        y += fmBold.getHeight();
+        c.drawText(lineTask, cx, y, new Color(0, 255, 255).getRGB(), ARIAL_BOLD); // cyan
+        y += fmItalic.getHeight();
+        c.drawText(lineVer,  cx, y, new Color(180, 180, 180).getRGB(), ARIAL_ITALIC);
     }
 
     private void sendWebhook() {
