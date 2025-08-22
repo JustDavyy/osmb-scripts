@@ -25,16 +25,17 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @ScriptDefinition(
         name = "dAmethystMiner",
         description = "Mines and crafts/banks amethyst in the mining guild",
         skillCategory = SkillCategory.MINING,
-        version = 1.6,
+        version = 1.7,
         author = "JustDavyy"
 )
 public class dAmethystMiner extends Script {
-    public static final String scriptVersion = "1.6";
+    public static final String scriptVersion = "1.7";
 
     public static boolean bankMode = false;
     public static boolean craftMode = false;
@@ -59,7 +60,11 @@ public class dAmethystMiner extends Script {
     public static long startTime = System.currentTimeMillis();
 
     private List<Task> tasks;
-    private static final Font ARIEL = Font.getFont("Arial");
+
+    // Fixed-size, shared fonts (prevents layout jitter)
+    private static final Font ARIAL        = new Font("Arial", Font.PLAIN, 14);
+    private static final Font ARIAL_BOLD   = new Font("Arial", Font.BOLD, 14);
+    private static final Font ARIAL_ITALIC = new Font("Arial", Font.ITALIC, 14);
 
     // Webhook
     private static boolean webhookEnabled = false;
@@ -136,38 +141,159 @@ public class dAmethystMiner extends Script {
     @Override
     public void onPaint(Canvas c) {
         long elapsed = System.currentTimeMillis() - startTime;
-        double hours = elapsed / 3600000.0;
+        double hours = Math.max(1e-9, elapsed / 3_600_000.0); // avoid div-by-zero
 
-        int miningXpHr = (int) (miningXpGained / hours);
-        int amethystHr = (int) (amethystMined / hours);
+        // ---- Totals & rates ----
+        int amethystHr     = (int) Math.round(amethystMined / hours);
+        int miningXpHr     = (int) Math.round(miningXpGained / hours);
 
-        int craftingXpHr = (int) (craftingXpGained / hours);
-        int itemsCrafted = calculateCraftedItems(amethystCrafted);
-        int itemsCraftedHr = (int) (itemsCrafted / hours);
+        int itemsCrafted   = calculateCraftedItems(amethystCrafted);
+        int itemsCraftedHr = (int) Math.round(itemsCrafted / hours);
+        int craftingXpHr   = (int) Math.round(craftingXpGained / hours);
 
-        DecimalFormat f = new DecimalFormat("#,###");
-        DecimalFormatSymbols s = new DecimalFormatSymbols();
-        s.setGroupingSeparator('.');
-        f.setDecimalFormatSymbols(s);
+        // ---- Formatters ----
+        java.text.DecimalFormat fmt = new java.text.DecimalFormat("#,###");
+        java.text.DecimalFormatSymbols sy = new java.text.DecimalFormatSymbols();
+        sy.setGroupingSeparator('.');
+        fmt.setDecimalFormatSymbols(sy);
 
-        int y = 40;
-        c.fillRect(5, y, 270, craftMode ? 200 : 140, Color.BLACK.getRGB(), 1);
-        c.drawRect(5, y, 270, craftMode ? 200 : 140, Color.BLACK.getRGB());
+        // ---- Layout config (dynamic sizing via FontMetrics) ----
+        final int x = 5;
+        final int yTop = 40;
+        final int borderThickness = 2;
+        final int headerHeight = 25;
+        final int paddingLeft = 10, paddingRight = 10;
+        final int contentTopPad = 5, contentBottomPad = 8;
+        final int groupGap = 10;
 
-        c.drawText("Amethyst mined: " + f.format(amethystMined), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Amethyst/hr: " + f.format(amethystHr), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Mining XP gained: " + f.format(miningXpGained), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Mining XP/hr: " + f.format(miningXpHr), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+        FontMetrics fm       = c.getFontMetrics(ARIAL);
+        FontMetrics fmBold   = c.getFontMetrics(ARIAL_BOLD);
+        FontMetrics fmItalic = c.getFontMetrics(ARIAL_ITALIC);
+
+        // ---- Lines ----
+        String title         = "dAmethystMiner";
+        String lineMined     = "Amethyst mined: " + fmt.format(amethystMined);
+        String lineMinedHr   = "Amethyst/hr: " + fmt.format(amethystHr);
+        String lineMXPG      = "Mining XP gained: " + fmt.format(miningXpGained);
+        String lineMXPHr     = "Mining XP/hr: " + fmt.format(miningXpHr);
+
+        String lineCXPG      = craftMode ? ("Crafting XP gained: " + fmt.format(craftingXpGained)) : null;
+        String lineCXPHr     = craftMode ? ("Crafting XP/hr: " + fmt.format(craftingXpHr)) : null;
+        String lineCrafted   = craftMode ? ("Crafted items: " + fmt.format(itemsCrafted)) : null;
+        String lineCraftedHr = craftMode ? ("Items/hr: " + fmt.format(itemsCraftedHr)) : null;
+
+        String lineTask      = "Task: " + task;
+        String lineVersion   = "Version: " + scriptVersion;
+
+        // ---- Measure max width ----
+        AtomicInteger maxWidth = new AtomicInteger(fmBold.stringWidth(title));
+        java.util.function.Consumer<String> widen = s -> { if (s != null) maxWidth.set(Math.max(maxWidth.get(), fm.stringWidth(s))); };
+
+        widen.accept(lineMined);
+        widen.accept(lineMinedHr);
+        widen.accept(lineMXPG);
+        widen.accept(lineMXPHr);
+        if (craftMode) {
+            widen.accept(lineCXPG);
+            widen.accept(lineCXPHr);
+            widen.accept(lineCrafted);
+            widen.accept(lineCraftedHr);
+        }
+        maxWidth.set(Math.max(maxWidth.get(), fmBold.stringWidth(lineTask)));
+        maxWidth.set(Math.max(maxWidth.get(), fmItalic.stringWidth(lineVersion)));
+
+        // ---- Measure total height ----
+        int totalHeight = 0;
+        totalHeight += headerHeight + contentTopPad;
+
+        totalHeight += fm.getHeight(); // mined
+        totalHeight += fm.getHeight(); // mined/hr
+        totalHeight += groupGap;
+
+        totalHeight += fm.getHeight(); // mining xp gained
+        totalHeight += fm.getHeight(); // mining xp/hr
 
         if (craftMode) {
-            c.drawText("Crafting XP gained: " + f.format(craftingXpGained), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-            c.drawText("Crafting XP/hr: " + f.format(craftingXpHr), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-            c.drawText("Crafted items: " + f.format(itemsCrafted), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-            c.drawText("Items/hr: " + f.format(itemsCraftedHr), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+            totalHeight += groupGap;
+            totalHeight += fm.getHeight(); // crafting xp gained
+            totalHeight += fm.getHeight(); // crafting xp/hr
+            totalHeight += fm.getHeight(); // crafted
+            totalHeight += fm.getHeight(); // crafted/hr
         }
 
-        c.drawText("Task: " + task, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Version: " + scriptVersion, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+        totalHeight += groupGap;
+        totalHeight += fmBold.getHeight();   // task
+        totalHeight += fmItalic.getHeight(); // version
+        totalHeight += contentBottomPad;
+
+        int innerWidth  = maxWidth.get() + paddingLeft + paddingRight;
+        int innerHeight = totalHeight;
+
+        // ---- Outer white border highlight ----
+        c.fillRect(x - borderThickness, yTop - borderThickness,
+                innerWidth + (borderThickness * 2), innerHeight + (borderThickness * 2),
+                Color.WHITE.getRGB(), 1);
+
+        // ---- Black background box ----
+        int innerX = x;
+        int innerY = yTop;
+        c.fillRect(innerX, innerY, innerWidth, innerHeight, Color.BLACK.getRGB(), 1);
+
+        // ---- White inner border ----
+        c.drawRect(innerX, innerY, innerWidth, innerHeight, Color.WHITE.getRGB());
+
+        // ---- Gradient header ----
+        for (int i = 0; i < headerHeight; i++) {
+            int gradientColor = new Color(80 + (i * 3), 150 + (i * 3), 255, 255).getRGB();
+            c.drawLine(innerX + 1, innerY + 1 + i, innerX + innerWidth - 2, innerY + 1 + i, gradientColor);
+        }
+        // Header bottom border
+        for (int i = 0; i < borderThickness; i++) {
+            c.drawLine(innerX + 1, innerY + headerHeight + i + 1, innerX + innerWidth - 2, innerY + headerHeight + i + 1, Color.WHITE.getRGB());
+        }
+
+        // ---- Title ----
+        int titleWidth = fmBold.stringWidth(title);
+        int titleX = innerX + (innerWidth / 2) - (titleWidth / 2);
+        c.drawText(title, titleX, innerY + 18, Color.BLACK.getRGB(), ARIAL_BOLD);
+
+        // ---- Content ----
+        int cx = innerX + paddingLeft;
+        int y  = innerY + headerHeight + contentTopPad;
+
+        // mined
+        y += fm.getHeight();
+        c.drawText(lineMined,   cx, y, Color.WHITE.getRGB(), ARIAL);
+        y += fm.getHeight();
+        c.drawText(lineMinedHr, cx, y, Color.WHITE.getRGB(), ARIAL);
+
+        y += groupGap;
+
+        // mining xp
+        y += fm.getHeight();
+        c.drawText(lineMXPG,  cx, y, new Color(144, 238, 144).getRGB(), ARIAL); // light green
+        y += fm.getHeight();
+        c.drawText(lineMXPHr, cx, y, new Color(255, 215, 0).getRGB(),   ARIAL); // gold
+
+        if (craftMode) {
+            y += groupGap;
+            y += fm.getHeight();
+            c.drawText(lineCXPG,      cx, y, new Color(255, 182, 193).getRGB(), ARIAL); // pink
+            y += fm.getHeight();
+            c.drawText(lineCXPHr,     cx, y, new Color(255, 182, 193).getRGB(), ARIAL);
+            y += fm.getHeight();
+            c.drawText(lineCrafted,   cx, y, Color.WHITE.getRGB(), ARIAL);
+            y += fm.getHeight();
+            c.drawText(lineCraftedHr, cx, y, Color.WHITE.getRGB(), ARIAL);
+        }
+
+        y += groupGap;
+
+        // footer
+        y += fmBold.getHeight();
+        c.drawText(lineTask,    cx, y, new Color(0, 255, 255).getRGB(), ARIAL_BOLD); // cyan
+        y += fmItalic.getHeight();
+        c.drawText(lineVersion, cx, y, new Color(180, 180, 180).getRGB(), ARIAL_ITALIC);
     }
 
     private void sendWebhook() {
