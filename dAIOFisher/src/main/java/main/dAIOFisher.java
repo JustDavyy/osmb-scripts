@@ -23,8 +23,8 @@ import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import com.osmb.api.script.ScriptDefinition;
@@ -37,11 +37,11 @@ import javax.imageio.ImageIO;
         name = "dAIOFisher",
         description = "AIO Fisher that fishes, banks and/or drops to get those gains!",
         skillCategory = SkillCategory.FISHING,
-        version = 2.5,
+        version = 2.6,
         author = "JustDavyy"
 )
 public class dAIOFisher extends Script {
-    public static String scriptVersion = "2.5";
+    public static String scriptVersion = "2.6";
     public static boolean setupDone = false;
     public static boolean usingBarrel = false;
     public static boolean skipMinnowDelay = false;
@@ -102,6 +102,11 @@ public class dAIOFisher extends Script {
     // Minnows stuff
     public static SearchableImage minnowTileImageTop;
     public static SearchableImage minnowTileImageBottom;
+
+    // Paint stuff
+    private static final Font ARIAL        = new Font("Arial", Font.PLAIN, 14);
+    private static final Font ARIAL_BOLD   = new Font("Arial", Font.BOLD, 14);
+    private static final Font ARIAL_ITALIC = new Font("Arial", Font.ITALIC, 14);
 
     private List<Task> tasks;
 
@@ -206,51 +211,204 @@ public class dAIOFisher extends Script {
 
     @Override
     public void onPaint(Canvas c) {
-        c.fillRect(5, 40, 270, 275, Color.BLACK.getRGB(), 1);
-        c.drawRect(5, 40, 270, 275, Color.BLACK.getRGB());
-
         long elapsed = System.currentTimeMillis() - startTime;
-        int caughtCount = fish1Caught + fish2Caught + fish3Caught + fish4Caught + fish5Caught + fish6Caught + fish7Caught + fish8Caught;
-        int caughtPerHour = elapsed > 0 ? (int) ((caughtCount * 3600000L) / elapsed) : 0;
+        double hours = Math.max(1e-9, elapsed / 3_600_000.0);
 
-        int fishingXpPerHour = elapsed > 0 ? (int) ((fishingXp * 3600000L) / elapsed) : 0;
-        int cookingXpPerHour = elapsed > 0 ? (int) ((cookingXp * 3600000L) / elapsed) : 0;
+        // ---- Totals & rates ----
+        int caughtCount = fish1Caught + fish2Caught + fish3Caught + fish4Caught + fish5Caught + fish6Caught + fish7Caught + fish8Caught;
+        int caughtPerHour = (int) Math.round(caughtCount / hours);
+
+        int fishingXpPerHour = (int) Math.round(fishingXp / hours);
+        int cookingXpPerHour = (int) Math.round(cookingXp / hours);
 
         int cookingXpBanked = caughtCount * 190;
 
-        DecimalFormat formatter = new DecimalFormat("#,###");
-        DecimalFormatSymbols symbols = new DecimalFormatSymbols();
-        symbols.setGroupingSeparator('.');
-        formatter.setDecimalFormatSymbols(symbols);
+        // ---- Formatters ----
+        java.text.DecimalFormat fmt = new java.text.DecimalFormat("#,###");
+        java.text.DecimalFormatSymbols sy = new java.text.DecimalFormatSymbols();
+        sy.setGroupingSeparator('.');
+        fmt.setDecimalFormatSymbols(sy);
 
-        int y = 40;
-        c.drawText("Catches: " + formatter.format(caughtCount), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Catches/hr: " + formatter.format(caughtPerHour), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        if (fishingLocation.equals(FishingLocation.Minnows)) {
-            c.drawText("Sharks: " + formatter.format(caughtCount / 40), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-            c.drawText("Sharks/hr: " + formatter.format(caughtPerHour / 40), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+        // ---- Layout config (dynamic sizing via FontMetrics) ----
+        final int x = 5;
+        final int yTop = 40;
+        final int borderThickness = 2;
+        final int headerHeight = 25;
+        final int paddingLeft = 10, paddingRight = 10;
+        final int contentTopPad = 5, contentBottomPad = 8;
+        final int groupGap = 10;
+
+        FontMetrics fm       = c.getFontMetrics(ARIAL);
+        FontMetrics fmBold   = c.getFontMetrics(ARIAL_BOLD);
+        FontMetrics fmItalic = c.getFontMetrics(ARIAL_ITALIC);
+
+        // ---- Lines ----
+        String title        = "dAIOFisher";
+
+        // Catches
+        String lineCatch    = "Catches: " + fmt.format(caughtCount);
+        String lineCatchHr  = "Catches/hr: " + fmt.format(caughtPerHour);
+        boolean isMinnows   = fishingLocation == FishingLocation.Minnows;
+        String lineSharks   = isMinnows ? ("Sharks: " + fmt.format(caughtCount / 40)) : null;
+        String lineSharksHr = isMinnows ? ("Sharks/hr: " + fmt.format(caughtPerHour / 40)) : null;
+
+        // XP block
+        String lineFXP      = "Fishing XP: " + fmt.format(fishingXp);
+        String lineFXPHr    = "Fishing XP/hr: " + fmt.format(fishingXpPerHour);
+        boolean showCook    = cookMode;
+        String lineCXP      = showCook ? ("Cooking XP: " + fmt.format(cookingXp)) : null;
+        String lineCXPHr    = showCook ? ("Cooking XP/hr: " + fmt.format(cookingXpPerHour)) : null;
+
+        // Karambwans block
+        boolean isKaramb    = fishingLocation == FishingLocation.Karambwans;
+        String lineCXPB     = isKaramb ? ("Cooking XP banked: " + fmt.format(cookingXpBanked)) : null;
+        String lineBank     = isKaramb ? ("Bank method: " + bankOption) : null;
+        String lineTravel   = isKaramb ? ("Travel method: " + fairyOption) : null;
+
+        // Footer block
+        String lineTask     = "Current task: " + task;
+        String lineLoc      = "Location: " + fishingLocation.name() + " (" + fishingMethod.getMenuEntry() + ")";
+        String lineMode     = "Handling mode: " + handlingMode.name();
+        String lineVer      = "Script version: " + scriptVersion;
+
+        // ---- Measure max width ----
+        AtomicInteger maxWidth = new AtomicInteger();
+        java.util.function.Consumer<String> widen = s -> { if (s != null) maxWidth.set(Math.max(maxWidth.get(), fm.stringWidth(s))); };
+
+        maxWidth.set(Math.max(maxWidth.get(), fmBold.stringWidth(title)));
+        widen.accept(lineCatch);
+        widen.accept(lineCatchHr);
+        if (isMinnows) { widen.accept(lineSharks); widen.accept(lineSharksHr); }
+
+        widen.accept(lineFXP);
+        widen.accept(lineFXPHr);
+        if (showCook) { widen.accept(lineCXP); widen.accept(lineCXPHr); }
+
+        if (isKaramb) { widen.accept(lineCXPB); widen.accept(lineBank); widen.accept(lineTravel); }
+
+        maxWidth.set(Math.max(maxWidth.get(), fmBold.stringWidth(lineTask)));
+        widen.accept(lineLoc);
+        widen.accept(lineMode);
+        maxWidth.set(Math.max(maxWidth.get(), fmItalic.stringWidth(lineVer)));
+
+        // ---- Measure total height ----
+        int totalHeight = 0;
+        totalHeight += headerHeight + contentTopPad;
+
+        // catches
+        totalHeight += fm.getHeight(); // catches
+        totalHeight += fm.getHeight(); // catches/hr
+        if (isMinnows) {
+            totalHeight += fm.getHeight(); // sharks
+            totalHeight += fm.getHeight(); // sharks/hr
+        }
+        totalHeight += groupGap;
+
+        // xp
+        totalHeight += fm.getHeight(); // fishing xp
+        totalHeight += fm.getHeight(); // fishing xp/hr
+        if (showCook) {
+            totalHeight += fm.getHeight(); // cooking xp
+            totalHeight += fm.getHeight(); // cooking xp/hr
+        }
+        if (isKaramb) {
+            totalHeight += groupGap;
+            totalHeight += fm.getHeight(); // banked xp
+            totalHeight += fm.getHeight(); // bank method
+            totalHeight += fm.getHeight(); // travel method
+        }
+        totalHeight += groupGap;
+
+        // footer
+        totalHeight += fmBold.getHeight(); // task
+        totalHeight += fm.getHeight();     // location
+        totalHeight += fm.getHeight();     // handling
+        totalHeight += fmItalic.getHeight(); // version
+        totalHeight += contentBottomPad;
+
+        int innerWidth  = maxWidth.get() + paddingLeft + paddingRight;
+        int innerHeight = totalHeight;
+
+        // ---- Outer white border highlight ----
+        c.fillRect(x - borderThickness, yTop - borderThickness,
+                innerWidth + (borderThickness * 2), innerHeight + (borderThickness * 2),
+                Color.WHITE.getRGB(), 1);
+
+        // ---- Black background box ----
+        int innerX = x;
+        int innerY = yTop;
+        c.fillRect(innerX, innerY, innerWidth, innerHeight, Color.BLACK.getRGB(), 1);
+
+        // ---- White inner border ----
+        c.drawRect(innerX, innerY, innerWidth, innerHeight, Color.WHITE.getRGB());
+
+        // ---- Gradient header ----
+        for (int i = 0; i < headerHeight; i++) {
+            int gradientColor = new Color(80 + (i * 3), 150 + (i * 3), 255, 255).getRGB();
+            c.drawLine(innerX + 1, innerY + 1 + i, innerX + innerWidth - 2, innerY + 1 + i, gradientColor);
         }
 
-        y += 10;
-        c.drawText("Fishing XP: " + formatter.format(fishingXp), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Fishing XP/hr: " + formatter.format(fishingXpPerHour), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-
-        if (cookMode) {
-            c.drawText("Cooking XP: " + formatter.format(cookingXp), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-            c.drawText("Cooking XP/hr: " + formatter.format(cookingXpPerHour), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+        // Header bottom border
+        for (int i = 0; i < borderThickness; i++) {
+            c.drawLine(innerX + 1, innerY + headerHeight + i + 1, innerX + innerWidth - 2, innerY + headerHeight + i + 1, Color.WHITE.getRGB());
         }
-        if (fishingLocation.equals(FishingLocation.Karambwans)) {
-            y += 10;
-            c.drawText("Cooking XP banked: " + formatter.format(cookingXpBanked), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-            c.drawText("Bank method: " + bankOption, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-            c.drawText("Travel method: " + fairyOption, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        }
-        y += 10;
 
-        c.drawText("Current task: " + task, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Location: " + fishingLocation.name() + " (" + fishingMethod.getMenuEntry() + ")", 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Handling mode: " + handlingMode.name(), 10, y += 20, Color.WHITE.getRGB(), ARIEL);
-        c.drawText("Script version: " + scriptVersion, 10, y += 20, Color.WHITE.getRGB(), ARIEL);
+        // ---- Title ----
+        int titleWidth = fmBold.stringWidth(title);
+        int titleX = innerX + (innerWidth / 2) - (titleWidth / 2);
+        c.drawText(title, titleX, innerY + 18, Color.BLACK.getRGB(), ARIAL_BOLD);
+
+        // ---- Content draw ----
+        int cx = innerX + paddingLeft;
+        int y  = innerY + headerHeight + contentTopPad;
+
+        // catches
+        y += fm.getHeight();
+        c.drawText(lineCatch,   cx, y, Color.WHITE.getRGB(), ARIAL);
+        y += fm.getHeight();
+        c.drawText(lineCatchHr, cx, y, Color.WHITE.getRGB(), ARIAL);
+        if (isMinnows) {
+            y += fm.getHeight();
+            c.drawText(lineSharks,   cx, y, new Color(173, 216, 230).getRGB(), ARIAL); // light blue
+            y += fm.getHeight();
+            c.drawText(lineSharksHr, cx, y, new Color(173, 216, 230).getRGB(), ARIAL);
+        }
+
+        y += groupGap;
+
+        // xp
+        y += fm.getHeight();
+        c.drawText(lineFXP,   cx, y, new Color(144, 238, 144).getRGB(), ARIAL); // light green
+        y += fm.getHeight();
+        c.drawText(lineFXPHr, cx, y, new Color(255, 215, 0).getRGB(),   ARIAL); // gold
+        if (showCook) {
+            y += fm.getHeight();
+            c.drawText(lineCXP,   cx, y, new Color(255, 182, 193).getRGB(), ARIAL); // pink
+            y += fm.getHeight();
+            c.drawText(lineCXPHr, cx, y, new Color(255, 182, 193).getRGB(), ARIAL);
+        }
+
+        if (isKaramb) {
+            y += groupGap;
+            y += fm.getHeight();
+            c.drawText(lineCXPB, cx, y, Color.WHITE.getRGB(), ARIAL);
+            y += fm.getHeight();
+            c.drawText(lineBank, cx, y, Color.WHITE.getRGB(), ARIAL);
+            y += fm.getHeight();
+            c.drawText(lineTravel, cx, y, Color.WHITE.getRGB(), ARIAL);
+        }
+
+        y += groupGap;
+
+        // footer
+        y += fmBold.getHeight();
+        c.drawText(lineTask, cx, y, new Color(0, 255, 255).getRGB(), ARIAL_BOLD); // cyan
+        y += fm.getHeight();
+        c.drawText(lineLoc,  cx, y, Color.WHITE.getRGB(), ARIAL);
+        y += fm.getHeight();
+        c.drawText(lineMode, cx, y, Color.WHITE.getRGB(), ARIAL);
+        y += fmItalic.getHeight();
+        c.drawText(lineVer,  cx, y, new Color(180, 180, 180).getRGB(), ARIAL_ITALIC);
     }
 
     @Override
