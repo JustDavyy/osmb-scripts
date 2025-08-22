@@ -128,7 +128,7 @@ public class ScriptUI {
         webhookUrlField.setPromptText("Enter Webhook URL...");
 
         webhookIntervalComboBox = new ComboBox<>();
-        for (int i = 1; i <= 15; i++) webhookIntervalComboBox.getItems().add(i);
+        for (int i = 1; i <= 60; i++) webhookIntervalComboBox.getItems().add(i);
         webhookIntervalComboBox.getSelectionModel().select(prefs.getInt(PREF_WEBHOOK_INTERVAL, 5) - 1);
         webhookIntervalComboBox.setStyle("-fx-text-fill: white;");
 

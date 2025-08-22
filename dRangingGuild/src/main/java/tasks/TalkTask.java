@@ -170,16 +170,13 @@ public class TalkTask extends Task {
 
             // Check for text option dialogue
             dialogueType = script.getWidgetManager().getDialogue().getDialogueType();
-            if (dialogueType != null && dialogueType.equals(DialogueType.TEXT_OPTION)) {
-                UIResult<String[]> optionsResult = script.getWidgetManager().getDialogue().getOptions();
+            if (dialogueType == DialogueType.TEXT_OPTION) {
+                List<String> options = script.getWidgetManager().getDialogue().getOptions();
 
-                if (!optionsResult.isNotFound() && !optionsResult.isNotVisible()) {
-                    String[] options = optionsResult.get();
+                if (options != null && !options.isEmpty()) {
                     for (String option : options) {
-                        if (option.toLowerCase().contains("give it a go")) {
-                            // Option found — handle accordingly
+                        if (option != null && option.toLowerCase(java.util.Locale.ROOT).contains("give it a go")) {
                             script.log(getClass().getSimpleName(), "Found option: 'give it a go'");
-                            // You can now tap the option, e.g.
                             return script.getWidgetManager().getDialogue().selectOption(option);
                         }
                     }

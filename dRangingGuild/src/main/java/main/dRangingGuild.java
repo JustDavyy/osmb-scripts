@@ -20,6 +20,7 @@ import java.text.DecimalFormatSymbols;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,11 +34,11 @@ import javax.imageio.ImageIO;
         name = "dRangingGuild",
         description = "Trains ranged by doing the ranging guild minigame",
         skillCategory = SkillCategory.COMBAT,
-        version = 1.8,
+        version = 1.9,
         author = "JustDavyy"
 )
 public class dRangingGuild extends Script {
-    public static final String scriptVersion = "1.8";
+    public static final String scriptVersion = "1.9";
     public static boolean setupDone = false;
     public static boolean failSafeNeeded = false;
     public static boolean needsToSwitchGear = false;
@@ -66,8 +67,10 @@ public class dRangingGuild extends Script {
     public static int yellowShots = 0;
     public static int bullShots = 0;
 
-    // onPaint stuff
-    private static final Font FONT = Font.getFont("Arial");
+    // Fixed-size, shared fonts (prevents layout jitter)
+    private static final Font ARIAL        = new Font("Arial", Font.PLAIN, 14);
+    private static final Font ARIAL_BOLD   = new Font("Arial", Font.BOLD, 14);
+    private static final Font ARIAL_ITALIC = new Font("Arial", Font.ITALIC, 14);
 
     // Failsafes
     public static long lastTaskRanAt = System.currentTimeMillis() + 120000;
@@ -89,46 +92,185 @@ public class dRangingGuild extends Script {
 
     @Override
     public void onPaint(Canvas c) {
-        DecimalFormat f = new DecimalFormat("#,###");
-        DecimalFormatSymbols s = new DecimalFormatSymbols();
-        s.setGroupingSeparator('.');
-        f.setDecimalFormatSymbols(s);
-
         long now = System.currentTimeMillis();
         long elapsed = now - startTime;
+        double hours = Math.max(1e-9, elapsed / 3_600_000.0); // avoid div-by-zero
+
+        // ---- Formatting helpers ----
+        java.text.DecimalFormat fmt = new java.text.DecimalFormat("#,###");
+        java.text.DecimalFormatSymbols sy = new java.text.DecimalFormatSymbols();
+        sy.setGroupingSeparator('.');
+        fmt.setDecimalFormatSymbols(sy);
+
+        // ---- Derived stats ----
         String runtime = formatTime(elapsed);
 
-        // Calculate XP and tickets
-        int scoreTotal = totalScore + currentScore;
-        int ticketsEarned = scoreTotal / 10;
-        int xpGained = scoreTotal / 2;
-        int xpPerHour = (int) ((xpGained * 3600000.0) / elapsed);
+        int scoreTotal   = totalScore + currentScore;
+        int ticketsEarned= scoreTotal / 10;
+        int xpGained     = scoreTotal / 2;
+        int xpPerHour    = (int) Math.round(xpGained / hours);
 
-        // Calculate shot statistics
-        int totalShots = bullShots + yellowShots + redShots + blueShots + blackShots + missedShots;
+        int totalShots   = bullShots + yellowShots + redShots + blueShots + blackShots + missedShots;
 
-        int y = 40;
-        c.fillRect(5, y, 250, 325, Color.BLACK.getRGB(), 1);
-        c.drawRect(5, y, 250, 325, Color.BLACK.getRGB());
+        // ---- Text lines ----
+        String title        = "dRangingGuild";
 
-        c.drawText("Tickets earned: " + f.format(ticketsEarned), 10, y += 20, Color.WHITE.getRGB(), FONT);
-        c.drawText("Rounds completed: " + f.format(totalRounds), 10, y += 20, Color.WHITE.getRGB(), FONT);
+        String lineTickets  = "Tickets earned: " + fmt.format(ticketsEarned);
+        String lineRounds   = "Rounds completed: " + fmt.format(totalRounds);
 
-        c.drawText("Ranged XP gained: " + f.format(xpGained), 10, y += 30, Color.WHITE.getRGB(), FONT);
-        c.drawText("XP per hour: " + f.format(xpPerHour), 10, y += 20, Color.WHITE.getRGB(), FONT);
+        String lineXPG      = "Ranged XP gained: " + fmt.format(xpGained);
+        String lineXPH      = "XP per hour: " + fmt.format(xpPerHour);
 
-        // Shot breakdown
-        c.drawText("Shot Stats: (" + totalShots + " shots)", 10, y += 30, Color.WHITE.getRGB(), FONT);
-        c.drawText("• Bulls-eye: " + bullShots + " (" + percent(bullShots, totalShots) + ")", 15, y += 20, Color.WHITE.getRGB(), FONT);
-        c.drawText("• Yellow: " + yellowShots + " (" + percent(yellowShots, totalShots) + ")", 15, y += 20, Color.WHITE.getRGB(), FONT);
-        c.drawText("• Red: " + redShots + " (" + percent(redShots, totalShots) + ")", 15, y += 20, Color.WHITE.getRGB(), FONT);
-        c.drawText("• Blue: " + blueShots + " (" + percent(blueShots, totalShots) + ")", 15, y += 20, Color.WHITE.getRGB(), FONT);
-        c.drawText("• Black: " + blackShots + " (" + percent(blackShots, totalShots) + ")", 15, y += 20, Color.WHITE.getRGB(), FONT);
-        c.drawText("• Missed: " + missedShots + " (" + percent(missedShots, totalShots) + ")", 15, y += 20, Color.WHITE.getRGB(), FONT);
+        String lineShotHdr  = "Shot Stats: (" + totalShots + " shots)";
+        String lineBull     = "• Bulls-eye: " + bullShots   + " (" + percent(bullShots,   totalShots) + ")";
+        String lineYellow   = "• Yellow: "    + yellowShots + " (" + percent(yellowShots, totalShots) + ")";
+        String lineRed      = "• Red: "       + redShots    + " (" + percent(redShots,    totalShots) + ")";
+        String lineBlue     = "• Blue: "      + blueShots   + " (" + percent(blueShots,   totalShots) + ")";
+        String lineBlack    = "• Black: "     + blackShots  + " (" + percent(blackShots,  totalShots) + ")";
+        String lineMissed   = "• Missed: "    + missedShots + " (" + percent(missedShots, totalShots) + ")";
 
-        c.drawText("Task: " + task, 10, y += 35, Color.WHITE.getRGB(), FONT);
-        c.drawText("Runtime: " + runtime, 10, y += 20, Color.WHITE.getRGB(), FONT);
-        c.drawText("Version: " + scriptVersion, 10, y + 20, Color.WHITE.getRGB(), FONT);
+        String lineTask     = "Task: " + task;
+        String lineRuntime  = "Runtime: " + runtime;
+        String lineVersion  = "Version: " + scriptVersion;
+
+        // ---- Layout config (dynamic sizing via FontMetrics) ----
+        final int x = 5;
+        final int yTop = 40;
+        final int borderThickness = 2;
+        final int headerHeight = 25;
+        final int paddingLeft = 10, paddingRight = 10;
+        final int contentTopPad = 5, contentBottomPad = 8;
+        final int groupGap = 10;
+        final int bulletIndent = 10; // indent bullet lines visually
+
+        FontMetrics fm       = c.getFontMetrics(ARIAL);
+        FontMetrics fmBold   = c.getFontMetrics(ARIAL_BOLD);
+        FontMetrics fmItalic = c.getFontMetrics(ARIAL_ITALIC);
+
+        // ---- Measure max width ----
+        AtomicInteger maxWidth = new AtomicInteger();
+        java.util.function.Consumer<String> widen = s -> { if (s != null) maxWidth.set(Math.max(maxWidth.get(), fm.stringWidth(s))); };
+
+        maxWidth.set(Math.max(maxWidth.get(), fmBold.stringWidth(title)));
+        widen.accept(lineTickets);
+        widen.accept(lineRounds);
+        widen.accept(lineXPG);
+        widen.accept(lineXPH);
+        widen.accept(lineShotHdr);
+        widen.accept(lineBull);
+        widen.accept(lineYellow);
+        widen.accept(lineRed);
+        widen.accept(lineBlue);
+        widen.accept(lineBlack);
+        widen.accept(lineMissed);
+        maxWidth.set(Math.max(maxWidth.get(), fmBold.stringWidth(lineTask)));
+        widen.accept(lineRuntime);
+        maxWidth.set(Math.max(maxWidth.get(), fmItalic.stringWidth(lineVersion)));
+
+        // ---- Measure total height ----
+        int totalHeight = 0;
+        totalHeight += headerHeight + contentTopPad;
+
+        totalHeight += fm.getHeight(); // tickets
+        totalHeight += fm.getHeight(); // rounds
+        totalHeight += groupGap;
+
+        totalHeight += fm.getHeight(); // xpg
+        totalHeight += fm.getHeight(); // xph
+        totalHeight += groupGap;
+
+        totalHeight += fm.getHeight(); // Shot header
+        totalHeight += fm.getHeight(); // bull
+        totalHeight += fm.getHeight(); // yellow
+        totalHeight += fm.getHeight(); // red
+        totalHeight += fm.getHeight(); // blue
+        totalHeight += fm.getHeight(); // black
+        totalHeight += fm.getHeight(); // missed
+        totalHeight += groupGap;
+
+        totalHeight += fmBold.getHeight();   // task
+        totalHeight += fm.getHeight();       // runtime
+        totalHeight += fmItalic.getHeight(); // version
+        totalHeight += contentBottomPad;
+
+        int innerWidth  = maxWidth.get() + paddingLeft + paddingRight + bulletIndent; // add indent budget
+        int innerHeight = totalHeight;
+
+        // ---- Outer white border highlight
+        c.fillRect(x - borderThickness, yTop - borderThickness,
+                innerWidth + (borderThickness * 2), innerHeight + (borderThickness * 2),
+                Color.WHITE.getRGB(), 1);
+
+        // ---- Black background box
+        int innerX = x;
+        int innerY = yTop;
+        c.fillRect(innerX, innerY, innerWidth, innerHeight, Color.BLACK.getRGB(), 1);
+
+        // ---- White inner border
+        c.drawRect(innerX, innerY, innerWidth, innerHeight, Color.WHITE.getRGB());
+
+        // ---- Gradient header
+        for (int i = 0; i < headerHeight; i++) {
+            int gradientColor = new Color(80 + (i * 3), 150 + (i * 3), 255, 255).getRGB();
+            c.drawLine(innerX + 1, innerY + 1 + i, innerX + innerWidth - 2, innerY + 1 + i, gradientColor);
+        }
+        // Header bottom border
+        for (int i = 0; i < borderThickness; i++) {
+            c.drawLine(innerX + 1, innerY + headerHeight + i + 1, innerX + innerWidth - 2, innerY + headerHeight + i + 1, Color.WHITE.getRGB());
+        }
+
+        // ---- Title
+        int titleWidth = fmBold.stringWidth(title);
+        int titleX = innerX + (innerWidth / 2) - (titleWidth / 2);
+        c.drawText(title, titleX, innerY + 18, Color.BLACK.getRGB(), ARIAL_BOLD);
+
+        // ---- Content draw
+        int cx = innerX + paddingLeft;
+        int y  = innerY + headerHeight + contentTopPad;
+
+        // tickets / rounds
+        y += fm.getHeight();
+        c.drawText(lineTickets, cx, y, Color.WHITE.getRGB(), ARIAL);
+        y += fm.getHeight();
+        c.drawText(lineRounds,  cx, y, Color.WHITE.getRGB(), ARIAL);
+
+        y += groupGap;
+
+        // xp
+        y += fm.getHeight();
+        c.drawText(lineXPG, cx, y, new Color(144, 238, 144).getRGB(), ARIAL); // light green
+        y += fm.getHeight();
+        c.drawText(lineXPH, cx, y, new Color(255, 215, 0).getRGB(),   ARIAL); // gold
+
+        y += groupGap;
+
+        // shot breakdown
+        y += fm.getHeight();
+        c.drawText(lineShotHdr, cx, y, Color.WHITE.getRGB(), ARIAL);
+
+        int bx = cx + bulletIndent;
+        y += fm.getHeight();
+        c.drawText(lineBull,   bx, y, new Color(0, 255, 127).getRGB(), ARIAL);    // spring green
+        y += fm.getHeight();
+        c.drawText(lineYellow, bx, y, new Color(255, 215, 0).getRGB(), ARIAL);    // gold
+        y += fm.getHeight();
+        c.drawText(lineRed,    bx, y, new Color(255, 99, 71).getRGB(), ARIAL);    // tomato
+        y += fm.getHeight();
+        c.drawText(lineBlue,   bx, y, new Color(173, 216, 230).getRGB(), ARIAL);  // light blue
+        y += fm.getHeight();
+        c.drawText(lineBlack,  bx, y, new Color(200, 200, 200).getRGB(), ARIAL);  // grey-ish
+        y += fm.getHeight();
+        c.drawText(lineMissed, bx, y, new Color(255, 182, 193).getRGB(), ARIAL);  // pink
+
+        y += groupGap;
+
+        // footer
+        y += fmBold.getHeight();
+        c.drawText(lineTask,    cx, y, new Color(0, 255, 255).getRGB(), ARIAL_BOLD); // cyan
+        y += fm.getHeight();
+        c.drawText(lineRuntime, cx, y, Color.WHITE.getRGB(), ARIAL);
+        y += fmItalic.getHeight();
+        c.drawText(lineVersion, cx, y, new Color(180, 180, 180).getRGB(), ARIAL_ITALIC);
     }
 
     @Override
