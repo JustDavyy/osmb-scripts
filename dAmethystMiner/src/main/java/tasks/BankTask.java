@@ -30,7 +30,8 @@ public class BankTask extends Task {
             ItemID.ADAMANT_PICKAXE, ItemID.RUNE_PICKAXE, ItemID.DRAGON_PICKAXE,
             ItemID.DRAGON_PICKAXE_OR, ItemID.CRYSTAL_PICKAXE, ItemID.INFERNAL_PICKAXE,
             ItemID.INFERNAL_PICKAXE_OR, ItemID.ANTIQUE_LAMP, ItemID.GILDED_PICKAXE,
-            ItemID.DRAGON_PICKAXE_12797, ItemID.CHISEL
+            ItemID.DRAGON_PICKAXE_12797, ItemID.CHISEL,
+            ItemID.GEM_BAG, ItemID.GEM_BAG_12020, ItemID.GEM_BAG_25628, ItemID.OPEN_GEM_BAG
     ));
 
     public BankTask(Script script) {

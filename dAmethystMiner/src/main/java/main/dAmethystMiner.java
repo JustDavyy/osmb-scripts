@@ -31,11 +31,11 @@ import java.util.concurrent.atomic.AtomicInteger;
         name = "dAmethystMiner",
         description = "Mines and crafts/banks amethyst in the mining guild",
         skillCategory = SkillCategory.MINING,
-        version = 1.7,
+        version = 1.8,
         author = "JustDavyy"
 )
 public class dAmethystMiner extends Script {
-    public static final String scriptVersion = "1.7";
+    public static final String scriptVersion = "1.8";
 
     public static boolean bankMode = false;
     public static boolean craftMode = false;

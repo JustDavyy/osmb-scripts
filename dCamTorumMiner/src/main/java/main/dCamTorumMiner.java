@@ -33,11 +33,11 @@ import java.util.concurrent.atomic.AtomicInteger;
         name = "dCamTorumMiner",
         description = "Mines blessed bone shards in the Cam Torum mine",
         skillCategory = SkillCategory.MINING,
-        version = 2.1,
+        version = 2.2,
         author = "JustDavyy"
 )
 public class dCamTorumMiner extends Script {
-    public static final String scriptVersion = "2.1";
+    public static final String scriptVersion = "2.2";
     public static boolean setupDone = false;
     public static boolean hasReqs;
     public static int blessedShardCount = 0;
@@ -59,7 +59,8 @@ public class dCamTorumMiner extends Script {
             ItemID.DRAGON_PICKAXE_OR, ItemID.CRYSTAL_PICKAXE, ItemID.INFERNAL_PICKAXE,
             ItemID.INFERNAL_PICKAXE_OR, ItemID.ANTIQUE_LAMP, ItemID.GILDED_PICKAXE,
             ItemID.HAMMER, ItemID.IMCANDO_HAMMER, ItemID.IMCANDO_HAMMER_OFFHAND,
-            ItemID.BLESSED_BONE_SHARDS, ItemID.CALCIFIED_MOTH
+            ItemID.BLESSED_BONE_SHARDS, ItemID.CALCIFIED_MOTH,
+            ItemID.GEM_BAG, ItemID.GEM_BAG_12020, ItemID.GEM_BAG_25628, ItemID.OPEN_GEM_BAG
     ));
 
     public static String task = "Initialize";

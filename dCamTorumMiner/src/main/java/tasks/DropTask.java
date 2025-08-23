@@ -26,7 +26,8 @@ public class DropTask extends Task {
             ItemID.DRAGON_PICKAXE_OR, ItemID.CRYSTAL_PICKAXE, ItemID.INFERNAL_PICKAXE,
             ItemID.INFERNAL_PICKAXE_OR, ItemID.ANTIQUE_LAMP, ItemID.GILDED_PICKAXE,
             ItemID.HAMMER, ItemID.IMCANDO_HAMMER, ItemID.IMCANDO_HAMMER_OFFHAND,
-            ItemID.BLESSED_BONE_SHARDS, ItemID.CALCIFIED_MOTH, ItemID.CALCIFIED_DEPOSIT
+            ItemID.BLESSED_BONE_SHARDS, ItemID.CALCIFIED_MOTH, ItemID.CALCIFIED_DEPOSIT,
+            ItemID.GEM_BAG, ItemID.GEM_BAG_12020, ItemID.GEM_BAG_25628, ItemID.OPEN_GEM_BAG
     ));
 
     private int currentBankThreshold = getNewBankThreshold();
