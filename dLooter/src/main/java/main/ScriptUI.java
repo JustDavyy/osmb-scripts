@@ -47,6 +47,8 @@ public class ScriptUI {
     private static final String GOTR  = "Guardians of the Rift";
     private static final String WT    = "Wintertodt";
     private static final String SPACK = "Bank/Seed Pack";
+    private static final String TEMP = "Tempoross";
+    private static final String CWSC = "Castle wars supply crate";
 
     // GOTR
     private static final String PREF_GOTR_ITEM_VISIBLE_PREFIX = "dlooter_gotr_item_visible_";
@@ -68,11 +70,16 @@ public class ScriptUI {
     private Label spackDisclaimerLabel;
 
     // Tempoross
-    private static final String TEMP = "Tempoross";
     private static final String PREF_TEMP_ITEM_VISIBLE_PREFIX = "dlooter_temp_item_visible_";
     private VBox tempFilterBox;    // content box
     private ScrollPane tempScroll; // scroll wrapper
     private final java.util.Map<Integer, CheckBox> tempItemChecks = new java.util.HashMap<>();
+
+    // Castle Wars Supply Crate
+    private static final String PREF_CWSC_ITEM_VISIBLE_PREFIX = "dlooter_cwsc_item_visible_";
+    private VBox cwscFilterBox;    // content box
+    private ScrollPane cwscScroll; // scroll wrapper
+    private final java.util.Map<Integer, CheckBox> cwscItemChecks = new java.util.HashMap<>();
 
     public ScriptUI(Script script) {
         this.script = script;
@@ -97,12 +104,14 @@ public class ScriptUI {
         wtFilterBox    = createWtFilterBox(core);
         spackFilterBox = createSpackFilterBox(core);
         tempFilterBox  = createTemporossFilterBox(core);
+        cwscFilterBox  = createCwscFilterBox(core);
 
         // Wrap filter boxes in scroll panes so long lists are accessible
         gotrScroll  = wrapInScroll(gotrFilterBox);
         wtScroll    = wrapInScroll(wtFilterBox);
         spackScroll = wrapInScroll(spackFilterBox);
         tempScroll  = wrapInScroll(tempFilterBox);
+        cwscScroll     = wrapInScroll(cwscFilterBox);
 
         spackDisclaimerLabel = new Label(
                 "IMPORTANT: Make sure your Bank 'Withdraw-X' quantity is set to 3\n" +
@@ -118,6 +127,7 @@ public class ScriptUI {
         VBox.setVgrow(wtScroll, Priority.ALWAYS);
         VBox.setVgrow(spackScroll, Priority.ALWAYS);
         VBox.setVgrow(tempScroll, Priority.ALWAYS);
+        VBox.setVgrow(cwscScroll, Priority.ALWAYS);
 
         // Always-visible "additional RNG" at the bottom of the main tab
         rngCheckBox = new CheckBox("Enable additional RNG");
@@ -136,6 +146,7 @@ public class ScriptUI {
                 wtScroll,
                 tempScroll,
                 spackScroll,
+                cwscScroll,
                 spackDisclaimerLabel,
                 new Separator(),
                 rngCheckBox
@@ -232,11 +243,13 @@ public class ScriptUI {
         boolean isWt    = WT.equals(location);
         boolean isSpack = SPACK.equals(location);
         boolean isTemp  = TEMP.equals(location);
+        boolean isCwsc = CWSC.equals(location);
 
         if (gotrScroll != null) { gotrScroll.setVisible(isGotr); gotrScroll.setManaged(isGotr); }
         if (wtScroll   != null) { wtScroll.setVisible(isWt);   wtScroll.setManaged(isWt);   }
         if (tempScroll != null) { tempScroll.setVisible(isTemp); tempScroll.setManaged(isTemp); }
         if (spackScroll!= null) { spackScroll.setVisible(isSpack); spackScroll.setManaged(isSpack); }
+        if (cwscScroll != null) { cwscScroll.setVisible(isCwsc); cwscScroll.setManaged(isCwsc); }
 
         if (spackDisclaimerLabel != null) {
             spackDisclaimerLabel.setVisible(isSpack);
@@ -281,6 +294,13 @@ public class ScriptUI {
             prefs.putBoolean(PREF_TEMP_ITEM_VISIBLE_PREFIX + id, visible);
         }
 
+        // Save Castle Wars Supply Crate loot visibility flags
+        for (var entry : cwscItemChecks.entrySet()) {
+            int id = entry.getKey();
+            boolean visible = entry.getValue().isSelected();
+            prefs.putBoolean(PREF_CWSC_ITEM_VISIBLE_PREFIX + id, visible);
+        }
+
         // Save RNG toggle
         prefs.putBoolean(PREF_RNG_ENABLED, isAdditionalRngEnabled());
 
@@ -292,7 +312,7 @@ public class ScriptUI {
         ComboBox<String> comboBox = new ComboBox<>();
         comboBox.setCellFactory(param -> createItemCell(core));
         comboBox.setButtonCell(createItemCell(core));
-        comboBox.getItems().addAll(GOTR, WT, TEMP, SPACK);
+        comboBox.getItems().addAll(GOTR, WT, TEMP, SPACK, CWSC);
         return comboBox;
     }
 
@@ -313,8 +333,11 @@ public class ScriptUI {
                     } else if (SPACK.equals(locationName)) {
                         imageView = JavaFXUtils.getItemImageView(core, ItemID.SEED_PACK);
                         if (imageView == null) imageView = JavaFXUtils.getItemImageView(core, ItemID.WATERMELON_SEED);
+                    } else if (CWSC.equals(locationName)) { // NEW
+                    imageView = JavaFXUtils.getItemImageView(core, ItemID.CASTLE_WARS_SUPPLY_CRATE);
+                    if (imageView == null) imageView = JavaFXUtils.getItemImageView(core, ItemID.COINS_995);
                     }
-                    if (imageView != null) {
+                if (imageView != null) {
                         imageView.setFitWidth(16);
                         imageView.setFitHeight(16);
                     }
@@ -521,6 +544,66 @@ public class ScriptUI {
         }
 
         root.getChildren().addAll(lbl, tb, grid);
+        return root;
+    }
+
+    private VBox createCwscFilterBox(ScriptCore core) {
+        VBox root = new VBox(8);
+        root.setStyle("-fx-background-color: #636E72; -fx-padding: 12; -fx-background-radius: 6;");
+
+        Label lbl = new Label("Loot visibility (Castle wars supply crate):");
+        lbl.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
+
+        Button selectAll = new Button("Select all");
+        Button deselectAll = new Button("Deselect all");
+        selectAll.setOnAction(e -> cwscItemChecks.values().forEach(cb -> cb.setSelected(true)));
+        deselectAll.setOnAction(e -> cwscItemChecks.values().forEach(cb -> cb.setSelected(false)));
+        ToolBar tb = new ToolBar(selectAll, deselectAll);
+        tb.setStyle("-fx-background-color: #636e72;");
+
+        javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
+        grid.setHgap(10);
+        grid.setVgap(8);
+
+        java.util.List<Integer> sorted = new java.util.ArrayList<>(getCwscItemIds());
+        // Sort by item name for a neat grid
+        sorted.sort(java.util.Comparator.comparing(id -> {
+            String n = core.getItemManager().getItemName(id);
+            return n == null ? "" : n.toLowerCase();
+        }));
+
+        final int cols = 3;
+        for (int i = 0; i < sorted.size(); i++) {
+            int id = sorted.get(i);
+            String name = core.getItemManager().getItemName(id);
+
+            boolean show = prefs.getBoolean(PREF_CWSC_ITEM_VISIBLE_PREFIX + id, true);
+            CheckBox cb = new CheckBox(name);
+            cb.setSelected(show);
+            cb.setStyle("-fx-text-fill: white;");
+
+            ImageView iv = JavaFXUtils.getItemImageView(core, id);
+            if (iv != null) {
+                iv.setFitWidth(16);
+                iv.setFitHeight(16);
+                cb.setGraphic(iv);
+            }
+
+            cwscItemChecks.put(id, cb);
+
+            int row = i / cols;
+            int col = i % cols;
+            grid.add(cb, col, row);
+        }
+
+        // If list is empty, show a small note (won’t break layout)
+        if (sorted.isEmpty()) {
+            Label empty = new Label("No items configured yet.");
+            empty.setStyle("-fx-text-fill: #ddd;");
+            root.getChildren().addAll(lbl, tb, empty);
+        } else {
+            root.getChildren().addAll(lbl, tb, grid);
+        }
         return root;
     }
 
@@ -817,6 +900,22 @@ public class ScriptUI {
         );
     }
 
+    private static java.util.List<Integer> getCwscItemIds() {
+        return java.util.List.of(
+                ItemID.BLIGHTED_MANTA_RAY +1,
+                ItemID.BLIGHTED_ANGLERFISH +1,
+                ItemID.BLIGHTED_KARAMBWAN +1,
+                ItemID.BLIGHTED_SUPER_RESTORE4 +1,
+                ItemID.BLIGHTED_ANCIENT_ICE_SACK,
+                ItemID.BLIGHTED_VENGEANCE_SACK,
+                ItemID.CASTLE_WARS_ARROW,
+                ItemID.CASTLE_WARS_BOLTS,
+                ItemID.RUNE_ARROW,
+                ItemID.RUNE_JAVELIN,
+                ItemID.CASTLE_WARS_TICKET
+        );
+    }
+
     public static boolean isGotrItemVisible(int itemId) {
         Preferences p = Preferences.userNodeForPackage(ScriptUI.class);
         return p.getBoolean(PREF_GOTR_ITEM_VISIBLE_PREFIX + itemId, true);
@@ -835,5 +934,10 @@ public class ScriptUI {
     public static boolean isSPackItemVisible(int itemId) {
         Preferences p = Preferences.userNodeForPackage(ScriptUI.class);
         return p.getBoolean(PREF_SPACK_ITEM_VISIBLE_PREFIX + itemId, true);
+    }
+
+    public static boolean isCwscItemVisible(int itemId) {
+        Preferences p = Preferences.userNodeForPackage(ScriptUI.class);
+        return p.getBoolean(PREF_CWSC_ITEM_VISIBLE_PREFIX + itemId, true);
     }
 }

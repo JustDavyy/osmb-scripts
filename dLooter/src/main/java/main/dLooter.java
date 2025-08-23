@@ -1,6 +1,5 @@
 package main;
 
-import com.osmb.api.item.ItemID;
 import com.osmb.api.script.Script;
 import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
@@ -23,13 +22,13 @@ import java.util.List;
 
 @ScriptDefinition(
         name = "dLooter",
-        description = "Loots WT/GOTR/Tempoross and seed packs",
+        description = "Loots WT/GOTR/Tempoross, seed packs and cwars supply crates",
         skillCategory = SkillCategory.OTHER,
-        version = 1.0,
+        version = 1.1,
         author = "JustDavyy"
 )
 public class dLooter extends Script {
-    public static final String scriptVersion = "1.0";
+    public static final String scriptVersion = "1.1";
     public static boolean setupDone = false;
     public static boolean needToStop = false;
     public static boolean RNGEnabled = false;
@@ -42,9 +41,9 @@ public class dLooter extends Script {
 
     public static String task = "Initialize";
     public static long startTime = System.currentTimeMillis();
-    private static final Font ARIEL = Font.getFont("Arial", null);
-    private static final Font ARIEL_BOLD = Font.getFont("Arial Bold", null);
-    private static final Font ARIEL_ITALIC = Font.getFont("Arial Italic", null);
+    private static final Font ARIAL        = new Font("Arial", Font.PLAIN, 14);
+    private static final Font ARIAL_BOLD   = new Font("Arial", Font.BOLD, 14);
+    private static final Font ARIAL_ITALIC = new Font("Arial", Font.ITALIC, 14);
 
     private static boolean webhookEnabled = false;
     private static boolean webhookShowUser = false;
@@ -79,6 +78,9 @@ public class dLooter extends Script {
                 // Tempoross
                 12588,
 
+                // Castle wars
+                9776,
+
                 // Banks
                 13104, // Shantay Pass
                 13105, // Al Kharid
@@ -106,7 +108,6 @@ public class dLooter extends Script {
                 10039, // Barbarian Assault
                 9782,  // Grand Tree
                 9781,  // Tree Gnome Stronghold
-                9776,  // Castle Wars
                 9265,  // Lletya
                 8748,  // Soul Wars
                 8253,  // Lunar Isle
@@ -190,6 +191,10 @@ public class dLooter extends Script {
         if (location.equals("Bank/Seed Pack")){
             tasks.add(new sPacks(this));
         }
+
+        if (location.equals("Castle wars supply crate")){
+            tasks.add(new cWarsCrate(this));
+        }
     }
 
     @Override
@@ -251,137 +256,191 @@ public class dLooter extends Script {
 
     @Override
     public void onPaint(Canvas c) {
-        // Formatter: full integers with dots as grouping separator
-        DecimalFormat f = new DecimalFormat("#,###");
-        DecimalFormatSymbols s = new DecimalFormatSymbols();
+        // ---- Formatters ----
+        java.text.DecimalFormat f = new java.text.DecimalFormat("#,###");
+        java.text.DecimalFormatSymbols s = new java.text.DecimalFormatSymbols();
         s.setGroupingSeparator('.');
         f.setDecimalFormatSymbols(s);
 
-        // --- Panel geometry ---
-        int x = 5;
-        int y = 40;
-        int width = 450;
-        int borderThickness = 2;
-        int headerHeight = 25;
+        // ---- Fonts & metrics (prevents jitter, enables dynamic sizing) ----
+        FontMetrics fm       = c.getFontMetrics(ARIAL);
+        FontMetrics fmBold   = c.getFontMetrics(ARIAL_BOLD);
+        FontMetrics fmItalic = c.getFontMetrics(ARIAL_ITALIC);
 
-        // Build & filter
+        final int x = 5;
+        final int yTop = 40;
+        final int borderThickness = 2;
+        final int headerHeight = 25;
+
+        final int paddingLeft = 10, paddingRight = 10;
+        final int contentTopPad = 5, contentBottomPad = 8;
+        final int groupGap = 10;
+        final int lootHeaderGap = 16; // space under "Loot gained:"
+        final int cols = 3;
+        final int colGap = 8;
+
+        // ---- Build & filter the item list ----
         java.util.List<Integer> itemIds = new java.util.ArrayList<>(totalGained.keySet());
         if ("Guardians of the Rift".equals(location)) {
             itemIds.removeIf(id -> !ScriptUI.isGotrItemVisible(id));
         } else if ("Wintertodt".equals(location)) {
             itemIds.removeIf(id -> !ScriptUI.isWtItemVisible(id));
-        } else if ("Tempoross".equals(location)) { // NEW
+        } else if ("Tempoross".equals(location)) {
             itemIds.removeIf(id -> !ScriptUI.isTemporossItemVisible(id));
         } else if ("Bank/Seed Pack".equals(location)) {
             itemIds.removeIf(id -> !ScriptUI.isSPackItemVisible(id));
+        } else if ("Castle wars supply crate".equals(location)) {
+            itemIds.removeIf(id -> !ScriptUI.isCwscItemVisible(id));
         }
 
-        // Sort alphabetically by item name (case-insensitive)
-        itemIds.sort(java.util.Comparator.comparing(id -> getItemManager().getItemName(id).toLowerCase()));
+        // Sort alphabetically by item name
+        itemIds.sort(java.util.Comparator.comparing(id -> getItemManager().getItemName(id).toLowerCase(java.util.Locale.ROOT)));
 
-        int cols = 3;
-        int lootLineHeight = 20;   // a bit taller for clearer spacing
-        int gapAfterHeader = 16;   // ensure no overlap with header
+        // ---- Prepare strings for measurement ----
+        String title = "dLooter";
+        String lootHeader = "Loot gained:";
+
+        String footerLeftLabel;
+        if ("Guardians of the Rift".equals(location))       footerLeftLabel = "Searches left: ";
+        else if ("Wintertodt".equals(location))             footerLeftLabel = "Rewards left: ";
+        else if ("Tempoross".equals(location))              footerLeftLabel = "Permits left: ";
+        else if ("Bank/Seed Pack".equals(location))         footerLeftLabel = "Packs left: ";
+        else if ("Castle wars supply crate".equals(location)) footerLeftLabel = "Crates left: ";
+        else                                                footerLeftLabel = "Left: ";
+
+        String lineLeft    = footerLeftLabel + lootsLeft;
+        String lineTask    = "Task: " + task;
+        String lineVersion = "Version: " + scriptVersion;
+
+        // ---- Compute loot grid text, row/col sizing ----
         int lootRows = (itemIds.size() + cols - 1) / cols;
+        int lootLineHeight = fm.getHeight();
 
-        // Height = header + loot grid + footer
-        int innerHeight = headerHeight
-                + 5    // spacing before loot header
-                + 20   // "Loot gained:" label
-                + gapAfterHeader
-                + (lootRows * lootLineHeight)
-                + 25   // Loots left line
-                + 25   // task line
-                + 20   // version line
-                + 6;   // bottom padding
-
-        // Outer white border highlight
-        c.fillRect(x - borderThickness, y - borderThickness, width + (borderThickness * 2), innerHeight + (borderThickness * 2), Color.WHITE.getRGB(), 1);
-
-        // Black background
-        int innerX = x;
-        int innerY = y;
-        int innerWidth = width;
-        c.fillRect(innerX, innerY, innerWidth, innerHeight, Color.BLACK.getRGB(), 1);
-
-        // White inner border
-        c.drawRect(innerX, innerY, innerWidth, innerHeight, Color.WHITE.getRGB());
-
-        // Gradient header (violet/blue)
-        for (int i = 0; i < headerHeight; i++) {
-            int r = Math.min(110 + (i * 2), 255);
-            int g = Math.min(90 + (i * 2), 255);
-            int b = Math.min(200 + (i * 2), 255);
-            int gradientColor = new Color(r, g, b, 255).getRGB();
-            c.drawLine(innerX + 1, innerY + 1 + i, innerX + innerWidth - 2, innerY + 1 + i, gradientColor);
-        }
-
-        // Header bottom border
-        int bottomBorderY = innerY + headerHeight + 1;
-        for (int i = 0; i < borderThickness; i++) {
-            c.drawLine(innerX + 1, bottomBorderY + i, innerX + innerWidth - 2, bottomBorderY + i, Color.WHITE.getRGB());
-        }
-
-        // Script title (🔮)
-        String title = "\uD83D\uDD2E dLooter \uD83D\uDD2E";
-        int titlePixelWidth = title.length() * 7;
-        int titleX = innerX + (innerWidth / 2) - (titlePixelWidth / 2);
-        c.drawText(title, titleX, innerY + 18, Color.BLACK.getRGB(), ARIEL_BOLD);
-
-        int drawY = innerY + headerHeight + 5;
-
-        // Loot table header
-        c.drawText("Loot gained:", innerX + 10, drawY += 20, new Color(220, 220, 220).getRGB(), ARIEL_BOLD);
-
-        // Add a clear gap after the header to avoid overlap
-        drawY += gapAfterHeader;
-
-        // Loot grid
-        int leftPad = 10;
-        int rightPad = 10;
-        int usableWidth = innerWidth - leftPad - rightPad;
-        int colWidth = usableWidth / cols;
-
-        // Alternating row text colors
-        final int colorYellow = new Color(190, 170, 40).getRGB(); // darker-ish yellow
-        final int colorGreen  = new Color(150, 220, 160).getRGB(); // semi-light green
-
+        // For dynamic width: measure max width per column
+        int[] colMax = new int[Math.max(1, cols)];
         for (int i = 0; i < itemIds.size(); i++) {
             int id = itemIds.get(i);
             int count = totalGained.getOrDefault(id, 0);
             String name = getItemManager().getItemName(id);
             String text = name + ": " + f.format(count);
-
-            int row = i / cols;
             int col = i % cols;
-
-            int textColor = (row % 2 == 0) ? colorYellow : colorGreen;
-
-            int colX = innerX + leftPad + (col * colWidth);
-            int rowBaselineY = drawY + (row * lootLineHeight);
-            c.drawText(text, colX, rowBaselineY, textColor, ARIEL);
+            colMax[col] = Math.max(colMax[col], fm.stringWidth(text));
         }
 
-        // Move drawY to the end of the loot grid
-        drawY = drawY + (lootRows * lootLineHeight);
+        // Total content width needed by loot grid
+        int lootGridWidth = 0;
+        for (int cIdx = 0; cIdx < Math.max(1, cols); cIdx++) {
+            lootGridWidth += colMax[cIdx];
+        }
+        lootGridWidth += Math.max(0, (cols - 1)) * colGap;
 
-        // Searches left
-        if ("Guardians of the Rift".equals(location)) {
-            c.drawText("Searches left: " + lootsLeft, innerX + 10, drawY += 25, new Color(0, 255, 255).getRGB(), ARIEL_BOLD);
+        // ---- Compute inner width (max of header/title, loot grid, and footers) ----
+        int maxLineWidth = 0;
+        maxLineWidth = Math.max(maxLineWidth, fmBold.stringWidth(lootHeader));
+        maxLineWidth = Math.max(maxLineWidth, lootGridWidth);
+        maxLineWidth = Math.max(maxLineWidth, fm.stringWidth(lineLeft));
+        maxLineWidth = Math.max(maxLineWidth, fmBold.stringWidth(lineTask));
+        maxLineWidth = Math.max(maxLineWidth, fmItalic.stringWidth(lineVersion));
+        maxLineWidth = Math.max(maxLineWidth, fmBold.stringWidth(title)); // header title also constrains width
+
+        int innerWidth = paddingLeft + maxLineWidth + paddingRight;
+
+        // ---- Compute inner height dynamically ----
+        int innerHeight = 0;
+        innerHeight += headerHeight + contentTopPad;
+        innerHeight += fmBold.getHeight();       // "Loot gained:"
+        innerHeight += lootHeaderGap;
+        innerHeight += lootRows * lootLineHeight;
+        innerHeight += groupGap;
+        innerHeight += fmBold.getHeight();       // Task
+        innerHeight += fm.getHeight();           // Left
+        innerHeight += fmItalic.getHeight();     // Version
+        innerHeight += contentBottomPad;
+
+        // ---- Outer white border highlight ----
+        c.fillRect(x - borderThickness, yTop - borderThickness,
+                innerWidth + (borderThickness * 2), innerHeight + (borderThickness * 2),
+                Color.WHITE.getRGB(), 1);
+
+        // ---- Black background box ----
+        int innerX = x;
+        int innerY = yTop;
+        c.fillRect(innerX, innerY, innerWidth, innerHeight, Color.BLACK.getRGB(), 1);
+
+        // ---- White inner border ----
+        c.drawRect(innerX, innerY, innerWidth, innerHeight, Color.WHITE.getRGB());
+
+        // ---- Gradient header (violet/blue style retained) ----
+        for (int i = 0; i < headerHeight; i++) {
+            int r = Math.min(110 + (i * 2), 255);
+            int g = Math.min(90  + (i * 2), 255);
+            int b = Math.min(200 + (i * 2), 255);
+            int gradientColor = new Color(r, g, b, 255).getRGB();
+            c.drawLine(innerX + 1, innerY + 1 + i, innerX + innerWidth - 2, innerY + 1 + i, gradientColor);
         }
-        if ("Wintertodt".equals(location)) {
-            c.drawText("Rewards left: " + lootsLeft, innerX + 10, drawY += 25, new Color(0, 255, 255).getRGB(), ARIEL_BOLD);
-        }
-        if ("Tempoross".equals(location)) {
-            c.drawText("Permits left: " + lootsLeft, innerX + 10, drawY += 25, new Color(0, 255, 255).getRGB(), ARIEL_BOLD);
-        }
-        if ("Bank/Seed Pack".equals(location)) {
-            c.drawText("Packs left: " + lootsLeft, innerX + 10, drawY += 25, new Color(0, 255, 255).getRGB(), ARIEL_BOLD);
+        // Header bottom border
+        for (int i = 0; i < borderThickness; i++) {
+            c.drawLine(innerX + 1, innerY + headerHeight + i + 1, innerX + innerWidth - 2, innerY + headerHeight + i + 1, Color.WHITE.getRGB());
         }
 
-        // Footer
-        c.drawText("Task: " + task, innerX + 10, drawY += 25, new Color(0, 255, 255).getRGB(), ARIEL_BOLD);
-        c.drawText("Version: " + scriptVersion, innerX + 10, drawY += 20, new Color(180, 180, 180).getRGB(), ARIEL_ITALIC);
+        // ---- Title centered via FontMetrics ----
+        int titleWidth = fmBold.stringWidth(title);
+        int titleX = innerX + (innerWidth / 2) - (titleWidth / 2);
+        c.drawText(title, titleX, innerY + 18, Color.BLACK.getRGB(), ARIAL_BOLD);
+
+        // ---- Content drawing ----
+        final int cx = innerX + paddingLeft;
+        int y = innerY + headerHeight + contentTopPad;
+
+        // Loot table header
+        y += fmBold.getHeight();
+        c.drawText(lootHeader, cx, y, new Color(220, 220, 220).getRGB(), ARIAL_BOLD);
+
+        y += lootHeaderGap;
+
+        // Alternating row text colors
+        final int colorYellow = new Color(190, 170, 40).getRGB();
+        final int colorGreen  = new Color(150, 220, 160).getRGB();
+
+        // Draw loot grid using measured column widths
+        for (int row = 0; row < lootRows; row++) {
+            int baselineY = y + row * lootLineHeight;
+            int drawX = cx;
+
+            for (int col = 0; col < cols; col++) {
+                int idx = row * cols + col;
+                if (idx >= itemIds.size()) break;
+
+                int id = itemIds.get(idx);
+                int count = totalGained.getOrDefault(id, 0);
+                String name = getItemManager().getItemName(id);
+                String text = name + ": " + f.format(count);
+
+                int textColor = (row % 2 == 0) ? colorYellow : colorGreen;
+                c.drawText(text, drawX, baselineY, textColor, ARIAL);
+
+                // advance by the measured width of this column + gap
+                drawX += colMax[col] + colGap;
+            }
+        }
+
+        // Move Y to end of loot grid
+        y += lootRows * lootLineHeight;
+
+        // Footer (grouped)
+        y += groupGap;
+
+        // Task (bold cyan)
+        y += fmBold.getHeight();
+        c.drawText(lineTask, cx, y, new Color(0, 255, 255).getRGB(), ARIAL_BOLD);
+
+        // Left (regular)
+        y += fm.getHeight();
+        c.drawText(lineLeft, cx, y, new Color(180, 220, 255).getRGB(), ARIAL);
+
+        // Version (italic grey)
+        y += fmItalic.getHeight();
+        c.drawText(lineVersion, cx, y, new Color(180, 180, 180).getRGB(), ARIAL_ITALIC);
     }
 
     private void sendWebhook() {
