@@ -736,6 +736,9 @@ public class Fight extends Task {
             return false;
         }
 
+        // Predefined cave spots
+        Set<WorldPosition> allowedCaveSpots = Set.of(caveNorthSpot, caveEastSpot, caveSouthSpot);
+
         task = "Build " + objectName + " query";
         // Build query
         Predicate<RSObject> objectQuery = gameObject -> {
@@ -743,18 +746,21 @@ public class Fight extends Task {
             String name = gameObject.getName();
             String[] actions = gameObject.getActions();
             if (name == null || actions == null) return false;
-            if (!name.equalsIgnoreCase(objectName)) return false;
-            boolean hasAction = Arrays.stream(actions)
+
+            // Check name, action, reachability, and if position is one of the predefined spots
+            boolean nameMatches = name.equalsIgnoreCase(objectName);
+            boolean actionMatches = Arrays.stream(actions)
                     .filter(Objects::nonNull)
                     .anyMatch(a -> a.equalsIgnoreCase(objectAction));
-            return hasAction && gameObject.canReach();
+            boolean atCaveSpot = allowedCaveSpots.contains(gameObject.getWorldPosition());
+
+            return nameMatches && actionMatches && atCaveSpot && gameObject.canReach();
         };
 
         task = "Find " + objectName + " object";
-        // Finder
         RSObject target = findClosest(objectQuery);
         if (target == null) {
-            script.log(getClass(), "walkToObject: '" + objectName + "' not found nearby.");
+            script.log(getClass(), "walkToObject: '" + objectName + "' not found at a valid cave spot.");
             return false;
         }
 
@@ -775,6 +781,9 @@ public class Fight extends Task {
             return false;
         }
 
+        // Predefined cave spots
+        Set<WorldPosition> allowedCaveSpots = Set.of(caveNorthSpot, caveEastSpot, caveSouthSpot);
+
         task = "Build " + objectName + " query";
         // Build query
         Predicate<RSObject> objectQuery = gameObject -> {
@@ -782,18 +791,20 @@ public class Fight extends Task {
             String name = gameObject.getName();
             String[] actions = gameObject.getActions();
             if (name == null || actions == null) return false;
-            if (!name.equalsIgnoreCase(objectName)) return false;
-            boolean hasAction = Arrays.stream(actions)
+
+            boolean nameMatches = name.equalsIgnoreCase(objectName);
+            boolean actionMatches = Arrays.stream(actions)
                     .filter(Objects::nonNull)
                     .anyMatch(a -> a.equalsIgnoreCase(objectAction));
-            return hasAction && gameObject.canReach();
+            boolean atCaveSpot = allowedCaveSpots.contains(gameObject.getWorldPosition());
+
+            return nameMatches && actionMatches && atCaveSpot && gameObject.canReach();
         };
 
         task = "Find " + objectName + " object";
-        // Finder
         RSObject target = findClosest(objectQuery);
         if (target == null) {
-            script.log(getClass(), "handleObject: '" + objectName + "' not found nearby.");
+            script.log(getClass(), "handleObject: '" + objectName + "' not found at a valid cave spot.");
             // If caller gave us a place to move toward, do so before bailing
             walkTowardFallback(null, objectLocation, objectArea);
             return false;
@@ -1184,6 +1195,7 @@ public class Fight extends Task {
 
     private boolean needToPot() {
         long now = System.currentTimeMillis();
+        boolean isDivine = script.getItemManager().getItemName(potID).toLowerCase().contains("divine");
 
         // First run → schedule initial pot 1 minute from now
         if (nextPotAt == 0L) {
@@ -1193,7 +1205,9 @@ public class Fight extends Task {
 
         // If we're at/after the time → trigger and reschedule
         if (now >= nextPotAt) {
-            nextPotAt = now + script.random(6 * 60_000, 8 * 60_000);
+            nextPotAt = isDivine
+                    ? now + script.random((long)(5.2 * 60_000), 6 * 60_000) // 5.2-6 minutes
+                    : now + script.random(6 * 60_000, 8 * 60_000); // 6 - 8 minutes
             return true;
         }
 

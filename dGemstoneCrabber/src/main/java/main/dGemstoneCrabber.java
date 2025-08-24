@@ -28,11 +28,11 @@ import java.util.List;
         name = "dGemstoneCrabber",
         description = "Trains combat by hunting the gem stone crab",
         skillCategory = SkillCategory.COMBAT,
-        version = 1.1,
+        version = 1.2,
         author = "JustDavyy"
 )
 public class dGemstoneCrabber extends Script implements WebhookSender {
-    public static final String scriptVersion = "1.1";
+    public static final String scriptVersion = "1.2";
     public static boolean setupDone = false;
     public static boolean canHopNow = false;
     public static boolean canBreakNow = false;
@@ -331,7 +331,7 @@ public class dGemstoneCrabber extends Script implements WebhookSender {
         y += fm.getHeight();
         c.drawText(lineLastXP, cx, y, new Color(180, 180, 180).getRGB(), ARIAL);
         y += fmItalic.getHeight();
-        c.drawText(lineVersion, cx, y, new Color(180, 180, 180).getRGB(), ARIAL_BOLD);
+        c.drawText(lineVersion, cx, y, new Color(180, 180, 180).getRGB(), ARIAL_ITALIC);
     }
 
     @Override
