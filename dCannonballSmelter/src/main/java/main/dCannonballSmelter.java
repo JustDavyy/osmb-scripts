@@ -30,11 +30,11 @@ import java.util.function.Predicate;
         name = "dCannonballSmelter",
         description = "Turns steel bars into cannonballs",
         skillCategory = SkillCategory.SMITHING,
-        version = 2.4,
+        version = 2.5,
         author = "JustDavyy"
 )
 public class dCannonballSmelter extends Script {
-    public static final String scriptVersion = "2.4";
+    public static final String scriptVersion = "2.5";
     public static final String[] BANK_NAMES = {"Bank", "Chest", "Bank booth", "Bank chest", "Grand Exchange booth", "Bank counter", "Bank table"};
     public static final String[] BANK_ACTIONS = {"bank", "open", "use", "bank banker"};
     public static final Predicate<RSObject> bankQuery = gameObject -> {

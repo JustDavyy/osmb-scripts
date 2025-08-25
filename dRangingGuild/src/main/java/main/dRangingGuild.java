@@ -34,11 +34,11 @@ import javax.imageio.ImageIO;
         name = "dRangingGuild",
         description = "Trains ranged by doing the ranging guild minigame",
         skillCategory = SkillCategory.COMBAT,
-        version = 1.9,
+        version = 2.0,
         author = "JustDavyy"
 )
 public class dRangingGuild extends Script {
-    public static final String scriptVersion = "1.9";
+    public static final String scriptVersion = "2.0";
     public static boolean setupDone = false;
     public static boolean failSafeNeeded = false;
     public static boolean needsToSwitchGear = false;

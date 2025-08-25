@@ -33,11 +33,11 @@ import java.util.concurrent.atomic.AtomicInteger;
         name = "dCamTorumMiner",
         description = "Mines blessed bone shards in the Cam Torum mine",
         skillCategory = SkillCategory.MINING,
-        version = 2.2,
+        version = 2.3,
         author = "JustDavyy"
 )
 public class dCamTorumMiner extends Script {
-    public static final String scriptVersion = "2.2";
+    public static final String scriptVersion = "2.3";
     public static boolean setupDone = false;
     public static boolean hasReqs;
     public static int blessedShardCount = 0;
