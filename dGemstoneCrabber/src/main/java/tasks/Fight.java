@@ -63,6 +63,11 @@ public class Fight extends Task {
     // Chat history stuff
     private static final List<String> PREVIOUS_CHATBOX_LINES = new ArrayList<>();
 
+    // Reading XP
+    private XPDropsComponent cachedXpComponent = null;
+    private long cachedXpComponentAt = 0L;
+    private static final long XP_COMPONENT_TTL_MS = 10 * 60_000; // optional TTL (10 min)
+
     public Fight(Script script, WebhookSender webhook) {
         super(script);
         this.webhook = webhook;
@@ -1245,46 +1250,81 @@ public class Fight extends Task {
     }
 
     private void readXp() {
-        XPDropsComponent xpComponent = (XPDropsComponent) script.getWidgetManager().getComponent(XPDropsComponent.class);
+        // First try with the best available component (live if possible)
+        XPDropsComponent xpComponent = resolveXpComponent();
+        if (tryReadXpFrom(xpComponent)) return;
 
-        if (xpComponent == null) {
-            script.log(getClass(), "XP button component not found.");
-            return;
+        // If that failed and we used a live component, try the cached one as a second attempt
+        if (xpComponent != cachedXpComponent && cachedXpComponent != null) {
+            tryReadXpFrom(cachedXpComponent);
         }
 
+        // Optional: if both fail and cache is stale, drop it
+        if (cachedXpComponent != null && (System.currentTimeMillis() - cachedXpComponentAt) > XP_COMPONENT_TTL_MS) {
+            cachedXpComponent = null;
+        }
+    }
+
+    private boolean tryReadXpFrom(XPDropsComponent xpComponent) {
+        if (xpComponent == null) return false;
+
         ComponentSearchResult<Integer> result = xpComponent.getResult();
-        if (result == null || result.getComponentImage().getGameFrameStatusType() != 1) return;
+        if (result == null) return false;
+
+        // Only proceed when the gameframe status looks good (your original logic)
+        if (result.getComponentImage() == null || result.getComponentImage().getGameFrameStatusType() != 1) {
+            return false;
+        }
 
         Rectangle componentBounds = result.getBounds();
+        if (componentBounds == null) return false;
+
         Rectangle xpTextRect = new Rectangle(componentBounds.x - 140, componentBounds.y - 1, 119, 38);
 
         script.submitTask(() -> false, script.random(200, 400));
         String xpText = script.getOCR().getText(Font.SMALL_FONT, xpTextRect, Color.WHITE.getRGB());
 
-        if (xpText == null || xpText.isBlank()) return;
+        if (xpText == null || xpText.isBlank()) return false;
+
         xpText = xpText.replaceAll("[^\\d]", "");
-        if (xpText.isEmpty()) return;
+        if (xpText.isEmpty()) return false;
 
         try {
             double currentXp = Double.parseDouble(xpText);
-            if (currentXp <= 0) return;
+            if (currentXp <= 0) return false;
 
             if (previousXpRead < 0) {
                 previousXpRead = currentXp;
-                return;
+                return true; // primed the baseline
             }
 
             double xpGained = currentXp - previousXpRead;
-            if (xpGained > 0 && xpGained <= 40000) {
+            // Guard against OCR spikes
+            if (xpGained > 0 && xpGained <= 40_000) {
                 totalXp += xpGained;
                 script.log(getClass(), "XP gained: " + xpGained + " (" + totalXp + ")");
                 previousXpRead = currentXp;
                 lastXpGainAt = System.currentTimeMillis();
+                return true;
             }
-
         } catch (NumberFormatException e) {
             script.log(getClass(), "Failed to parse XP text: " + xpText);
         }
+        return false;
+    }
+
+    private XPDropsComponent resolveXpComponent() {
+        XPDropsComponent live = (XPDropsComponent) script.getWidgetManager().getComponent(XPDropsComponent.class);
+        if (live != null) {
+            cachedXpComponent = live;
+            cachedXpComponentAt = System.currentTimeMillis();
+            return live;
+        }
+        // Fallback to cached if we have one (and it's not too old)
+        if (cachedXpComponent != null && (System.currentTimeMillis() - cachedXpComponentAt) <= XP_COMPONENT_TTL_MS) {
+            return cachedXpComponent;
+        }
+        return null;
     }
 
     private void monitorChatbox() {
