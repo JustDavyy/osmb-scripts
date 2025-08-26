@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 import static main.dCastlewarsAFKer.*;
 
@@ -595,25 +596,29 @@ public class CwarsSlave extends Task {
     private void processNewChatboxMessages(List<String> newLines) {
         if (newLines == null || newLines.isEmpty()) return;
 
+        // Match numbers with optional comma or dot separators: 1,000 | 1.000 | 12,345 | 12.345 | 12345
+        final String NUM = "(\\d{1,3}(?:[.,]\\d{3})*|\\d+)";
+
         // P2P patterns (plaudits + tickets)
-        final java.util.regex.Pattern AWARDED_P2P = java.util.regex.Pattern.compile(
-                "been awarded\\s+(\\d{1,5})\\s+plaudits\\s+and\\s+(\\d{1,5})\\s+tickets\\b",
-                java.util.regex.Pattern.CASE_INSENSITIVE
+        final Pattern AWARDED_P2P = Pattern.compile(
+                "been awarded\\s+" + NUM + "\\s+plaudits\\s+and\\s+" + NUM + "\\s+tickets\\b",
+                Pattern.CASE_INSENSITIVE
         );
-        final java.util.regex.Pattern NOW_HAVE_P2P = java.util.regex.Pattern.compile(
-                "you now have\\s+(\\d{1,5})\\s+plaudits\\s+and\\s+(\\d{1,5})\\s+tickets\\b",
-                java.util.regex.Pattern.CASE_INSENSITIVE
+        final Pattern NOW_HAVE_P2P = Pattern.compile(
+                "you now have\\s+" + NUM + "\\s+plaudits\\s+and\\s+" + NUM + "\\s+tickets\\b",
+                Pattern.CASE_INSENSITIVE
         );
 
         // F2P patterns (tickets only)
-        final java.util.regex.Pattern AWARDED_F2P = java.util.regex.Pattern.compile(
-                "been awarded\\s+(\\d{1,5})\\s+tickets\\b",
-                java.util.regex.Pattern.CASE_INSENSITIVE
+        final Pattern AWARDED_F2P = Pattern.compile(
+                "been awarded\\s+" + NUM + "\\s+tickets\\b",
+                Pattern.CASE_INSENSITIVE
         );
-        final java.util.regex.Pattern NOW_HAVE_F2P = java.util.regex.Pattern.compile(
-                "you now have\\s+(\\d{1,5})\\s+tickets\\b",
-                java.util.regex.Pattern.CASE_INSENSITIVE
+        final Pattern NOW_HAVE_F2P = Pattern.compile(
+                "you now have\\s+" + NUM + "\\s+tickets\\b",
+                Pattern.CASE_INSENSITIVE
         );
+
 
         for (String message : newLines) {
             if (message == null || message.isEmpty()) continue;
@@ -699,7 +704,13 @@ public class CwarsSlave extends Task {
     }
 
     private static int safeParseInt(String s) {
-        try { return Integer.parseInt(s); }
-        catch (Exception e) { return 0; }
+        if (s == null) return 0;
+        String digits = s.replaceAll("[^\\d]", "");
+        if (digits.isEmpty()) return 0;
+        try {
+            return Integer.parseInt(digits);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 }
