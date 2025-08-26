@@ -69,7 +69,8 @@ public class Bank extends Task {
                 ItemID.RUNE_POUCH, ItemID.RUNE_POUCH_23650, ItemID.RUNE_POUCH_27086, ItemID.RUNE_POUCH_L,
                 ItemID.DIVINE_RUNE_POUCH, ItemID.DIVINE_RUNE_POUCH_L, ItemID.SUNFIRE_RUNE,
                 ItemID.MIST_RUNE, ItemID.DUST_RUNE, ItemID.MUD_RUNE, ItemID.SMOKE_RUNE,
-                ItemID.STEAM_RUNE, ItemID.LAVA_RUNE, 30843, ItemID.SOUL_RUNE, foodID, potID
+                ItemID.STEAM_RUNE, ItemID.LAVA_RUNE, 30843, ItemID.SOUL_RUNE, foodID, potID,
+                ItemID.DRAGON_BATTLEAXE
         ));
         if (!deposited) {
             script.log(getClass(), "Failed to deposit items, retrying later...");
