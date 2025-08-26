@@ -1,0 +1,11 @@
+rootProject.name = "osmb-scripts"
+
+// include every immediate child dir that contains a build.gradle, except API/.idea/.gradle
+file('.').listFiles()
+        .findAll { it.isDirectory()
+                && new File(it, "build.gradle").exists()
+                && !["API",".idea",".gradle"].contains(it.name) }
+        .each { dir ->
+            include(":${dir.name}")
+            project(":${dir.name}").projectDir = dir
+        }
