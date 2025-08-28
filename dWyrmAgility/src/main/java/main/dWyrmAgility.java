@@ -31,12 +31,12 @@ import java.util.concurrent.atomic.AtomicReference;
 @ScriptDefinition(
         name = "dWyrmAgility",
         author = "JustDavyy",
-        version = 1.7,
+        version = 1.6,
         description = "Does the Wyrm basic or advanced agility course.",
         skillCategory = SkillCategory.AGILITY
 )
 public class dWyrmAgility extends Script {
-    public static final String scriptVersion = "1.7";
+    public static final String scriptVersion = "1.6";
     private Course selectedCourse;
     private int nextRunActivate;
     public int noMovementTimeout = RandomUtils.weightedRandom(6000, 9000);
@@ -124,7 +124,7 @@ public class dWyrmAgility extends Script {
      */
     public static ObstacleHandleResponse handleObstacle(dWyrmAgility core, String obstacleName, String menuOption, Object end, int interactDistance, boolean canReach, int timeout, WorldPosition objectBaseTile) {
         // cache hp, we determine if we failed the obstacle via hp decrementing
-        Integer hitpoints = core.getWidgetManager().getMinimapOrbs().getHitpointsPercentage();
+        UIResult<Integer> hitpoints = core.getWidgetManager().getMinimapOrbs().getHitpointsPercentage();
         Optional<RSObject> result = core.getObjectManager().getObject(gameObject -> {
 
             if (gameObject.getName() == null || gameObject.getActions() == null) return false;
@@ -159,10 +159,12 @@ public class dWyrmAgility extends Script {
                     return false;
                 }
                 // check if we take damage
-                if (!(hitpoints == -1)) {
-                    Integer newHitpointsResult = core.getWidgetManager().getMinimapOrbs().getHitpointsPercentage();
-                    if (hitpoints > newHitpointsResult) {
-                        return true;
+                if (hitpoints.isFound()) {
+                    UIResult<Integer> newHitpointsResult = core.getWidgetManager().getMinimapOrbs().getHitpointsPercentage();
+                    if (newHitpointsResult.isFound()) {
+                        if (hitpoints.get() > newHitpointsResult.get()) {
+                            return true;
+                        }
                     }
                 }
                 // check for being stood still
@@ -266,10 +268,10 @@ public class dWyrmAgility extends Script {
             lastStatsPrint = now;
         }
 
-        Boolean runEnabled = getWidgetManager().getMinimapOrbs().isRunEnabled();
-        if (runEnabled) {
-            int runEnergy = getWidgetManager().getMinimapOrbs().getRunEnergy();
-            if (runEnergy > nextRunActivate) {
+        UIResult<Boolean> runEnabled = getWidgetManager().getMinimapOrbs().isRunEnabled();
+        if (runEnabled.isFound()) {
+            int runEnergy = getWidgetManager().getMinimapOrbs().getRunEnergy().orElse(-1);
+            if (!runEnabled.get() && runEnergy > nextRunActivate) {
                 log("RUN", "Enabling run");
                 getWidgetManager().getMinimapOrbs().setRun(true);
                 nextRunActivate = random(30, 70);
