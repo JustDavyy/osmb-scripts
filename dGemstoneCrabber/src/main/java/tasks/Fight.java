@@ -367,8 +367,7 @@ public class Fight extends Task {
 
                 // Verify spec actually triggered (percentage dropped below 100) — wait up to 3–5s
                 boolean activated = script.submitTask(() -> {
-                    UIResult<Integer> specPctRes = script.getWidgetManager().getMinimapOrbs().getSpecialAttackPercentage();
-                    Integer specPct = specPctRes.getIfFound();
+                    Integer specPct = script.getWidgetManager().getMinimapOrbs().getSpecialAttackPercentage();
                     return (specPct != null && specPct < 100);
                 }, script.random(3000, 5000));
 
@@ -379,8 +378,7 @@ public class Fight extends Task {
 
                 // Re-verify after retry attempt (again 3–5s)
                 activated = script.submitTask(() -> {
-                    UIResult<Integer> specPctRes = script.getWidgetManager().getMinimapOrbs().getSpecialAttackPercentage();
-                    Integer specPct = specPctRes.getIfFound();
+                    Integer specPct = script.getWidgetManager().getMinimapOrbs().getSpecialAttackPercentage();
                     return (specPct != null && specPct < 100);
                 }, script.random(3000, 5000));
 
@@ -435,7 +433,12 @@ public class Fight extends Task {
                     if (heart == null) return false;
 
                     boolean success = heart.interact("Invigorate");
-                    if (success) resetBoostTimer();
+                    if (success) {
+                        resetBoostTimer();
+                        if (!initiateAttack()) {
+                            initiateAttack();
+                        }
+                    }
                     return success;
                 }
             }
@@ -1127,14 +1130,12 @@ public class Fight extends Task {
 
     private boolean needToEat() {
         if (useFood) {
-            UIResult<Integer> hpPerc = script.getWidgetManager().getMinimapOrbs().getHitpointsPercentage();
-            if (hpPerc == null || hpPerc.isNotVisible()) {
+            Integer hpPerc = script.getWidgetManager().getMinimapOrbs().getHitpointsPercentage();
+            if (hpPerc == null || !(hpPerc == -1)) {
                 return false; // Can't see HP orb -> don't try to eat
             }
 
-            if (hpPerc.isFound()) {
-                return hpPerc.get() < eatAtPerc;
-            }
+            return hpPerc < eatAtPerc;
         }
         return false;
     }
@@ -1144,8 +1145,7 @@ public class Fight extends Task {
 
         if (useDBAXE) {
             // Only boost if spec is full (100%)
-            UIResult<Integer> specPctRes = script.getWidgetManager().getMinimapOrbs().getSpecialAttackPercentage();
-            Integer specPct = specPctRes.getIfFound();
+            Integer specPct = script.getWidgetManager().getMinimapOrbs().getSpecialAttackPercentage();
 
             if (specPct == null || specPct < 100) {
                 // Not ready → only push to 1 min if current timer is very soon (<30s), or not set/expired
