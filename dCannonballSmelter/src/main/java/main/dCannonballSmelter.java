@@ -168,36 +168,53 @@ public class dCannonballSmelter extends Script {
         String ttlText = "-";
         double etl = 0;
         double xpGainedLive = totalXpGained;
+
         if (xpTracking != null) {
             XPTracker xpTracker = xpTracking.getXpTracker();
             if (xpTracker != null) {
                 xpGainedLive = xpTracker.getXpGained();
+
+                // Live XP at this moment
+                double currentXp = xpTracker.getXp();
+
+                // --- Level sync
+                final int MAX_LEVEL = 99;
+                int guard = 0;            // extra safety, though the loop is inherently finite
+                while (currentLevel < MAX_LEVEL
+                        && currentXp >= xpTracker.getExperienceForLevel(currentLevel + 1)
+                        && guard++ < 10) {
+                    currentLevel++;
+                }
+
+                // TTL/ETL
                 ttlText = xpTracker.timeToNextLevelString();
-                etl = xpTracker.getXpForNextLevel();
-                int curLevelXpStart = xpTracker.getExperienceForLevel(currentLevel);
-                int nextLevelXpReq  = xpTracker.getExperienceForLevel(currentLevel + 1);
-                int xpNeededThisLevel = Math.max(1, nextLevelXpReq - curLevelXpStart);
-                double remaining = Math.max(0, etl);
-                levelProgressFraction = Math.max(0.0, Math.min(1.0, 1.0 - (remaining / xpNeededThisLevel)));
+
+                int curLevelXpStart   = xpTracker.getExperienceForLevel(currentLevel);
+                int nextLevelXpTarget = xpTracker.getExperienceForLevel(Math.min(MAX_LEVEL, currentLevel + 1));
+                int span              = Math.max(1, nextLevelXpTarget - curLevelXpStart);
+
+                etl = Math.max(0, nextLevelXpTarget - currentXp);
+
+                // progress as fraction within current level
+                levelProgressFraction = Math.max(0.0, Math.min(1.0,
+                        (currentXp - curLevelXpStart) / (double) span));
             }
         }
+
         int xpPerHour = (int) Math.round(xpGainedLive / hours);
 
+        // (+N) display stays as-is:
         if (startLevel <= 0) startLevel = currentLevel;
         int levelsGained = Math.max(0, currentLevel - startLevel);
         String currentLevelText = (levelsGained > 0)
                 ? (currentLevel + " (+" + levelsGained + ")")
                 : String.valueOf(currentLevel);
 
+        // Percent text (dot as decimal separator)
         double pct = Math.max(0, Math.min(100, levelProgressFraction * 100.0));
-        String levelProgressText;
-        double rounded = Math.rint(pct);
-
-        if (Math.abs(pct - rounded) < 1e-9) {
-            levelProgressText = String.format(Locale.US, "%.0f%%", pct);
-        } else {
-            levelProgressText = String.format(Locale.US, "%.1f%%", pct);
-        }
+        String levelProgressText = (Math.abs(pct - Math.rint(pct)) < 1e-9)
+                ? String.format(java.util.Locale.US, "%.0f%%", pct)
+                : String.format(java.util.Locale.US, "%.1f%%", pct);
 
         DecimalFormat intFmt = new DecimalFormat("#,###");
         DecimalFormatSymbols sym = new DecimalFormatSymbols();
