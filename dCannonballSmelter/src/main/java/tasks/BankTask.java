@@ -43,7 +43,7 @@ public class BankTask extends Task {
         task = "Check inventory";
         ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(ItemID.STEEL_BAR));
         if (!inventorySnapshot.contains(ItemID.STEEL_BAR)) {
-            if (withdrawed) {
+            if (!withdrawed) {
                 script.log(getClass(), "No steel bars in inventory. Ran out of supplies. Stopping script!");
                 script.stop();
             } else {

@@ -16,6 +16,12 @@ dependencies {
     implementation name: 'API'
 }
 
+sourceSets {
+    main {
+        resources.srcDir 'src/main/java/resources'
+    }
+}
+
 jar {
     archiveFileName = 'dCannonballSmelter.jar'
     destinationDirectory = file('jar/')

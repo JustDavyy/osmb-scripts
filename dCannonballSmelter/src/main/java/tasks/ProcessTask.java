@@ -92,8 +92,6 @@ public class ProcessTask extends Task {
             task = "Update stats";
             int smeltedNow = inventorySnapshot.getAmount(ItemID.STEEL_BAR);
             smeltCount += smeltedNow;
-            totalXpGained += smeltedNow * getXpForCannonball();
-            printStats();
         }
 
         return false;
@@ -146,20 +144,6 @@ public class ProcessTask extends Task {
 
         script.log(getClass(), "Using human task to wait until smelting finishes.");
         script.submitHumanTask(condition, script.random(162500, 166000));
-    }
-
-    private void printStats() {
-        task = "Print stats";
-        long elapsed = System.currentTimeMillis() - startTime;
-        int smeltsPerHour = (int) ((smeltCount * 3600000L) / elapsed);
-        int xpPerHour = (int) ((totalXpGained * 3600000L) / elapsed);
-        int ballsSmelted = smeltCount * 4;
-        int ballsPerHour = (int) ((ballsSmelted * 3600000L) / elapsed);
-
-        script.log("STATS", String.format(
-                "Cballs smelted: %,d | Smelts/hr: %,d | Cballs/hr: %,d | XP gained: %,d | XP/hr: %,d",
-                ballsSmelted, smeltsPerHour, ballsPerHour, (int) totalXpGained, xpPerHour
-        ));
     }
 
     private double getXpForCannonball() {
