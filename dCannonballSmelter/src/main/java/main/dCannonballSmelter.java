@@ -26,18 +26,17 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 import java.util.function.Predicate;
 
 @ScriptDefinition(
         name = "dCannonballSmelter",
         description = "Turns steel bars into cannonballs",
         skillCategory = SkillCategory.SMITHING,
-        version = 2.6,
+        version = 2.7,
         author = "JustDavyy"
 )
 public class dCannonballSmelter extends Script {
-    public static final String scriptVersion = "2.6";
+    public static final String scriptVersion = "2.7";
     public static final String[] BANK_NAMES = {"Bank", "Chest", "Bank booth", "Bank chest", "Grand Exchange booth", "Bank counter", "Bank table"};
     public static final String[] BANK_ACTIONS = {"bank", "open", "use", "bank banker"};
     public static final Predicate<RSObject> bankQuery = gameObject -> {
@@ -160,6 +159,7 @@ public class dCannonballSmelter extends Script {
     public void onPaint(Canvas c) {
         long elapsed = System.currentTimeMillis() - startTime;
         double hours = Math.max(1e-9, elapsed / 3_600_000.0);
+        String runtime = formatRuntime(elapsed);
 
         int ballsSmelted  = smeltCount * 4;
         int smeltsPerHour = (int) Math.round(smeltCount / hours);
@@ -256,7 +256,7 @@ public class dCannonballSmelter extends Script {
         int innerY = baseY;
         int innerWidth = width;
 
-        int totalLines = 11;
+        int totalLines = 12;
 
         int y = innerY + topGap;
         if (scaledLogo != null) y += scaledLogo.height + logoBottomGap;
@@ -264,7 +264,7 @@ public class dCannonballSmelter extends Script {
         y += smallGap;
         y += 10;
 
-        int innerHeight = Math.max(200, y - innerY);
+        int innerHeight = Math.max(215, y - innerY);
 
         c.fillRect(innerX - borderThickness, innerY - borderThickness,
                 innerWidth + (borderThickness * 2),
@@ -280,6 +280,11 @@ public class dCannonballSmelter extends Script {
             c.drawAtOn(scaledLogo, imgX, curY);
             curY += scaledLogo.height + logoBottomGap;
         }
+
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Runtime", runtime, labelGray, valueWhite,
+                FONT_LABEL, FONT_VALUE_BOLD);
 
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
@@ -575,12 +580,17 @@ public class dCannonballSmelter extends Script {
         return 0;
     }
 
-    private String formatRuntime(long ms) {
-        long s = ms / 1000;
-        long d = s / 86400;
-        long h = (s % 86400) / 3600;
-        long m = (s % 3600) / 60;
-        long sec = s % 60;
-        return (d > 0 ? String.format("%02d:", d) : "") + String.format("%02d:%02d:%02d", h, m, sec);
+    private String formatRuntime(long millis) {
+        long seconds = millis / 1000;
+        long days = seconds / 86400;
+        long hours = (seconds % 86400) / 3600;
+        long minutes = (seconds % 3600) / 60;
+        long secs = seconds % 60;
+
+        if (days > 0) {
+            return String.format("%dd %02d:%02d:%02d", days, hours, minutes, secs);
+        } else {
+            return String.format("%02d:%02d:%02d", hours, minutes, secs);
+        }
     }
 }
