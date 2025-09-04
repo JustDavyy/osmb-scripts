@@ -4,7 +4,7 @@ import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
 import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
-import com.osmb.api.trackers.experiencetracker.XPTracker;
+import com.osmb.api.trackers.experience.XPTracker;
 import com.osmb.api.visual.drawing.Canvas;
 import com.osmb.api.visual.image.Image;
 import javafx.scene.Scene;
@@ -32,11 +32,11 @@ import java.util.function.Predicate;
         name = "dCannonballSmelter",
         description = "Turns steel bars into cannonballs",
         skillCategory = SkillCategory.SMITHING,
-        version = 2.7,
+        version = 2.8,
         author = "JustDavyy"
 )
 public class dCannonballSmelter extends Script {
-    public static final String scriptVersion = "2.7";
+    public static final String scriptVersion = "2.8";
     public static final String[] BANK_NAMES = {"Bank", "Chest", "Bank booth", "Bank chest", "Grand Exchange booth", "Bank counter", "Bank table"};
     public static final String[] BANK_ACTIONS = {"bank", "open", "use", "bank banker"};
     public static final Predicate<RSObject> bankQuery = gameObject -> {

@@ -1,21 +1,16 @@
 package tasks;
 
-// GENERAL JAVA IMPORTS
-
-// OSMB SPECIFIC IMPORTS
 import com.osmb.api.ui.component.tabs.skill.SkillType;
 import com.osmb.api.ui.component.tabs.skill.SkillsTabComponent;
 import com.osmb.api.ui.tabs.Tab;
 import com.osmb.api.script.Script;
-
-// OTHER CLASS IMPORTS
 import utils.Task;
 import static main.dCannonballSmelter.*;
 
 
 public class Setup extends Task {
     public Setup(Script script) {
-        super(script); // pass the script into the parent Task class
+        super(script);
     }
 
     public boolean activate() {
