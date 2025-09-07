@@ -360,23 +360,57 @@ public class dCannonballSmelter extends Script {
                 log(getClass(), "Logo '/logo.png' not found on classpath.");
                 return;
             }
-            BufferedImage buf = ImageIO.read(in);
-            if (buf == null) {
+
+            BufferedImage src = ImageIO.read(in);
+            if (src == null) {
                 log(getClass(), "Failed to decode logo.png");
                 return;
             }
-            // Convert BufferedImage -> API Image
-            int w = buf.getWidth();
-            int h = buf.getHeight();
-            int[] argb = new int[w * h];
-            buf.getRGB(0, 0, w, h, argb, 0, w);
-            logoImage = new Image(argb, w, h);
+
+            BufferedImage argb = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g = argb.createGraphics();
+            g.setComposite(AlphaComposite.Src); // copy pixels as-is
+            g.drawImage(src, 0, 0, null);
+            g.dispose();
+
+            int w = argb.getWidth();
+            int h = argb.getHeight();
+            int[] px = new int[w * h];
+            argb.getRGB(0, 0, w, h, px, 0, w);
+
+            for (int i = 0; i < px.length; i++) {
+                int p = px[i];
+                int a = (p >>> 24) & 0xFF;
+                if (a == 0) {
+                    px[i] = 0x00000000; // fully transparent black
+                }
+            }
+
+            boolean PREMULTIPLY = true;
+            if (PREMULTIPLY) {
+                for (int i = 0; i < px.length; i++) {
+                    int p = px[i];
+                    int a = (p >>> 24) & 0xFF;
+                    if (a == 0) { px[i] = 0; continue; }
+                    int r = (p >>> 16) & 0xFF;
+                    int gch = (p >>> 8) & 0xFF;
+                    int b = p & 0xFF;
+                    // premultiply
+                    r = (r * a + 127) / 255;
+                    gch = (gch * a + 127) / 255;
+                    b = (b * a + 127) / 255;
+                    px[i] = (a << 24) | (r << 16) | (gch << 8) | b;
+                }
+            }
+
+            logoImage = new Image(px, w, h);
+            log(getClass(), "Logo loaded: " + w + "x" + h + " premultiplied=" + PREMULTIPLY);
+
         } catch (Exception e) {
             log(getClass(), "Error loading logo: " + e.getMessage());
         }
     }
 
-    /** Optional: scale an API Image down to maxWidth (keeps an aspect). */
     private Image scaleImageToWidth(Image src, int maxWidth) {
         if (src == null || src.width <= maxWidth) return src;
         double scale = maxWidth / (double) src.width;
