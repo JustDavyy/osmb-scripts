@@ -43,7 +43,7 @@ import javax.imageio.ImageIO;
 )
 public class dBoltEnchanter extends Script {
     public static final String scriptVersion = "1.1";
-    private final String scriptName = "dBoltEnchanter";
+    private final String scriptName = "BoltEnchanter";
     public static boolean setupDone = false;
     public static int boltStartStackSize = 0;
     public static int enchantedBoltStartStackSize = 0;
