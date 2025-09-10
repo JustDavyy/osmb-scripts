@@ -29,7 +29,6 @@ public class ScriptUI {
     private static final String PREF_WEBHOOK_URL = "doffering_webhook_url";
     private static final String PREF_WEBHOOK_INTERVAL = "doffering_webhook_interval";
     private static final String PREF_WEBHOOK_INCLUDE_USER = "doffering_webhook_include_user";
-    private static final String PREF_WEBHOOK_INCLUDE_STATS = "doffering_webhook_include_stats";
 
     private final Script script;
 
@@ -40,7 +39,6 @@ public class ScriptUI {
     private TextField webhookUrlField;
     private ComboBox<Integer> webhookIntervalComboBox;
     private CheckBox includeUsernameCheckBox;
-    private CheckBox includeStatsCheckBox;
 
     private static final String DEMONIC_OFFERING = "Demonic Offering";
     private static final String SINISTER_OFFERING = "Sinister Offering";
@@ -68,7 +66,7 @@ public class ScriptUI {
         put(ItemID.WYVERN_BONES, 216);
         put(ItemID.DRAKE_BONES, 240);
         put(ItemID.FAYRG_BONES, 252);
-        //put(ItemID.LAVA_DRAGON_BONES, 255); Disabled as it's textured, unsupported for now
+        put(ItemID.LAVA_DRAGON_BONES, 255);
         put(ItemID.RAURG_BONES, 288);
         put(ItemID.HYDRA_BONES, 330);
         put(ItemID.DAGANNOTH_BONES, 375);
@@ -135,7 +133,7 @@ public class ScriptUI {
         webhookUrlField.setDisable(!webhookEnabledCheckBox.isSelected());
 
         webhookIntervalComboBox = new ComboBox<>();
-        for (int i = 1; i <= 15; i++) webhookIntervalComboBox.getItems().add(i);
+        for (int i = 1; i <= 60; i++) webhookIntervalComboBox.getItems().add(i);
         webhookIntervalComboBox.getSelectionModel().select(prefs.getInt(PREF_WEBHOOK_INTERVAL, 5) - 1);
         webhookIntervalComboBox.setDisable(!webhookEnabledCheckBox.isSelected());
 
@@ -143,16 +141,11 @@ public class ScriptUI {
         includeUsernameCheckBox.setSelected(prefs.getBoolean(PREF_WEBHOOK_INCLUDE_USER, true));
         includeUsernameCheckBox.setDisable(!webhookEnabledCheckBox.isSelected());
 
-        includeStatsCheckBox = new CheckBox("Include Stats");
-        includeStatsCheckBox.setSelected(prefs.getBoolean(PREF_WEBHOOK_INCLUDE_STATS, true));
-        includeStatsCheckBox.setDisable(!webhookEnabledCheckBox.isSelected());
-
         webhookEnabledCheckBox.setOnAction(e -> {
             boolean enabled = webhookEnabledCheckBox.isSelected();
             webhookUrlField.setDisable(!enabled);
             webhookIntervalComboBox.setDisable(!enabled);
             includeUsernameCheckBox.setDisable(!enabled);
-            includeStatsCheckBox.setDisable(!enabled);
         });
 
         webhookBox.getChildren().addAll(
@@ -160,8 +153,7 @@ public class ScriptUI {
                 webhookUrlField,
                 new Label("Send interval (minutes)"),
                 webhookIntervalComboBox,
-                includeUsernameCheckBox,
-                includeStatsCheckBox
+                includeUsernameCheckBox
         );
 
         Tab webhookTab = new Tab("Webhooks", webhookBox);
@@ -271,7 +263,6 @@ public class ScriptUI {
         prefs.put(PREF_WEBHOOK_URL, getWebhookUrl());
         prefs.putInt(PREF_WEBHOOK_INTERVAL, getWebhookInterval());
         prefs.putBoolean(PREF_WEBHOOK_INCLUDE_USER, isUsernameIncluded());
-        prefs.putBoolean(PREF_WEBHOOK_INCLUDE_STATS, isStatsIncluded());
 
         ((Stage) spellComboBox.getScene().getWindow()).close();
     }
@@ -329,9 +320,5 @@ public class ScriptUI {
 
     public boolean isUsernameIncluded() {
         return includeUsernameCheckBox != null && includeUsernameCheckBox.isSelected();
-    }
-
-    public boolean isStatsIncluded() {
-        return includeStatsCheckBox != null && includeStatsCheckBox.isSelected();
     }
 }
