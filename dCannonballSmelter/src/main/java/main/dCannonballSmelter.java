@@ -32,11 +32,11 @@ import java.util.function.Predicate;
         name = "dCannonballSmelter",
         description = "Turns steel bars into cannonballs",
         skillCategory = SkillCategory.SMITHING,
-        version = 2.9,
+        version = 3.0,
         author = "JustDavyy"
 )
 public class dCannonballSmelter extends Script {
-    public static final String scriptVersion = "2.9";
+    public static final String scriptVersion = "3.0";
     public static final String[] BANK_NAMES = {"Bank", "Chest", "Bank booth", "Bank chest", "Grand Exchange booth", "Bank counter", "Bank table"};
     public static final String[] BANK_ACTIONS = {"bank", "open", "use", "bank banker"};
     public static final Predicate<RSObject> bankQuery = gameObject -> {
@@ -241,15 +241,7 @@ public class dCannonballSmelter extends Script {
         ensureLogoLoaded();
         com.osmb.api.visual.image.Image scaledLogo = null;
         if (logoImage != null) {
-            double kW = logoImage.width  > maxLogoWidth  ? maxLogoWidth  / (double) logoImage.width  : 1.0;
-            double kH = logoImage.height > maxLogoHeight ? maxLogoHeight / (double) logoImage.height : 1.0;
-            double k  = Math.min(kW, kH);
-            if (k < 1.0) {
-                int targetW = Math.max(1, (int)Math.round(logoImage.width * k));
-                scaledLogo = scaleImageToWidth(logoImage, targetW);
-            } else {
-                scaledLogo = logoImage;
-            }
+            scaledLogo = logoImage;
         }
 
         int innerX = x;
@@ -264,13 +256,13 @@ public class dCannonballSmelter extends Script {
         y += smallGap;
         y += 10;
 
-        int innerHeight = Math.max(215, y - innerY);
+        int innerHeight = Math.max(240, y - innerY);
 
         c.fillRect(innerX - borderThickness, innerY - borderThickness,
                 innerWidth + (borderThickness * 2),
                 innerHeight + (borderThickness * 2),
                 Color.WHITE.getRGB(), 1);
-        c.fillRect(innerX, innerY, innerWidth, innerHeight, Color.BLACK.getRGB(), 1);
+        c.fillRect(innerX, innerY, innerWidth, innerHeight, Color.decode("#01031C").getRGB(), 1);
         c.drawRect(innerX, innerY, innerWidth, innerHeight, Color.WHITE.getRGB());
 
         int curY = innerY + topGap;
@@ -284,63 +276,63 @@ public class dCannonballSmelter extends Script {
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Runtime", runtime, labelGray, valueWhite,
-                FONT_LABEL, FONT_VALUE_BOLD);
+                FONT_VALUE_BOLD, FONT_LABEL);
 
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Cballs smelted", intFmt.format(ballsSmelted), labelGray, valueBlue,
-                FONT_LABEL, FONT_VALUE_BOLD);
+                FONT_VALUE_BOLD, FONT_LABEL);
 
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Smelts/hr", intFmt.format(smeltsPerHour), labelGray, valueWhite,
-                FONT_LABEL, FONT_VALUE_BOLD);
+                FONT_VALUE_BOLD, FONT_LABEL);
 
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Cballs/hr", intFmt.format(ballsPerHour), labelGray, valueBlue,
-                FONT_LABEL, FONT_VALUE_BOLD);
+                FONT_VALUE_BOLD, FONT_LABEL);
 
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "XP gained", intFmt.format(Math.round(xpGainedLive)), labelGray, valueWhite,
-                FONT_LABEL, FONT_VALUE_BOLD);
+                FONT_VALUE_BOLD, FONT_LABEL);
 
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "XP/hr", intFmt.format(xpPerHour), labelGray, valueWhite,
-                FONT_LABEL, FONT_VALUE_BOLD);
+                FONT_VALUE_BOLD, FONT_LABEL);
 
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "ETL", intFmt.format(Math.round(etl)), labelGray, valueWhite,
-                FONT_LABEL, FONT_VALUE_BOLD);
+                FONT_VALUE_BOLD, FONT_LABEL);
 
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "TTL", ttlText, labelGray, valueWhite,
-                FONT_LABEL, FONT_VALUE_BOLD);
+                FONT_VALUE_BOLD, FONT_LABEL);
 
         // Level Progress (green, bold) — after TTL
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Level Progress", levelProgressText, labelGray, valueGreen,
-                FONT_LABEL, FONT_VALUE_BOLD);
+                FONT_VALUE_BOLD, FONT_LABEL);
 
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Current level", currentLevelText, labelGray, valueWhite,
-                FONT_LABEL, FONT_VALUE_BOLD);
+                FONT_VALUE_BOLD, FONT_LABEL);
 
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Task", String.valueOf(task), labelGray, valueWhite,
-                FONT_LABEL, FONT_VALUE_BOLD);
+                FONT_VALUE_BOLD, FONT_LABEL);
 
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Version", scriptVersion, labelGray, valueWhite,
-                FONT_LABEL, FONT_VALUE_BOLD);
+                FONT_VALUE_BOLD, FONT_LABEL);
     }
 
     private void drawStatLine(Canvas c, int innerX, int innerWidth, int paddingX, int y,
