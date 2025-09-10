@@ -395,7 +395,7 @@ public class dkTravel extends Task {
 
             return fishingArea.contains(currentPos) || positionChangeTimer.get().timeElapsed() > 15000;
         }, script.random(20000, 25000));
-        dkFish.lastAnimationDetected = System.currentTimeMillis() - 12_500L;
+        dkFish.lastAnimationDetected = System.currentTimeMillis() - 10_000L;
         return fishingArea.contains(currentPos);
     }
 
