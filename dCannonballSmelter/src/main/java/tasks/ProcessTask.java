@@ -6,6 +6,7 @@ import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
 import com.osmb.api.ui.chatbox.dialogue.DialogueType;
 import com.osmb.api.utils.timing.Timer;
+import main.WebhookSender;
 import utils.Task;
 
 import java.util.List;
@@ -15,11 +16,11 @@ import java.util.function.BooleanSupplier;
 import static main.dCannonballSmelter.*;
 
 public class ProcessTask extends Task {
-    private final long startTime;
+    private final WebhookSender webhook;
 
-    public ProcessTask(Script script) {
+    public ProcessTask(Script script, WebhookSender webhook) {
         super(script);
-        this.startTime = System.currentTimeMillis();
+        this.webhook = webhook;
     }
 
     @Override
@@ -117,10 +118,13 @@ public class ProcessTask extends Task {
         Timer amountChangeTimer = new Timer();
 
         BooleanSupplier condition = () -> {
-            // This is the level up check
+            // Check for level up dialogue
             DialogueType type = script.getWidgetManager().getDialogue().getDialogueType();
             if (type == DialogueType.TAP_HERE_TO_CONTINUE) {
                 script.log(getClass().getSimpleName(), "Dialogue detected, leveled up?");
+                if (webhookEnabled) {
+                    webhook.queueSendWebhook();
+                }
                 script.submitHumanTask(() -> false, script.random(1000, 3000));
                 return true;
             }
@@ -136,6 +140,11 @@ public class ProcessTask extends Task {
                 return true;
             }
 
+            // Send webhook if needed
+            if (webhookEnabled && System.currentTimeMillis() - lastWebhookSent >= webhookIntervalMinutes * 60_000L) {
+                webhook.queueSendWebhook();
+            }
+
             // Check if we ran out of items
             ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(ItemID.STEEL_BAR));
             if (inventorySnapshot == null) {return false;}
@@ -144,9 +153,5 @@ public class ProcessTask extends Task {
 
         script.log(getClass(), "Using human task to wait until smelting finishes.");
         script.submitHumanTask(condition, script.random(162500, 166000));
-    }
-
-    private double getXpForCannonball() {
-        return 25.6;
     }
 }

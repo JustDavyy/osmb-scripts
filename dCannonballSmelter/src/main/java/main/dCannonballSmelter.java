@@ -24,19 +24,26 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
 @ScriptDefinition(
         name = "dCannonballSmelter",
         description = "Turns steel bars into cannonballs",
         skillCategory = SkillCategory.SMITHING,
-        version = 3.0,
+        version = 3.1,
         author = "JustDavyy"
 )
-public class dCannonballSmelter extends Script {
-    public static final String scriptVersion = "3.0";
+public class dCannonballSmelter extends Script implements WebhookSender {
+    public static final String scriptVersion = "3.1";
+    private final String scriptName = "dCannonballSmelter";
     public static final String[] BANK_NAMES = {"Bank", "Chest", "Bank booth", "Bank chest", "Grand Exchange booth", "Bank counter", "Bank table"};
     public static final String[] BANK_ACTIONS = {"bank", "open", "use", "bank banker"};
     public static final Predicate<RSObject> bankQuery = gameObject -> {
@@ -58,12 +65,14 @@ public class dCannonballSmelter extends Script {
 
     public static long startTime = System.currentTimeMillis();
 
-    private static boolean webhookEnabled = false;
-    private static boolean webhookShowUser = false;
-    private static boolean webhookShowStats = false;
+    public static boolean webhookEnabled = false;
+    public static boolean webhookShowUser = false;
     private static String webhookUrl = "";
-    private static int webhookIntervalMinutes = 5;
-    private static long lastWebhookSent = 0;
+    public static int webhookIntervalMinutes = 5;
+    public static long lastWebhookSent = 0;
+    private final AtomicBoolean webhookInFlight = new AtomicBoolean(false);
+    final String authorIconUrl = "https://www.osmb.co.uk/lovable-uploads/ad86059b-ce19-4540-8e53-9fd01c61c98b.png";
+    private volatile long nextWebhookEarliestMs = 0L;
     private static String user = "";
 
     private static final Font FONT_LABEL       = new Font("Arial", Font.PLAIN, 12);
@@ -74,6 +83,7 @@ public class dCannonballSmelter extends Script {
 
     // Logo image
     private com.osmb.api.visual.image.Image logoImage = null;
+    private final AtomicReference<Image> lastCanvasFrame = new AtomicReference<>();
 
     private List<Task> tasks;
 
@@ -114,12 +124,11 @@ public class dCannonballSmelter extends Script {
         webhookUrl = ui.getWebhookUrl();
         webhookIntervalMinutes = ui.getWebhookInterval();
         webhookShowUser = ui.isUsernameIncluded();
-        webhookShowStats = ui.isStatsIncluded();
 
         if (webhookEnabled) {
             user = getWidgetManager().getChatbox().getUsername();
             log("WEBHOOK", "✅ Webhook enabled. Interval: " + webhookIntervalMinutes + "min. Username: " + user);
-            lastWebhookSent = System.currentTimeMillis();
+            queueSendWebhook();
         }
 
         checkForUpdates();
@@ -127,7 +136,7 @@ public class dCannonballSmelter extends Script {
         tasks = Arrays.asList(
                 new Setup(this),
                 new FirstBank(this),
-                new ProcessTask(this),
+                new ProcessTask(this, this),
                 new BankTask(this)
         );
     }
@@ -140,8 +149,7 @@ public class dCannonballSmelter extends Script {
     @Override
     public int poll() {
         if (webhookEnabled && System.currentTimeMillis() - lastWebhookSent >= webhookIntervalMinutes * 60_000L) {
-            sendWebhook();
-            lastWebhookSent = System.currentTimeMillis();
+            queueSendWebhook();
         }
 
         if (tasks != null) {
@@ -333,6 +341,12 @@ public class dCannonballSmelter extends Script {
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Version", scriptVersion, labelGray, valueWhite,
                 FONT_VALUE_BOLD, FONT_LABEL);
+
+        // Store canvas for webhook usage
+        try {
+            lastCanvasFrame.set(c.toImageCopy());
+        } catch (Exception ignored) {
+        }
     }
 
     private void drawStatLine(Canvas c, int innerX, int innerWidth, int paddingX, int y,
@@ -403,113 +417,79 @@ public class dCannonballSmelter extends Script {
         }
     }
 
-    private Image scaleImageToWidth(Image src, int maxWidth) {
-        if (src == null || src.width <= maxWidth) return src;
-        double scale = maxWidth / (double) src.width;
-        int nw = Math.max(1, (int) Math.round(src.width * scale));
-        int nh = Math.max(1, (int) Math.round(src.height * scale));
-        int[] out = new int[nw * nh];
-
-        // nearest-neighbor (fast and fine for logos)
-        for (int y = 0; y < nh; y++) {
-            int sy = (int) Math.floor(y / scale);
-            int rowDst = y * nw;
-            int rowSrc = sy * src.width;
-            for (int x = 0; x < nw; x++) {
-                int sx = (int) Math.floor(x / scale);
-                out[rowDst + x] = src.pixels[rowSrc + sx];
-            }
-        }
-        return new Image(out, nw, nh);
-    }
-
-    private void sendWebhook() {
+    private void sendWebhookInternal() {
         ByteArrayOutputStream baos = null;
         try {
-            Image screenImage = getScreen().getImage();
-            BufferedImage buffered = screenImage.toBufferedImage();
+            // Only proceed if we have a painted frame
+            Image source = lastCanvasFrame.get();
+            if (source == null) {
+                log("WEBHOOK", "ℹ No painted frame available; skipping webhook.");
+                return;
+            }
+
+            BufferedImage buffered = source.toBufferedImage();
             baos = new ByteArrayOutputStream();
             ImageIO.write(buffered, "png", baos);
             byte[] imageBytes = baos.toByteArray();
 
+            // Runtime for description
             long elapsed = System.currentTimeMillis() - startTime;
-            double hours = Math.max(1e-9, elapsed / 3_600_000.0);
-
-            int ballsSmelted  = smeltCount * 4;
-            int smeltsPerHour = (int) Math.round(smeltCount / hours);
-
-            int ballsPerHour  = (int) Math.round(ballsSmelted / hours);
-
-            double xpGainedLive = totalXpGained;
-            String ttlText = "-";
-            double etl = 0;
-            if (xpTracking != null) {
-                XPTracker xpTracker = xpTracking.getXpTracker();
-                if (xpTracker != null) {
-                    xpGainedLive = xpTracker.getXpGained();
-                    ttlText = xpTracker.timeToNextLevelString();
-                    etl = xpTracker.getXpForNextLevel();
-                }
-            }
-            int xpPerHour = (int) Math.round(xpGainedLive / hours);
-
             String runtime = formatRuntime(elapsed);
 
-            // current level with (+N) if leveled
-            if (startLevel <= 0) startLevel = currentLevel;
-            int levelsGained = Math.max(0, currentLevel - startLevel);
-            String currentLevelText = (levelsGained > 0)
-                    ? (currentLevel + " (+" + levelsGained + ")")
-                    : String.valueOf(currentLevel);
+            // Username (or anonymous)
+            String displayUser = (webhookShowUser && user != null) ? user : "anonymous";
 
-            DecimalFormat f = new DecimalFormat("#,###");
-            DecimalFormatSymbols s = new DecimalFormatSymbols();
-            s.setGroupingSeparator('.');
-            f.setDecimalFormatSymbols(s);
+            // Next webhook local time (Europe/Amsterdam)
+            long nextMillis = System.currentTimeMillis() + (webhookIntervalMinutes * 60_000L);
+            ZonedDateTime nextLocal = ZonedDateTime.ofInstant(
+                    Instant.ofEpochMilli(nextMillis),
+                    ZoneId.systemDefault()
+            );
+            String nextLocalStr = nextLocal.format(DateTimeFormatter.ofPattern("HH:mm:ss"));
 
+            String imageFilename = "canvas.png";
             StringBuilder json = new StringBuilder();
             json.append("{ \"embeds\": [ {")
-                    .append("\"title\": \"\\uD83D\\uDCCA dCannonballSmelter Stats - ")
-                    .append(webhookShowUser && user != null ? user : "anonymous")
+                    .append("\"title\": \"Script run summary - ").append(displayUser).append("\",")
+
+                    .append("\"color\": 5189303,")
+
+                    .append("\"author\": {")
+                    .append("\"name\": \"Davyy's ").append(scriptName).append("\",")
+                    .append("\"icon_url\": \"").append(authorIconUrl).append("\"")
+                    .append("},")
+
+                    .append("\"description\": ")
+                    .append("\"This is your progress report after running for **")
+                    .append(runtime)
+                    .append("**.\\n")
+                    .append("Make sure to share your proggies in the OSMB proggies channel\\n")
+                    .append("https://discord.com/channels/736938454478356570/789791439487500299")
                     .append("\",")
 
-                    .append("\"color\": 4620980,");
+                    .append("\"image\": { \"url\": \"attachment://").append(imageFilename).append("\" },")
 
-            if (webhookShowStats) {
-                json.append("\"fields\": [")
-                        .append("{\"name\":\"Cballs smelted\",\"value\":\"").append(f.format(ballsSmelted)).append("\",\"inline\":true},")
-                        .append("{\"name\":\"Smelts/hr\",\"value\":\"").append(f.format(smeltsPerHour)).append("\",\"inline\":true},")
-                        .append("{\"name\":\"Cballs/hr\",\"value\":\"").append(f.format(ballsPerHour)).append("\",\"inline\":true},")
-                        .append("{\"name\":\"XP Gained\",\"value\":\"").append(f.format(Math.round(xpGainedLive))).append("\",\"inline\":true},")
-                        .append("{\"name\":\"XP/hr\",\"value\":\"").append(f.format(xpPerHour)).append("\",\"inline\":true},")
-                        .append("{\"name\":\"ETL\",\"value\":\"").append(f.format(Math.round(etl))).append("\",\"inline\":true},")
-                        .append("{\"name\":\"TTL\",\"value\":\"").append(ttlText).append("\",\"inline\":true},")
-                        .append("{\"name\":\"Current level\",\"value\":\"").append(currentLevelText).append("\",\"inline\":true},")
-                        .append("{\"name\":\"Runtime\",\"value\":\"").append(runtime).append("\",\"inline\":true},")
-                        .append("{\"name\":\"Task\",\"value\":\"").append(task).append("\",\"inline\":true},")
-                        .append("{\"name\":\"Version\",\"value\":\"").append(scriptVersion).append("\",\"inline\":true}")
-                        .append("],");
-            } else {
-                json.append("\"description\": \"Currently on task: ").append(task).append("\",");
-            }
+                    .append("\"footer\": { \"text\": \"Next update/webhook at: ").append(nextLocalStr).append("\" }")
 
-            json.append("\"image\": { \"url\": \"attachment://screen.png\" } } ] }");
+                    .append("} ] }");
 
+            // Send multipart/form-data
             String boundary = "----WebBoundary" + System.currentTimeMillis();
             HttpURLConnection conn = (HttpURLConnection) new URL(webhookUrl).openConnection();
-
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
             conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
 
             try (OutputStream out = conn.getOutputStream()) {
+                // payload_json
                 out.write(("--" + boundary + "\r\n").getBytes());
                 out.write("Content-Disposition: form-data; name=\"payload_json\"\r\n\r\n".getBytes());
                 out.write(json.toString().getBytes(StandardCharsets.UTF_8));
                 out.write("\r\n".getBytes());
 
+                // image file
                 out.write(("--" + boundary + "\r\n").getBytes());
-                out.write("Content-Disposition: form-data; name=\"file\"; filename=\"screen.png\"\r\n".getBytes());
+                out.write(("Content-Disposition: form-data; name=\"file\"; filename=\"" + imageFilename + "\"\r\n").getBytes());
                 out.write("Content-Type: image/png\r\n\r\n".getBytes());
                 out.write(imageBytes);
                 out.write("\r\n".getBytes());
@@ -519,8 +499,22 @@ public class dCannonballSmelter extends Script {
             }
 
             int code = conn.getResponseCode();
+            long now = System.currentTimeMillis();
+
             if (code == 200 || code == 204) {
+                lastWebhookSent = now;
                 log("WEBHOOK", "✅ Webhook sent.");
+            } else if (code == 429) {
+                long backoffMs = 30_000L;
+                String ra = conn.getHeaderField("Retry-After");
+                if (ra != null) {
+                    try {
+                        double sec = Double.parseDouble(ra.trim());
+                        backoffMs = Math.max(1000L, (long)Math.ceil(sec * 1000.0));
+                    } catch (NumberFormatException ignored) {}
+                }
+                nextWebhookEarliestMs = now + backoffMs + 250;
+                log("WEBHOOK", "⚠ 429 rate-limited. Backing off ~" + backoffMs + "ms");
             } else {
                 log("WEBHOOK", "⚠ Webhook failed. HTTP " + code);
             }
@@ -528,10 +522,28 @@ public class dCannonballSmelter extends Script {
         } catch (Exception e) {
             log("WEBHOOK", "❌ Error: " + e.getMessage());
         } finally {
-            try {
-                if (baos != null) baos.close();
-            } catch (IOException ignored) {}
+            try { if (baos != null) baos.close(); } catch (IOException ignored) {}
+            webhookInFlight.set(false);
         }
+    }
+
+    public void queueSendWebhook() {
+        if (!webhookEnabled) return;
+
+        long now = System.currentTimeMillis();
+        if (now < nextWebhookEarliestMs) return;
+        if (now - lastWebhookSent < webhookIntervalMinutes * 60_000L) return;
+
+        if (!webhookInFlight.compareAndSet(false, true)) return;
+
+        sendWebhookAsync();
+    }
+
+
+    public void sendWebhookAsync() {
+        Thread t = new Thread(this::sendWebhookInternal, "WebhookSender");
+        t.setDaemon(true);
+        t.start();
     }
 
     private void checkForUpdates() {
