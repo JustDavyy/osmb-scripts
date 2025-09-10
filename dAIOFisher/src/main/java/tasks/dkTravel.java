@@ -9,6 +9,7 @@ import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
 import com.osmb.api.ui.tabs.Equipment;
 import com.osmb.api.utils.timing.Timer;
+import com.osmb.api.walker.WalkConfig;
 import data.FishingLocation;
 import utils.Task;
 
@@ -30,6 +31,21 @@ public class dkTravel extends Task {
     private final Area monasteryFairyArea = new RectangleArea(2653, 3226, 10, 9, 0);
     private final Area fishingFailsafeArea = new RectangleArea(2881, 3055, 77, 73, 0);
     private final Area fishingFailsafeWalkArea = new RectangleArea(2896, 3113, 8, 4, 0);
+
+    // Ardougne cloak item IDs
+    private final int[] cloakIds = {
+            ItemID.ARDOUGNE_CLOAK_4,
+            ItemID.ARDOUGNE_CLOAK_3,
+            ItemID.ARDOUGNE_CLOAK_2,
+            ItemID.ARDOUGNE_CLOAK_1
+    };
+
+    // Quest cape item IDs
+    private final int[] qcapeIds = {
+            ItemID.QUEST_POINT_CAPE_T,
+            ItemID.QUEST_POINT_CAPE
+
+    };
 
     public static final String[] FAIRY_NAMES = {"Fairy ring"};
     public static final String[] FAIRY_ACTIONS = {"zanaris", "configure"};
@@ -87,24 +103,51 @@ public class dkTravel extends Task {
             if (fairyOption.equals("Quest cape") || fairyOption.equals("Ardougne cloak")) {
                 task = "Use cape teleport";
                 Equipment equipment = script.getWidgetManager().getEquipment();
-                String menuOption = fairyOption.equals("Ardougne cloak") ? "Kandarin Monastery" : "Teleport";
-                Area destinationArea = fairyOption.equals("Ardougne cloak") ? monasteryArea : legendsArea;
 
-                if (equipment.interact(equippedCloakId, menuOption)) {
-                    script.log(getClass().getSimpleName(), "Teleporting using " + script.getItemManager().getItemName(equippedCloakId));
+                final String menuOption     = fairyOption.equals("Ardougne cloak") ? "Kandarin Monastery" : "Teleport";
+                final Area destinationArea  = fairyOption.equals("Ardougne cloak") ? monasteryArea : legendsArea;
 
-                    script.submitHumanTask(() -> false, script.random(3500, 4500));
+                int[] baseIds = fairyOption.equals("Ardougne cloak") ? cloakIds : qcapeIds;
 
-                    if (arrivedAtArea(destinationArea)) {
-                        script.log(getClass().getSimpleName(), "Teleport was successful");
-                        doneBanking = false;
-                        script.log(getClass().getSimpleName(), "Marked banking flag to false.");
+                int[] candidates;
+                if (equippedCloakId > 0) {
+                    java.util.LinkedHashSet<Integer> set = new java.util.LinkedHashSet<>();
+                    set.add(equippedCloakId);
+                    for (int id : baseIds) set.add(id);
+                    candidates = set.stream().mapToInt(Integer::intValue).toArray();
+                } else {
+                    candidates = baseIds;
+                }
+
+                boolean teleported = false;
+                int usedId = -1;
+
+                for (int id : candidates) {
+                    if (equipment.interact(id, menuOption)) {
+                        usedId = id;
+                        script.log(getClass().getSimpleName(),
+                                "Teleporting using " + script.getItemManager().getItemName(id) + " (" + id + ")");
+                        script.submitHumanTask(() -> false, script.random(3500, 4500));
+
+                        if (arrivedAtArea(destinationArea)) {
+                            script.log(getClass().getSimpleName(), "Teleport was successful");
+                            doneBanking = false;
+                            script.log(getClass().getSimpleName(), "Marked banking flag to false.");
+                            teleported = true;
+                        } else {
+                            script.log(getClass(), "Teleport interaction done, but destination not confirmed yet.");
+                        }
+                        break;
+                    } else {
+                        script.log(getClass(), "Cape interaction failed for ID " + id + " — trying next candidate...");
                     }
                 }
 
+                if (!teleported && usedId == -1) {
+                    script.log(getClass(), "Interaction failed in cape slot for all candidate IDs.");
+                }
+
                 return false;
-            } else {
-                script.log(getClass().getSimpleName(), "Not using an equipped teleport cape during this run...");
             }
         }
 
@@ -113,14 +156,27 @@ public class dkTravel extends Task {
             task = "Travel to zanaris fairy";
             script.log(getClass().getSimpleName(), "Walking to zanaris fairy ring area from bank area");
 
-            if (script.getWalker().walkTo(zanarisFairyRingArea.getRandomPosition())) {
+            WalkConfig cfg = new WalkConfig.Builder()
+                    .enableRun(true)
+                    .breakCondition(() -> {
+                        RSObject ring = getSpecificObjectAt("Fairy ring", 2412, 4434, 0);
+                        return ring != null && ring.isInteractableOnScreen();
+                    })
+                    .build();
+
+            if (script.getWalker().walkTo(zanarisFairyRingArea.getRandomPosition(), cfg)) {
                 doneBanking = false;
             }
+
             return false;
         }
 
         // Handle if we're at the zanaris fairy ring area
-        if (zanarisFairyRingArea.contains(currentPos) && !inventorySnapshot.isFull()) {
+        RSObject zanarisRing = getSpecificObjectAt("Fairy ring", 2412, 4434, 0);
+        if (!inventorySnapshot.isFull()
+                && (zanarisFairyRingArea.contains(currentPos)
+                || (zanarisRing != null && zanarisRing.isInteractableOnScreen()))) {
+
             task = "Fairy to fishing area";
             script.log(getClass().getSimpleName(), "Traveling to Fishing area from Zanaris Fairy Ring");
             return handleOtherFairyRing();
@@ -131,40 +187,75 @@ public class dkTravel extends Task {
             if (inventorySnapshot.isFull()) {
                 task = "Travel to bank";
                 script.log(getClass().getSimpleName(), "Walking to zanaris bank area");
-                return script.getWalker().walkTo(zanarisBankArea.getRandomPosition());
+
+                WalkConfig cfg = new WalkConfig.Builder()
+                        .enableRun(true)
+                        .breakCondition(() -> {
+                            RSObject bank = getClosestBank();
+                            return bank != null && bank.isInteractableOnScreen();
+                        })
+                        .build();
+
+                return script.getWalker().walkTo(zanarisBankArea.getRandomPosition(), cfg);
             } else {
                 task = "Travel to fairy ring";
                 script.log(getClass().getSimpleName(), "Walking to zanaris fairy ring area");
-                return script.getWalker().walkTo(zanarisFairyRingArea.getRandomPosition());
+
+                WalkConfig cfg = new WalkConfig.Builder()
+                        .enableRun(true)
+                        .breakCondition(() -> {
+                            RSObject ring = getSpecificObjectAt("Fairy ring", 2412, 4434, 0);
+                            return ring != null && ring.isInteractableOnScreen();
+                        })
+                        .build();
+
+                return script.getWalker().walkTo(zanarisFairyRingArea.getRandomPosition(), cfg);
             }
         }
 
-        // Handle if we're at the Legends guild fairy ring area
-        if (legendsFairyArea.contains(currentPos)) {
+        // Legends Guild fairy ring (base tile 2740, 3351, 0)
+        RSObject legendsRing = getSpecificObjectAt("Fairy ring", 2740, 3351, 0);
+
+        // Handle if we're at the Legends guild fairy ring area OR if the ring is interactable on screen
+        if (legendsFairyArea.contains(currentPos)
+                || (legendsRing != null && legendsRing.isInteractableOnScreen())) {
             task = "Travel to fishing area";
             script.log(getClass().getSimpleName(), "Traveling to Fishing area from Legends Fairy Ring");
             return handleOtherFairyRing();
         }
 
-        // Handle if we're at the Legends guild area
+        // Handle if we're at the Legends guild area (walk until the ring is on screen)
         if (legendsArea.contains(currentPos)) {
             task = "Travel to fairy ring";
             script.log(getClass().getSimpleName(), "Traveling to Legends Fairy Ring");
-            return script.getWalker().walkTo(legendsFairyArea.getRandomPosition());
+            WalkConfig cfg = new WalkConfig.Builder()
+                    .breakCondition(() -> legendsRing != null && legendsRing.isInteractableOnScreen())
+                    .enableRun(true)
+                    .build();
+            return script.getWalker().walkTo(legendsFairyArea.getRandomPosition(), cfg);
         }
 
-        // Handle if we're at the monastery fairy ring area
-        if (monasteryFairyArea.contains(currentPos)) {
+
+        // Monastery/Ardougne fairy ring (base tile 2658, 3230, 0)
+        RSObject monasteryRing = getSpecificObjectAt("Fairy ring", 2658, 3230, 0);
+
+        // Handle if we're at the Monastery fairy ring area OR if the ring is interactable on screen
+        if (monasteryFairyArea.contains(currentPos)
+                || (monasteryRing != null && monasteryRing.isInteractableOnScreen())) {
             task = "Travel to fishing area";
             script.log(getClass().getSimpleName(), "Traveling to Fishing area from Monastery Fairy Ring");
             return handleOtherFairyRing();
         }
 
-        // Handle if we're at the monastery area
+        // Handle if we're at the Monastery area (walk until the ring is on screen)
         if (monasteryArea.contains(currentPos)) {
             task = "Travel to fairy ring";
             script.log(getClass().getSimpleName(), "Traveling to Monastery Fairy Ring");
-            return script.getWalker().walkTo(monasteryFairyArea.getRandomPosition());
+            WalkConfig cfg = new WalkConfig.Builder()
+                    .breakCondition(() -> monasteryRing != null && monasteryRing.isInteractableOnScreen())
+                    .enableRun(true)
+                    .build();
+            return script.getWalker().walkTo(monasteryFairyArea.getRandomPosition(), cfg);
         }
 
         // Fail safe if we're south of the fishing area
@@ -311,15 +402,24 @@ public class dkTravel extends Task {
         // Get our position
         currentPos = script.getWorldPosition();
 
-        // Check Zanaris bank
+        // Check Zanaris bank area
         if (zanarisBankArea.contains(currentPos)) {
             return true;
         }
 
-        // Check Crafting Guild bank
-        return craftingGuildBankArea.contains(currentPos);
+        // Check Crafting Guild bank area
+        if (craftingGuildBankArea.contains(currentPos)) {
+            return true;
+        }
 
-        // If no matches, return false as we are not within a bank area
+        // Full inventory + bank object on screen
+        if (inventorySnapshot.isFull()) {
+            RSObject bankObj = getClosestBank();
+            return (bankObj != null && bankObj.isInteractableOnScreen());
+        }
+
+        // Not in any known bank area
+        return false;
     }
 
     private boolean withinFishArea() {
@@ -327,5 +427,26 @@ public class dkTravel extends Task {
         currentPos = script.getWorldPosition();
 
         return fishingArea.contains(currentPos);
+    }
+
+    private RSObject getClosestBank() {
+        List<RSObject> objs = script.getObjectManager().getObjects(obj ->
+                obj != null &&
+                        obj.getName() != null &&
+                        (obj.getName().equalsIgnoreCase("Bank chest"))
+                        && obj.canReach());
+        if (objs == null || objs.isEmpty()) return null;
+        return (RSObject) script.getUtils().getClosest(objs);
+    }
+
+    private RSObject getSpecificObjectAt(String name, int worldX, int worldY, int plane) {
+        return script.getObjectManager().getRSObject(obj ->
+                obj != null
+                        && obj.getName() != null
+                        && name.equalsIgnoreCase(obj.getName())
+                        && obj.getWorldX() == worldX
+                        && obj.getWorldY() == worldY
+                        && obj.getPlane() == plane
+        );
     }
 }

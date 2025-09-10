@@ -184,18 +184,6 @@ public class Cook extends Task {
             ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(itemIdsToWatch);
             if (inventorySnapshot == null) return false;
 
-            if (!readyToReadCookingXP) {
-                ItemGroupResult postCookInv = script.getWidgetManager().getInventory().search(Set.of(cookedId));
-                if (postCookInv != null && postCookInv.getAmount(cookedId) > 0) {
-                    script.log(getClass(), "Cooked at least one " + cookedId + ", enabling cooking XP tracking.");
-                    readyToReadCookingXP = true;
-                }
-            }
-
-            if (readyToReadCookingXP) {
-                readCookingXp();
-            }
-
             return itemIdsToWatch.stream().noneMatch(inventorySnapshot::contains);
         };
 
@@ -227,68 +215,10 @@ public class Cook extends Task {
             ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.of(itemIdToWatch));
             if (inventorySnapshot == null) return false;
 
-            int fishLeft = inventorySnapshot.getAmount(itemIdToWatch);
-
-            if (!readyToReadCookingXP) {
-                ItemGroupResult postCookInv = script.getWidgetManager().getInventory().search(Set.of(itemIdToWatch));
-                if (postCookInv != null && postCookInv.getAmount(itemIdToWatch) < fishLeft) {
-                    script.log(getClass(), "Processed at least one " + script.getItemManager().getItemName(itemIdToWatch) + ", enabling cooking XP tracking.");
-                    readyToReadCookingXP = true;
-                }
-            }
-
-            if (readyToReadCookingXP) {
-                readCookingXp();
-            }
-
             return !inventorySnapshot.contains(itemIdToWatch);
         };
 
         script.log(getClass(), "Using human task to wait until cooking finishes.");
         script.submitHumanTask(condition, script.random(66000, 70000));
     }
-
-    private void readCookingXp() {
-        XPDropsComponent xpComponent = (XPDropsComponent) script.getWidgetManager().getComponent(XPDropsComponent.class);
-
-        if (xpComponent == null) {
-            script.log(getClass(), "XP button component not found.");
-            return;
-        }
-
-        ComponentSearchResult<Integer> result = xpComponent.getResult();
-        if (result == null || result.getComponentImage().getGameFrameStatusType() != 1) return;
-
-        Rectangle componentBounds = result.getBounds();
-        Rectangle xpTextRect = new Rectangle(componentBounds.x - 140, componentBounds.y - 1, 119, 38);
-
-        script.submitTask(() -> false, script.random(200, 400));
-        String xpText = script.getOCR().getText(Font.SMALL_FONT, xpTextRect, Color.WHITE.getRGB());
-
-        if (xpText == null || xpText.isBlank()) return;
-        xpText = xpText.replaceAll("[^\\d]", "");
-        if (xpText.isEmpty()) return;
-
-        try {
-            double currentXp = Double.parseDouble(xpText);
-            if (currentXp <= 0) return;
-
-            if (previousCookingXpRead < 0) {
-                previousCookingXpRead = currentXp;
-                return;
-            }
-
-            double xpGained = currentXp - previousCookingXpRead;
-            if (xpGained > 0 && xpGained <= 15000) {
-                cookingXp += xpGained;
-                script.log(getClass(), "Cooking XP gained: " + xpGained + " (" + cookingXp + ")");
-                previousCookingXpRead = currentXp;
-                lastXpGained = System.currentTimeMillis();
-            }
-
-        } catch (NumberFormatException e) {
-            script.log(getClass(), "Failed to parse Cooking XP text: " + xpText);
-        }
-    }
-
 }

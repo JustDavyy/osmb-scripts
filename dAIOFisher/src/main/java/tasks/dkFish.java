@@ -92,8 +92,8 @@ public class dkFish extends Task {
         boolean isAnimating = pixelAnalyzer.isPlayerAnimating(0.4);
 
         if (isAnimating) {
-            lastAnimationDetected = System.currentTimeMillis(); // reset animation timer
-            script.submitHumanTask(this::earlyExitCheck, script.random(10000, 15000));
+            lastAnimationDetected = System.currentTimeMillis();
+            script.submitHumanTask(this::earlyExitCheck, script.random(30000, 55000));
             return false;
         }
 
@@ -117,24 +117,6 @@ public class dkFish extends Task {
         if (script.getWidgetManager().getDialogue().getDialogueType() == DialogueType.TAP_HERE_TO_CONTINUE) {
             script.log(getClass().getSimpleName(), "Early exit, TAP_HERE_TO_CONTINUE dialogue detected (inventory full or leveled up)");
             return true;
-        }
-
-        if (!readyToReadFishingXP) {
-            List<Integer> fishIds = fishingMethod.getCatchableFish();
-            ItemGroupResult inv = script.getWidgetManager().getInventory().search(Set.copyOf(fishingMethod.getCatchableFish()));
-            if (inv != null) {
-                for (int id : fishIds) {
-                    if (inv.getAmount(id) > 0) {
-                        script.log(getClass(), "Initial fish catch detected in inventory, setting readyToReadFishingXP = true");
-                        readyToReadFishingXP = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (readyToReadFishingXP) {
-            readFishingXp();
         }
 
         ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Collections.emptySet());
@@ -368,50 +350,6 @@ public class dkFish extends Task {
 
         Area chosen = candidates.get(script.random(candidates.size()));
         return chosen.getRandomPosition();
-    }
-
-    private void readFishingXp() {
-        task = "Read Fishing XP";
-        XPDropsComponent xpComponent = (XPDropsComponent) script.getWidgetManager().getComponent(XPDropsComponent.class);
-
-        if (xpComponent == null) {
-            script.log(getClass(), "XP button component not found.");
-            return;
-        }
-
-        ComponentSearchResult<Integer> result = xpComponent.getResult();
-        if (result == null || result.getComponentImage().getGameFrameStatusType() != 1) return;
-
-        com.osmb.api.shape.Rectangle componentBounds = result.getBounds();
-        com.osmb.api.shape.Rectangle xpTextRect = new Rectangle(componentBounds.x - 140, componentBounds.y - 1, 119, 38);
-
-        script.submitTask(() -> false, script.random(200, 400));
-        String xpText = script.getOCR().getText(Font.SMALL_FONT, xpTextRect, Color.WHITE.getRGB());
-
-        if (xpText == null || xpText.isBlank()) return;
-        xpText = xpText.replaceAll("[^\\d]", "");
-        if (xpText.isEmpty()) return;
-
-        try {
-            double currentXp = Double.parseDouble(xpText);
-            if (currentXp <= 0) return;
-
-            if (previousFishingXpRead < 0) {
-                previousFishingXpRead = currentXp;
-                return;
-            }
-
-            double xpGained = currentXp - previousFishingXpRead;
-            if (xpGained > 0 && xpGained <= 15000) {
-                fishingXp += xpGained;
-                script.log(getClass(), "Fishing XP gained: " + xpGained + " (" + fishingXp + ")");
-                previousFishingXpRead = currentXp;
-                lastXpGained = System.currentTimeMillis();
-            }
-
-        } catch (NumberFormatException e) {
-            script.log(getClass(), "Failed to parse Fishing XP text: " + xpText);
-        }
     }
 
     private long getRandomIdleThreshold() {

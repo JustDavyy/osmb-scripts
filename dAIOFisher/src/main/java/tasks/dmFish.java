@@ -126,20 +126,6 @@ public class dmFish extends Task {
         task = "Wait until finished fishing";
         script.log(getClass(), "Waiting until finished fishing...");
 
-        if (!readyToReadFishingXP) {
-            List<Integer> fishIds = fishingMethod.getCatchableFish();
-            ItemGroupResult inv = script.getWidgetManager().getInventory().search(Set.copyOf(fishingMethod.getCatchableFish()));
-            if (inv != null) {
-                for (int id : fishIds) {
-                    if (inv.getAmount(id) > 0) {
-                        script.log(getClass(), "Initial fish catch detected in inventory, setting readyToReadFishingXP = true");
-                        readyToReadFishingXP = true;
-                        break;
-                    }
-                }
-            }
-        }
-
         script.submitHumanTask(() -> {
 
             if (isFlyingFish()) {
@@ -174,10 +160,6 @@ public class dmFish extends Task {
                         break;
                     }
                 }
-            }
-
-            if (readyToReadFishingXP) {
-                readFishingXp();
             }
 
             return false;
@@ -261,50 +243,6 @@ public class dmFish extends Task {
             }
         }
         return false;
-    }
-
-    private void readFishingXp() {
-        task = "Read Fishing XP";
-        XPDropsComponent xpComponent = (XPDropsComponent) script.getWidgetManager().getComponent(XPDropsComponent.class);
-
-        if (xpComponent == null) {
-            script.log(getClass(), "XP button component not found.");
-            return;
-        }
-
-        ComponentSearchResult<Integer> result = xpComponent.getResult();
-        if (result == null || result.getComponentImage().getGameFrameStatusType() != 1) return;
-
-        Rectangle componentBounds = result.getBounds();
-        Rectangle xpTextRect = new Rectangle(componentBounds.x - 140, componentBounds.y - 1, 119, 38);
-
-        script.submitTask(() -> false, script.random(200, 400));
-        String xpText = script.getOCR().getText(Font.SMALL_FONT, xpTextRect, Color.WHITE.getRGB());
-
-        if (xpText == null || xpText.isBlank()) return;
-        xpText = xpText.replaceAll("[^\\d]", "");
-        if (xpText.isEmpty()) return;
-
-        try {
-            double currentXp = Double.parseDouble(xpText);
-            if (currentXp <= 0) return;
-
-            if (previousFishingXpRead < 0) {
-                previousFishingXpRead = currentXp;
-                return;
-            }
-
-            double xpGained = currentXp - previousFishingXpRead;
-            if (xpGained > 0 && xpGained <= 15000) {
-                fishingXp += xpGained;
-                script.log(getClass(), "Fishing XP gained: " + xpGained + " (" + fishingXp + ")");
-                previousFishingXpRead = currentXp;
-                lastXpGained = System.currentTimeMillis();
-            }
-
-        } catch (NumberFormatException e) {
-            script.log(getClass(), "Failed to parse Fishing XP text: " + xpText);
-        }
     }
 
     private boolean isFlyingFish() {

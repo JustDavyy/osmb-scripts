@@ -28,7 +28,6 @@ public class ScriptUI {
     private static final String PREF_WEBHOOK_URL = "daiofisher_webhook_url";
     private static final String PREF_WEBHOOK_INTERVAL = "daiofisher_webhook_interval";
     private static final String PREF_WEBHOOK_INCLUDE_USER = "daiofisher_webhook_include_user";
-    private static final String PREF_WEBHOOK_INCLUDE_STATS = "daiofisher_webhook_include_stats";
     private static final String PREF_SELECTED_LOCATION = "daiofisher_selected_location";
     private static final String PREF_SELECTED_METHOD = "daiofisher_selected_method";
     private static final String PREF_SELECTED_HANDLING = "daiofisher_selected_handling";
@@ -48,7 +47,6 @@ public class ScriptUI {
     private TextField webhookUrlField;
     private ComboBox<Integer> webhookIntervalComboBox;
     private CheckBox includeUsernameCheckBox;
-    private CheckBox includeStatsCheckBox;
 
     public ScriptUI(Script script) {
         this.script = script;
@@ -173,16 +171,11 @@ public class ScriptUI {
         includeUsernameCheckBox.setSelected(prefs.getBoolean(PREF_WEBHOOK_INCLUDE_USER, true));
         includeUsernameCheckBox.setDisable(!webhookEnabledCheckBox.isSelected());
 
-        includeStatsCheckBox = new CheckBox("Include Script Stats in Webhook");
-        includeStatsCheckBox.setSelected(prefs.getBoolean(PREF_WEBHOOK_INCLUDE_STATS, true));
-        includeStatsCheckBox.setDisable(!webhookEnabledCheckBox.isSelected());
-
         webhookEnabledCheckBox.setOnAction(e -> {
             boolean enabled = webhookEnabledCheckBox.isSelected();
             webhookUrlField.setDisable(!enabled);
             webhookIntervalComboBox.setDisable(!enabled);
             includeUsernameCheckBox.setDisable(!enabled);
-            includeStatsCheckBox.setDisable(!enabled);
         });
 
         webhookBox.getChildren().addAll(
@@ -190,8 +183,7 @@ public class ScriptUI {
                 webhookUrlField,
                 new Label("Send interval (minutes)"),
                 webhookIntervalComboBox,
-                includeUsernameCheckBox,
-                includeStatsCheckBox
+                includeUsernameCheckBox
         );
         Tab webhookTab = new Tab("Webhooks", webhookBox);
         webhookTab.setClosable(false);
@@ -264,7 +256,6 @@ public class ScriptUI {
         prefs.put(PREF_WEBHOOK_URL, getWebhookUrl());
         prefs.putInt(PREF_WEBHOOK_INTERVAL, getWebhookInterval());
         prefs.putBoolean(PREF_WEBHOOK_INCLUDE_USER, isUsernameIncluded());
-        prefs.putBoolean(PREF_WEBHOOK_INCLUDE_STATS, isStatsIncluded());
         prefs.putBoolean("daiofisher_minnow_skip_delay", skipMinnowDelayCheckBox.isSelected());
 
         if (fishCycleTimeline != null) {
@@ -306,9 +297,5 @@ public class ScriptUI {
 
     public boolean isUsernameIncluded() {
         return includeUsernameCheckBox != null && includeUsernameCheckBox.isSelected();
-    }
-
-    public boolean isStatsIncluded() {
-        return includeStatsCheckBox != null && includeStatsCheckBox.isSelected();
     }
 }

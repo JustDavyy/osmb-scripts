@@ -3,7 +3,10 @@ package tasks;
 import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.item.ItemID;
 import com.osmb.api.script.Script;
+import com.osmb.api.ui.component.tabs.skill.SkillType;
+import com.osmb.api.ui.component.tabs.skill.SkillsTabComponent;
 import com.osmb.api.ui.tabs.Equipment;
+import com.osmb.api.ui.tabs.Tab;
 import com.osmb.api.utils.UIResult;
 import data.FishingLocation;
 import utils.Task;
@@ -16,16 +19,17 @@ import static main.dAIOFisher.*;
 public class Setup extends Task {
     // Ardougne cloak item IDs
     private final int[] cloakIds = {
-            ItemID.ARDOUGNE_CLOAK_1,
-            ItemID.ARDOUGNE_CLOAK_2,
+            ItemID.ARDOUGNE_CLOAK_4,
             ItemID.ARDOUGNE_CLOAK_3,
-            ItemID.ARDOUGNE_CLOAK_4
+            ItemID.ARDOUGNE_CLOAK_2,
+            ItemID.ARDOUGNE_CLOAK_1
     };
 
     // Quest cape item IDs
     private final int[] qcapeIds = {
-            ItemID.QUEST_POINT_CAPE,
-            ItemID.QUEST_POINT_CAPE_T
+            ItemID.QUEST_POINT_CAPE_T,
+            ItemID.QUEST_POINT_CAPE
+
     };
 
     // Harpoon with spec item IDs
@@ -205,6 +209,30 @@ public class Setup extends Task {
                 }
             }
         }
+
+        // Check fishing level
+        task = "Get fishing level";
+        SkillsTabComponent.SkillLevel fishingSkillLevel = script.getWidgetManager().getSkillTab().getSkillLevel(SkillType.FISHING);
+        if (fishingSkillLevel == null) {
+            script.log(getClass(), "Failed to get skill levels.");
+            return false;
+        }
+        startFishingLevel = fishingSkillLevel.getLevel();
+        currentFishingLevel = fishingSkillLevel.getLevel();
+
+        // Check cooking level
+        task = "Get cooking level";
+        SkillsTabComponent.SkillLevel cookingSkillLevel = script.getWidgetManager().getSkillTab().getSkillLevel(SkillType.COOKING);
+        if (cookingSkillLevel == null) {
+            script.log(getClass(), "Failed to get skill levels.");
+            return false;
+        }
+        startCookingLevel = cookingSkillLevel.getLevel();
+        currentCookingLevel = cookingSkillLevel.getLevel();
+
+        task = "Open inventory";
+        script.log(getClass().getSimpleName(), "Opening inventory tab");
+        script.getWidgetManager().getTabManager().openTab(Tab.Type.INVENTORY);
 
         task = "Finish set up";
         currentPos = script.getWorldPosition();
