@@ -25,7 +25,6 @@ public class ScriptUI {
     private static final String PREF_WEBHOOK_URL            = "dgemstonecrabber_webhook_url";
     private static final String PREF_WEBHOOK_INTERVAL       = "dgemstonecrabber_webhook_interval";
     private static final String PREF_WEBHOOK_INCLUDE_USER   = "dgemstonecrabber_webhook_include_user";
-    private static final String PREF_WEBHOOK_INCLUDE_STATS  = "dgemstonecrabber_webhook_include_stats";
 
     // === Pref keys (main tab) ===
     private static final String PREF_USE_FOOD               = "dgemstonecrabber_use_food";
@@ -48,7 +47,6 @@ public class ScriptUI {
     private TextField webhookUrlField;
     private ComboBox<Integer> webhookIntervalComboBox;
     private CheckBox includeUsernameCheckBox;
-    private CheckBox includeStatsCheckBox;
 
     // === Main tab controls ===
     private CheckBox useFoodCheck;
@@ -222,16 +220,11 @@ public class ScriptUI {
         includeUsernameCheckBox.setSelected(prefs.getBoolean(PREF_WEBHOOK_INCLUDE_USER, true));
         includeUsernameCheckBox.setDisable(!webhookEnabledCheckBox.isSelected());
 
-        includeStatsCheckBox = new CheckBox("Include Stats");
-        includeStatsCheckBox.setSelected(prefs.getBoolean(PREF_WEBHOOK_INCLUDE_STATS, true));
-        includeStatsCheckBox.setDisable(!webhookEnabledCheckBox.isSelected());
-
         webhookEnabledCheckBox.setOnAction(e -> {
             boolean enabled = webhookEnabledCheckBox.isSelected();
             webhookUrlField.setDisable(!enabled);
             webhookIntervalComboBox.setDisable(!enabled);
             includeUsernameCheckBox.setDisable(!enabled);
-            includeStatsCheckBox.setDisable(!enabled);
         });
 
         webhookBox.getChildren().addAll(
@@ -239,8 +232,7 @@ public class ScriptUI {
                 webhookUrlField,
                 new Label("Send interval (minutes)"),
                 webhookIntervalComboBox,
-                includeUsernameCheckBox,
-                includeStatsCheckBox
+                includeUsernameCheckBox
         );
         Tab webhookTab = new Tab("Webhooks", webhookBox);
         webhookTab.setClosable(false);
@@ -371,7 +363,6 @@ public class ScriptUI {
         prefs.put(PREF_WEBHOOK_URL, getWebhookUrl());
         prefs.putInt(PREF_WEBHOOK_INTERVAL, getWebhookInterval());
         prefs.putBoolean(PREF_WEBHOOK_INCLUDE_USER, isUsernameIncluded());
-        prefs.putBoolean(PREF_WEBHOOK_INCLUDE_STATS, isStatsIncluded());
 
         // Main tab
         prefs.putBoolean(PREF_USE_FOOD, isUseFood());
@@ -397,7 +388,6 @@ public class ScriptUI {
     public String  getWebhookUrl()                  { return webhookUrlField != null ? webhookUrlField.getText().trim() : ""; }
     public int     getWebhookInterval()             { return (webhookIntervalComboBox != null && webhookIntervalComboBox.getValue()!=null) ? webhookIntervalComboBox.getValue() : 5; }
     public boolean isUsernameIncluded()             { return includeUsernameCheckBox != null && includeUsernameCheckBox.isSelected(); }
-    public boolean isStatsIncluded()                { return includeStatsCheckBox != null && includeStatsCheckBox.isSelected(); }
 
     // === Getters (main) ===
     public boolean isUseFood()                      { return useFoodCheck != null && useFoodCheck.isSelected(); }
