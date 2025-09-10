@@ -8,6 +8,7 @@ import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
 import com.osmb.api.utils.timing.Timer;
+import com.osmb.api.walker.WalkConfig;
 import utils.Task;
 
 import java.util.Collections;
@@ -52,9 +53,17 @@ public class BankTask extends Task {
         if (inv == null) return false;
 
         WorldPosition myPos = script.getWorldPosition();
-        if (myPos != null && !bankArea.contains(myPos)) {
+
+        if (myPos != null && !bankArea.contains(myPos) && !isDepositBoxOnScreen()) {
             task = "Walk to bank area";
-            return script.getWalker().walkTo(bankWalkArea.getRandomPosition());
+            script.log(getClass(), "Walking towards bank until deposit box is on screen...");
+
+            WalkConfig cfg = new WalkConfig.Builder()
+                    .enableRun(true)
+                    .breakCondition(this::isDepositBoxOnScreen)
+                    .build();
+
+            return script.getWalker().walkTo(bankWalkArea.getRandomPosition(), cfg);
         }
 
         // Handle banking
@@ -66,18 +75,20 @@ public class BankTask extends Task {
             task = "Bank at deposit box";
             script.log(getClass(), "Searching for deposit box...");
 
-            Predicate<RSObject> bankQuery = obj ->
-                    obj.getName() != null &&
-                            obj.getName().equalsIgnoreCase("Bank Deposit Box") &&
-                            obj.canReach();
+            if (!isDepositBoxOnScreen()) {
+                WalkConfig cfg = new WalkConfig.Builder()
+                        .enableRun(true)
+                        .breakCondition(this::isDepositBoxOnScreen)
+                        .build();
+                script.getWalker().walkTo(bankWalkArea.getRandomPosition(), cfg);
+            }
 
-            List<RSObject> banksFound = script.getObjectManager().getObjects(bankQuery);
-            if (banksFound.isEmpty()) {
-                script.log(getClass(), "Can't find any banks matching criteria...");
+            RSObject depositBox = getClosestDepositBox();
+            if (depositBox == null) {
+                script.log(getClass(), "Can't find any 'Bank Deposit Box' nearby...");
                 return false;
             }
 
-            RSObject depositBox = (RSObject) script.getUtils().getClosest(banksFound);
             if (!depositBox.interact("Deposit")) {
                 script.log(getClass(), "Failed to interact with deposit box.");
                 return false;
@@ -110,6 +121,21 @@ public class BankTask extends Task {
         script.getWidgetManager().getDepositBox().close();
         script.log(getClass(), "Banked items and closed deposit box.");
         return true;
+    }
+
+    private RSObject getClosestDepositBox() {
+        Predicate<RSObject> bankQuery = obj ->
+                obj.getName() != null
+                        && obj.getName().equalsIgnoreCase("Bank Deposit Box")
+                        && obj.isInteractable();
+        List<RSObject> found = script.getObjectManager().getObjects(bankQuery);
+        if (found == null || found.isEmpty()) return null;
+        return (RSObject) script.getUtils().getClosest(found);
+    }
+
+    private boolean isDepositBoxOnScreen() {
+        RSObject db = getClosestDepositBox();
+        return db != null && db.isInteractableOnScreen();
     }
 
     private Set<Integer> getTrackedItemIDs() {

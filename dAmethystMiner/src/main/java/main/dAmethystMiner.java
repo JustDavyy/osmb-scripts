@@ -6,13 +6,17 @@ import com.osmb.api.location.area.impl.RectangleArea;
 import com.osmb.api.script.Script;
 import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
+import com.osmb.api.ui.component.tabs.skill.SkillType;
 import com.osmb.api.visual.drawing.Canvas;
+import com.osmb.api.visual.image.Image;
+import com.osmb.api.trackers.experience.XPTracker;
 import javafx.scene.Scene;
 import tasks.BankTask;
 import tasks.MineTask;
 import tasks.Setup;
 import tasks.CraftTask;
 import utils.Task;
+import utils.XPTracking;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -23,19 +27,26 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 @ScriptDefinition(
         name = "dAmethystMiner",
         description = "Mines and crafts/banks amethyst in the mining guild",
         skillCategory = SkillCategory.MINING,
-        version = 1.9,
+        version = 2.0,
         author = "JustDavyy"
 )
 public class dAmethystMiner extends Script {
-    public static final String scriptVersion = "1.9";
+    public static final String scriptVersion = "2.0";
+    private final String scriptName = "AmethystMiner";
 
     public static boolean bankMode = false;
     public static boolean craftMode = false;
@@ -61,22 +72,36 @@ public class dAmethystMiner extends Script {
 
     private List<Task> tasks;
 
-    // Fixed-size, shared fonts (prevents layout jitter)
-    private static final Font ARIAL        = new Font("Arial", Font.PLAIN, 14);
-    private static final Font ARIAL_BOLD   = new Font("Arial", Font.BOLD, 14);
-    private static final Font ARIAL_ITALIC = new Font("Arial", Font.ITALIC, 14);
+    private static final Font FONT_LABEL       = new Font("Arial", Font.PLAIN, 12);
+    private static final Font FONT_VALUE_BOLD  = new Font("Arial", Font.BOLD, 12);
+    private static final Font FONT_VALUE_ITALIC= new Font("Arial", Font.ITALIC, 12);
+
+    public static double levelProgressFraction = 0.0;
+    public static int currentMiningLevel = 1;
+    public static int startMiningLevel = 1;
+    public static int currentCraftingLevel = 1;
+    public static int startCraftingLevel = 1;
 
     // Webhook
     private static boolean webhookEnabled = false;
     private static boolean webhookShowUser = false;
-    private static boolean webhookShowStats = false;
     private static String webhookUrl = "";
     private static int webhookIntervalMinutes = 5;
-    private static long lastWebhookSent = 0;
     private static String user = "";
+    private final AtomicBoolean webhookInFlight = new AtomicBoolean(false);
+    final String authorIconUrl = "https://www.osmb.co.uk/lovable-uploads/ad86059b-ce19-4540-8e53-9fd01c61c98b.png";
+    private volatile long nextWebhookEarliestMs = 0L;
+    private static long lastWebhookSent = 0;
+    private final AtomicReference<Image> lastCanvasFrame = new AtomicReference<>();
+
+    private final XPTracking xpTracking;
+
+    // Logo image
+    private com.osmb.api.visual.image.Image logoImage = null;
 
     public dAmethystMiner(Object scriptCore) {
         super(scriptCore);
+        this.xpTracking = new XPTracking(this);
     }
 
     @Override
@@ -104,12 +129,10 @@ public class dAmethystMiner extends Script {
         webhookUrl = ui.getWebhookUrl();
         webhookIntervalMinutes = ui.getWebhookInterval();
         webhookShowUser = ui.isUsernameIncluded();
-        webhookShowStats = ui.isStatsIncluded();
 
         if (webhookEnabled) {
             user = getWidgetManager().getChatbox().getUsername();
-            lastWebhookSent = System.currentTimeMillis();
-            sendWebhook();
+            queueSendWebhook();
         }
 
         checkForUpdates();
@@ -125,8 +148,7 @@ public class dAmethystMiner extends Script {
     @Override
     public int poll() {
         if (webhookEnabled && System.currentTimeMillis() - lastWebhookSent >= webhookIntervalMinutes * 60_000L) {
-            sendWebhook();
-            lastWebhookSent = System.currentTimeMillis();
+            queueSendWebhook();
         }
 
         for (Task task : tasks) {
@@ -141,254 +163,493 @@ public class dAmethystMiner extends Script {
     @Override
     public void onPaint(Canvas c) {
         long elapsed = System.currentTimeMillis() - startTime;
-        double hours = Math.max(1e-9, elapsed / 3_600_000.0); // avoid div-by-zero
+        double hours = Math.max(1e-9, elapsed / 3_600_000.0);
+        String runtime = formatRuntime(elapsed);
 
-        // ---- Totals & rates ----
+        // ======= LIVE XP (via trackers) & level sync =======
+        // Mining
+        String miningTTL = "-";
+        double miningETL = 0;
+        double miningXpLive = 0;   // gained since start (live)
+        double miningXpAbs  = 0;   // absolute current xp
+        double levelProgressFractionMining = 0.0;
+
+        XPTracker mTrack = (xpTracking != null) ? xpTracking.getXpTracker(XPTracking.SkillType.MINING) : null;
+        if (mTrack != null) {
+            miningXpLive = mTrack.getXpGained();
+            miningXpAbs  = mTrack.getXp();
+
+            final int MAX_LEVEL = 99;
+            int guard = 0;
+            while (currentMiningLevel < MAX_LEVEL
+                    && miningXpAbs >= mTrack.getExperienceForLevel(currentMiningLevel + 1)
+                    && guard++ < 10) {
+                currentMiningLevel++;
+            }
+
+            miningTTL = mTrack.timeToNextLevelString();
+
+            int curStart = mTrack.getExperienceForLevel(currentMiningLevel);
+            int nextReq  = mTrack.getExperienceForLevel(Math.min(MAX_LEVEL, currentMiningLevel + 1));
+            int span     = Math.max(1, nextReq - curStart);
+
+            miningETL = Math.max(0, nextReq - miningXpAbs);
+
+            levelProgressFractionMining = Math.max(0.0, Math.min(1.0,
+                    (miningXpAbs - curStart) / (double) span));
+        }
+
+        // Crafting (only shown if craftMode)
+        String craftingTTL = "-";
+        double craftingETL = 0;
+        double craftingXpLive = 0;
+        double craftingXpAbs  = 0;
+        double levelProgressFractionCrafting = 0.0;
+
+        XPTracker cTrack = (craftMode && xpTracking != null) ? xpTracking.getXpTracker(XPTracking.SkillType.CRAFTING) : null;
+        if (cTrack != null) {
+            craftingXpLive = cTrack.getXpGained();
+            craftingXpAbs  = cTrack.getXp();
+
+            final int MAX_LEVEL = 99;
+            int guard = 0;
+            while (currentCraftingLevel < MAX_LEVEL
+                    && craftingXpAbs >= cTrack.getExperienceForLevel(currentCraftingLevel + 1)
+                    && guard++ < 10) {
+                currentCraftingLevel++;
+            }
+
+            craftingTTL = cTrack.timeToNextLevelString();
+
+            int curStart = cTrack.getExperienceForLevel(currentCraftingLevel);
+            int nextReq  = cTrack.getExperienceForLevel(Math.min(MAX_LEVEL, currentCraftingLevel + 1));
+            int span     = Math.max(1, nextReq - curStart);
+
+            craftingETL = Math.max(0, nextReq - craftingXpAbs);
+
+            levelProgressFractionCrafting = Math.max(0.0, Math.min(1.0,
+                    (craftingXpAbs - curStart) / (double) span));
+        }
+
+        // ======= Totals & rates (keep your existing counters) =======
         int amethystHr     = (int) Math.round(amethystMined / hours);
-        int miningXpHr     = (int) Math.round(miningXpGained / hours);
+        int miningXpHr     = (int) Math.round((miningXpGained > 0 ? miningXpGained : miningXpLive) / hours);
 
         int itemsCrafted   = calculateCraftedItems(amethystCrafted);
         int itemsCraftedHr = (int) Math.round(itemsCrafted / hours);
-        int craftingXpHr   = (int) Math.round(craftingXpGained / hours);
+        int craftingXpHr   = (int) Math.round((craftingXpGained > 0 ? craftingXpGained : craftingXpLive) / hours);
 
-        // ---- Formatters ----
+        // ======= Formatters =======
         java.text.DecimalFormat fmt = new java.text.DecimalFormat("#,###");
         java.text.DecimalFormatSymbols sy = new java.text.DecimalFormatSymbols();
         sy.setGroupingSeparator('.');
         fmt.setDecimalFormatSymbols(sy);
 
-        // ---- Layout config (dynamic sizing via FontMetrics) ----
+        // Current level (+N) text
+        if (startMiningLevel <= 0) startMiningLevel = currentMiningLevel;
+        int miningLevelsGained = Math.max(0, currentMiningLevel - startMiningLevel);
+        String miningLevelText = (miningLevelsGained > 0)
+                ? (currentMiningLevel + " (+" + miningLevelsGained + ")")
+                : String.valueOf(currentMiningLevel);
+
+        if (startCraftingLevel <= 0) startCraftingLevel = currentCraftingLevel;
+        int craftingLevelsGained = Math.max(0, currentCraftingLevel - startCraftingLevel);
+        String craftingLevelText = (craftingLevelsGained > 0)
+                ? (currentCraftingLevel + " (+" + craftingLevelsGained + ")")
+                : String.valueOf(currentCraftingLevel);
+
+        // Percent text (dot decimal)
+        String miningProgressText = percentText(levelProgressFractionMining);
+        String craftingProgressText = percentText(levelProgressFractionCrafting);
+
+        // ======= Panel + layout (same style as your newer overlays) =======
         final int x = 5;
-        final int yTop = 40;
+        final int baseY = 40;
+        final int width = 225;
         final int borderThickness = 2;
-        final int headerHeight = 25;
-        final int paddingLeft = 10, paddingRight = 10;
-        final int contentTopPad = 5, contentBottomPad = 8;
-        final int groupGap = 10;
+        final int paddingX = 10;
+        final int topGap = 6;
+        final int lineGap = 16;
+        final int smallGap = 6;
+        final int logoBottomGap = 8;
 
-        FontMetrics fm       = c.getFontMetrics(ARIAL);
-        FontMetrics fmBold   = c.getFontMetrics(ARIAL_BOLD);
-        FontMetrics fmItalic = c.getFontMetrics(ARIAL_ITALIC);
+        final int labelGray  = new Color(180,180,180).getRGB();
+        final int valueWhite = Color.WHITE.getRGB();
+        final int valueGreen = new Color(80, 220, 120).getRGB(); // level progress
+        final int valueBlue  = new Color(70, 130, 180).getRGB(); // highlights
 
-        // ---- Lines ----
-        String title         = "dAmethystMiner";
-        String lineMined     = "Amethyst mined: " + fmt.format(amethystMined);
-        String lineMinedHr   = "Amethyst/hr: " + fmt.format(amethystHr);
-        String lineMXPG      = "Mining XP gained: " + fmt.format(miningXpGained);
-        String lineMXPHr     = "Mining XP/hr: " + fmt.format(miningXpHr);
+        ensureLogoLoaded();
+        com.osmb.api.visual.image.Image scaledLogo = (logoImage != null) ? logoImage : null;
 
-        String lineCXPG      = craftMode ? ("Crafting XP gained: " + fmt.format(craftingXpGained)) : null;
-        String lineCXPHr     = craftMode ? ("Crafting XP/hr: " + fmt.format(craftingXpHr)) : null;
-        String lineCrafted   = craftMode ? ("Crafted items: " + fmt.format(itemsCrafted)) : null;
-        String lineCraftedHr = craftMode ? ("Items/hr: " + fmt.format(itemsCraftedHr)) : null;
-
-        String lineTask      = "Task: " + task;
-        String lineVersion   = "Version: " + scriptVersion;
-
-        // ---- Measure max width ----
-        AtomicInteger maxWidth = new AtomicInteger(fmBold.stringWidth(title));
-        java.util.function.Consumer<String> widen = s -> { if (s != null) maxWidth.set(Math.max(maxWidth.get(), fm.stringWidth(s))); };
-
-        widen.accept(lineMined);
-        widen.accept(lineMinedHr);
-        widen.accept(lineMXPG);
-        widen.accept(lineMXPHr);
-        if (craftMode) {
-            widen.accept(lineCXPG);
-            widen.accept(lineCXPHr);
-            widen.accept(lineCrafted);
-            widen.accept(lineCraftedHr);
-        }
-        maxWidth.set(Math.max(maxWidth.get(), fmBold.stringWidth(lineTask)));
-        maxWidth.set(Math.max(maxWidth.get(), fmItalic.stringWidth(lineVersion)));
-
-        // ---- Measure total height ----
-        int totalHeight = 0;
-        totalHeight += headerHeight + contentTopPad;
-
-        totalHeight += fm.getHeight(); // mined
-        totalHeight += fm.getHeight(); // mined/hr
-        totalHeight += groupGap;
-
-        totalHeight += fm.getHeight(); // mining xp gained
-        totalHeight += fm.getHeight(); // mining xp/hr
-
-        if (craftMode) {
-            totalHeight += groupGap;
-            totalHeight += fm.getHeight(); // crafting xp gained
-            totalHeight += fm.getHeight(); // crafting xp/hr
-            totalHeight += fm.getHeight(); // crafted
-            totalHeight += fm.getHeight(); // crafted/hr
-        }
-
-        totalHeight += groupGap;
-        totalHeight += fmBold.getHeight();   // task
-        totalHeight += fmItalic.getHeight(); // version
-        totalHeight += contentBottomPad;
-
-        int innerWidth  = maxWidth.get() + paddingLeft + paddingRight;
-        int innerHeight = totalHeight;
-
-        // ---- Outer white border highlight ----
-        c.fillRect(x - borderThickness, yTop - borderThickness,
-                innerWidth + (borderThickness * 2), innerHeight + (borderThickness * 2),
-                Color.WHITE.getRGB(), 1);
-
-        // ---- Black background box ----
         int innerX = x;
-        int innerY = yTop;
-        c.fillRect(innerX, innerY, innerWidth, innerHeight, Color.BLACK.getRGB(), 1);
+        int innerY = baseY;
+        int innerWidth = width;
 
-        // ---- White inner border ----
+        int totalLines = 9; // mining block default
+        if (craftMode) {
+            totalLines += 8; // crafting block + items lines
+        }
+        totalLines += 2; // Task + Version
+
+        int y = innerY + topGap;
+        if (scaledLogo != null) y += scaledLogo.height + logoBottomGap;
+        y += totalLines * lineGap;
+        y += smallGap;
+        y += 10;
+
+        int innerHeight = Math.max(240, y - innerY);
+
+        // Panel
+        c.fillRect(innerX - borderThickness, innerY - borderThickness,
+                innerWidth + (borderThickness * 2),
+                innerHeight + (borderThickness * 2),
+                Color.WHITE.getRGB(), 1);
+        c.fillRect(innerX, innerY, innerWidth, innerHeight, Color.decode("#01031C").getRGB(), 1);
         c.drawRect(innerX, innerY, innerWidth, innerHeight, Color.WHITE.getRGB());
 
-        // ---- Gradient header ----
-        for (int i = 0; i < headerHeight; i++) {
-            int gradientColor = new Color(80 + (i * 3), 150 + (i * 3), 255, 255).getRGB();
-            c.drawLine(innerX + 1, innerY + 1 + i, innerX + innerWidth - 2, innerY + 1 + i, gradientColor);
+        int curY = innerY + topGap;
+
+        // Logo
+        if (scaledLogo != null) {
+            int imgX = innerX + (innerWidth - scaledLogo.width) / 2;
+            c.drawAtOn(scaledLogo, imgX, curY);
+            curY += scaledLogo.height + logoBottomGap;
         }
-        // Header bottom border
-        for (int i = 0; i < borderThickness; i++) {
-            c.drawLine(innerX + 1, innerY + headerHeight + i + 1, innerX + innerWidth - 2, innerY + headerHeight + i + 1, Color.WHITE.getRGB());
-        }
 
-        // ---- Title ----
-        int titleWidth = fmBold.stringWidth(title);
-        int titleX = innerX + (innerWidth / 2) - (titleWidth / 2);
-        c.drawText(title, titleX, innerY + 18, Color.BLACK.getRGB(), ARIAL_BOLD);
+        // ==== Lines ====
+        // Runtime
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Runtime", runtime, labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
 
-        // ---- Content ----
-        int cx = innerX + paddingLeft;
-        int y  = innerY + headerHeight + contentTopPad;
+        // Amethyst stats
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Amethyst mined", fmt.format(amethystMined), labelGray, valueBlue,
+                FONT_VALUE_BOLD, FONT_LABEL);
 
-        // mined
-        y += fm.getHeight();
-        c.drawText(lineMined,   cx, y, Color.WHITE.getRGB(), ARIAL);
-        y += fm.getHeight();
-        c.drawText(lineMinedHr, cx, y, Color.WHITE.getRGB(), ARIAL);
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Amethyst/hr", fmt.format(amethystHr), labelGray, valueBlue,
+                FONT_VALUE_BOLD, FONT_LABEL);
 
-        y += groupGap;
+        // Mining XP block
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Mining XP gained", fmt.format((miningXpGained > 0) ? miningXpGained : Math.round(miningXpLive)),
+                labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // mining xp
-        y += fm.getHeight();
-        c.drawText(lineMXPG,  cx, y, new Color(144, 238, 144).getRGB(), ARIAL); // light green
-        y += fm.getHeight();
-        c.drawText(lineMXPHr, cx, y, new Color(255, 215, 0).getRGB(),   ARIAL); // gold
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Mining XP/hr", fmt.format(miningXpHr), labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
 
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "ETL (Mining)", fmt.format(Math.round(miningETL)), labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "TTL (Mining)", miningTTL, labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Level Progress (Mining)", miningProgressText, labelGray, valueGreen,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Current level (Mining)", miningLevelText, labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // Crafting block (optional)
         if (craftMode) {
-            y += groupGap;
-            y += fm.getHeight();
-            c.drawText(lineCXPG,      cx, y, new Color(255, 182, 193).getRGB(), ARIAL); // pink
-            y += fm.getHeight();
-            c.drawText(lineCXPHr,     cx, y, new Color(255, 182, 193).getRGB(), ARIAL);
-            y += fm.getHeight();
-            c.drawText(lineCrafted,   cx, y, Color.WHITE.getRGB(), ARIAL);
-            y += fm.getHeight();
-            c.drawText(lineCraftedHr, cx, y, Color.WHITE.getRGB(), ARIAL);
+            curY += lineGap;
+            drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                    "Crafting XP gained", fmt.format((craftingXpGained > 0) ? craftingXpGained : Math.round(craftingXpLive)),
+                    labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
+
+            curY += lineGap;
+            drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                    "Crafting XP/hr", fmt.format(craftingXpHr), labelGray, valueWhite,
+                    FONT_VALUE_BOLD, FONT_LABEL);
+
+            curY += lineGap;
+            drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                    "ETL (Crafting)", fmt.format(Math.round(craftingETL)), labelGray, valueWhite,
+                    FONT_VALUE_BOLD, FONT_LABEL);
+
+            curY += lineGap;
+            drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                    "TTL (Crafting)", craftingTTL, labelGray, valueWhite,
+                    FONT_VALUE_BOLD, FONT_LABEL);
+
+            curY += lineGap;
+            drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                    "Level Progress (Crafting)", craftingProgressText, labelGray, valueGreen,
+                    FONT_VALUE_BOLD, FONT_LABEL);
+
+            curY += lineGap;
+            drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                    "Current level (Crafting)", craftingLevelText, labelGray, valueWhite,
+                    FONT_VALUE_BOLD, FONT_LABEL);
+
+            // Items crafted
+            curY += lineGap;
+            drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                    "Items crafted", fmt.format(itemsCrafted), labelGray, valueBlue,
+                    FONT_VALUE_BOLD, FONT_LABEL);
+
+            curY += lineGap;
+            drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                    "Items/hr", fmt.format(itemsCraftedHr), labelGray, valueBlue,
+                    FONT_VALUE_BOLD, FONT_LABEL);
         }
 
-        y += groupGap;
+        // Footer: Task + Version
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Task", String.valueOf(task), labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
 
-        // footer
-        y += fmBold.getHeight();
-        c.drawText(lineTask,    cx, y, new Color(0, 255, 255).getRGB(), ARIAL_BOLD); // cyan
-        y += fmItalic.getHeight();
-        c.drawText(lineVersion, cx, y, new Color(180, 180, 180).getRGB(), ARIAL_ITALIC);
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Version", scriptVersion, labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // Store canvas for webhook usage
+        try {
+            lastCanvasFrame.set(c.toImageCopy());
+        } catch (Exception ignored) {}
     }
 
-    private void sendWebhook() {
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            BufferedImage image = getScreen().getImage().toBufferedImage();
-            ImageIO.write(image, "png", baos);
-            byte[] imageBytes = baos.toByteArray();
+    private static String percentText(double fraction) {
+        double pct = Math.max(0, Math.min(100, fraction * 100.0));
+        return (Math.abs(pct - Math.rint(pct)) < 1e-9)
+                ? String.format(java.util.Locale.US, "%.0f%%", pct)
+                : String.format(java.util.Locale.US, "%.1f%%", pct);
+    }
 
-            long elapsed = System.currentTimeMillis() - startTime;
-            double hours = elapsed / 3600000.0;
+    private void drawStatLine(Canvas c, int innerX, int innerWidth, int paddingX, int y,
+                              String label, String value, int labelColor, int valueColor,
+                              Font labelFont, Font valueFont) {
+        c.drawText(label, innerX + paddingX, y, labelColor, labelFont);
+        int valW = c.getFontMetrics(valueFont).stringWidth(value);
+        int valX = innerX + innerWidth - paddingX - valW;
+        c.drawText(value, valX, y, valueColor, valueFont);
+    }
 
-            int amethystHr = (int) (amethystMined / hours);
-            int miningXpHr = (int) (miningXpGained / hours);
+    private void ensureLogoLoaded() {
+        if (logoImage != null) return;
 
-            int itemsCrafted = calculateCraftedItems(amethystCrafted);
-            int craftingXpHr = (int) (craftingXpGained / hours);
-            int itemsCraftedHr = (int) (itemsCrafted / hours);
-
-            DecimalFormat f = new DecimalFormat("#,###");
-            DecimalFormatSymbols s = new DecimalFormatSymbols();
-            s.setGroupingSeparator('.');
-            f.setDecimalFormatSymbols(s);
-
-            String runtime = formatRuntime(elapsed);
-
-            StringBuilder json = new StringBuilder();
-            json.append("{\"embeds\":[{")
-                    .append("\"title\":\"📊 dAmethystMiner Stats - ").append(webhookShowUser && user != null ? escapeJson(user) : "anonymous").append("\",")
-                    .append("\"color\":15844367,");
-
-            if (webhookShowStats) {
-                json.append("\"fields\":[")
-                        .append("{\"name\":\"Amethyst Mined\",\"value\":\"").append(f.format(amethystMined)).append("\",\"inline\":true},")
-                        .append("{\"name\":\"Amethyst/hr\",\"value\":\"").append(f.format(amethystHr)).append("\",\"inline\":true},")
-                        .append("{\"name\":\"Mining XP\",\"value\":\"").append(f.format(miningXpGained)).append("\",\"inline\":true},")
-                        .append("{\"name\":\"Mining XP/hr\",\"value\":\"").append(f.format(miningXpHr)).append("\",\"inline\":true},");
-
-                if (craftMode) {
-                    json.append("{\"name\":\"Crafting XP\",\"value\":\"").append(f.format(craftingXpGained)).append("\",\"inline\":true},")
-                            .append("{\"name\":\"Crafting XP/hr\",\"value\":\"").append(f.format(craftingXpHr)).append("\",\"inline\":true},")
-                            .append("{\"name\":\"Crafted Items\",\"value\":\"").append(f.format(itemsCrafted)).append("\",\"inline\":true},")
-                            .append("{\"name\":\"Items/hr\",\"value\":\"").append(f.format(itemsCraftedHr)).append("\",\"inline\":true},");
-                }
-
-                json.append("{\"name\":\"Task\",\"value\":\"").append(escapeJson(task)).append("\",\"inline\":true},")
-                        .append("{\"name\":\"Runtime\",\"value\":\"").append(runtime).append("\",\"inline\":true},")
-                        .append("{\"name\":\"Version\",\"value\":\"").append(scriptVersion).append("\",\"inline\":true}")
-                        .append("],");
-            } else {
-                json.append("\"description\":\"Currently on task: ").append(escapeJson(task)).append("\",");
+        try (InputStream in = getClass().getResourceAsStream("/logo.png")) {
+            if (in == null) {
+                log(getClass(), "Logo '/logo.png' not found on classpath.");
+                return;
             }
 
-            json.append("\"image\":{\"url\":\"attachment://screen.png\"}}]}");
+            BufferedImage src = ImageIO.read(in);
+            if (src == null) {
+                log(getClass(), "Failed to decode logo.png");
+                return;
+            }
 
-            String boundary = "----Boundary" + System.currentTimeMillis();
+            BufferedImage argb = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g = argb.createGraphics();
+            g.setComposite(AlphaComposite.Src); // copy pixels as-is
+            g.drawImage(src, 0, 0, null);
+            g.dispose();
+
+            int w = argb.getWidth();
+            int h = argb.getHeight();
+            int[] px = new int[w * h];
+            argb.getRGB(0, 0, w, h, px, 0, w);
+
+            for (int i = 0; i < px.length; i++) {
+                int p = px[i];
+                int a = (p >>> 24) & 0xFF;
+                if (a == 0) {
+                    px[i] = 0x00000000; // fully transparent black
+                }
+            }
+
+            boolean PREMULTIPLY = true;
+            if (PREMULTIPLY) {
+                for (int i = 0; i < px.length; i++) {
+                    int p = px[i];
+                    int a = (p >>> 24) & 0xFF;
+                    if (a == 0) { px[i] = 0; continue; }
+                    int r = (p >>> 16) & 0xFF;
+                    int gch = (p >>> 8) & 0xFF;
+                    int b = p & 0xFF;
+                    // premultiply
+                    r = (r * a + 127) / 255;
+                    gch = (gch * a + 127) / 255;
+                    b = (b * a + 127) / 255;
+                    px[i] = (a << 24) | (r << 16) | (gch << 8) | b;
+                }
+            }
+
+            logoImage = new Image(px, w, h);
+            log(getClass(), "Logo loaded: " + w + "x" + h + " premultiplied=" + PREMULTIPLY);
+
+        } catch (Exception e) {
+            log(getClass(), "Error loading logo: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void onNewFrame() {
+        xpTracking.checkXP(XPTracking.SkillType.MINING);
+        if (craftMode) {
+            xpTracking.checkXP(XPTracking.SkillType.CRAFTING);
+        }
+    }
+
+    private void sendWebhookInternal() {
+        ByteArrayOutputStream baos = null;
+        try {
+            // Only proceed if we have a painted frame
+            Image source = lastCanvasFrame.get();
+            if (source == null) {
+                log("WEBHOOK", "ℹ No painted frame available; skipping webhook.");
+                return;
+            }
+
+            BufferedImage buffered = source.toBufferedImage();
+            baos = new ByteArrayOutputStream();
+            ImageIO.write(buffered, "png", baos);
+            byte[] imageBytes = baos.toByteArray();
+
+            // Runtime for description
+            long elapsed = System.currentTimeMillis() - startTime;
+            String runtime = formatRuntime(elapsed);
+
+            // Username (or anonymous)
+            String displayUser = (webhookShowUser && user != null) ? user : "anonymous";
+
+            // Next webhook local time (Europe/Amsterdam)
+            long nextMillis = System.currentTimeMillis() + (webhookIntervalMinutes * 60_000L);
+            ZonedDateTime nextLocal = ZonedDateTime.ofInstant(
+                    Instant.ofEpochMilli(nextMillis),
+                    ZoneId.systemDefault()
+            );
+            String nextLocalStr = nextLocal.format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+
+            String imageFilename = "canvas.png";
+            StringBuilder json = new StringBuilder();
+            json.append("{ \"embeds\": [ {")
+                    .append("\"title\": \"Script run summary - ").append(displayUser).append("\",")
+
+                    .append("\"color\": 5189303,")
+
+                    .append("\"author\": {")
+                    .append("\"name\": \"Davyy's ").append(scriptName).append("\",")
+                    .append("\"icon_url\": \"").append(authorIconUrl).append("\"")
+                    .append("},")
+
+                    .append("\"description\": ")
+                    .append("\"This is your progress report after running for **")
+                    .append(runtime)
+                    .append("**.\\n")
+                    .append("Make sure to share your proggies in the OSMB proggies channel\\n")
+                    .append("https://discord.com/channels/736938454478356570/789791439487500299")
+                    .append("\",")
+
+                    .append("\"image\": { \"url\": \"attachment://").append(imageFilename).append("\" },")
+
+                    .append("\"footer\": { \"text\": \"Next update/webhook at: ").append(nextLocalStr).append("\" }")
+
+                    .append("} ] }");
+
+            // Send multipart/form-data
+            String boundary = "----WebBoundary" + System.currentTimeMillis();
             HttpURLConnection conn = (HttpURLConnection) new URL(webhookUrl).openConnection();
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
             conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
 
             try (OutputStream out = conn.getOutputStream()) {
+                // payload_json
                 out.write(("--" + boundary + "\r\n").getBytes());
                 out.write("Content-Disposition: form-data; name=\"payload_json\"\r\n\r\n".getBytes());
                 out.write(json.toString().getBytes(StandardCharsets.UTF_8));
                 out.write("\r\n".getBytes());
+
+                // image file
                 out.write(("--" + boundary + "\r\n").getBytes());
-                out.write("Content-Disposition: form-data; name=\"file\"; filename=\"screen.png\"\r\n".getBytes());
+                out.write(("Content-Disposition: form-data; name=\"file\"; filename=\"" + imageFilename + "\"\r\n").getBytes());
                 out.write("Content-Type: image/png\r\n\r\n".getBytes());
                 out.write(imageBytes);
                 out.write("\r\n".getBytes());
+
                 out.write(("--" + boundary + "--\r\n").getBytes());
+                out.flush();
             }
 
             int code = conn.getResponseCode();
+            long now = System.currentTimeMillis();
+
             if (code == 200 || code == 204) {
-                log("WEBHOOK", "✅ Sent webhook successfully.");
+                lastWebhookSent = now;
+                log("WEBHOOK", "✅ Webhook sent.");
+            } else if (code == 429) {
+                long backoffMs = 30_000L;
+                String ra = conn.getHeaderField("Retry-After");
+                if (ra != null) {
+                    try {
+                        double sec = Double.parseDouble(ra.trim());
+                        backoffMs = Math.max(1000L, (long)Math.ceil(sec * 1000.0));
+                    } catch (NumberFormatException ignored) {}
+                }
+                nextWebhookEarliestMs = now + backoffMs + 250;
+                log("WEBHOOK", "⚠ 429 rate-limited. Backing off ~" + backoffMs + "ms");
             } else {
-                log("WEBHOOK", "⚠ Failed to send webhook: HTTP " + code);
+                log("WEBHOOK", "⚠ Webhook failed. HTTP " + code);
             }
 
         } catch (Exception e) {
-            log("WEBHOOK", "❌ Error sending webhook: " + e.getMessage());
+            log("WEBHOOK", "❌ Error: " + e.getMessage());
+        } finally {
+            try { if (baos != null) baos.close(); } catch (IOException ignored) {}
+            webhookInFlight.set(false);
         }
     }
 
-    private String escapeJson(String text) {
-        return text == null ? "null" : text.replace("\"", "\\\"").replace("\n", "\\n");
+    public void queueSendWebhook() {
+        if (!webhookEnabled) return;
+
+        long now = System.currentTimeMillis();
+        if (now < nextWebhookEarliestMs) return;
+        if (now - lastWebhookSent < webhookIntervalMinutes * 60_000L) return;
+
+        if (!webhookInFlight.compareAndSet(false, true)) return;
+
+        sendWebhookAsync();
     }
 
-    private String formatRuntime(long ms) {
-        long s = ms / 1000;
-        long h = (s % 86400) / 3600;
-        long m = (s % 3600) / 60;
-        long sec = s % 60;
-        return String.format("%02d:%02d:%02d", h, m, sec);
+
+    public void sendWebhookAsync() {
+        Thread t = new Thread(this::sendWebhookInternal, "WebhookSender");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private String formatRuntime(long millis) {
+        long seconds = millis / 1000;
+        long days = seconds / 86400;
+        long hours = (seconds % 86400) / 3600;
+        long minutes = (seconds % 3600) / 60;
+        long secs = seconds % 60;
+
+        if (days > 0) {
+            return String.format("%dd %02d:%02d:%02d", days, hours, minutes, secs);
+        } else {
+            return String.format("%02d:%02d:%02d", hours, minutes, secs);
+        }
     }
 
     private void checkForUpdates() {

@@ -120,7 +120,6 @@ public class dAIOFisher extends Script {
     private static final Font FONT_VALUE_BOLD  = new Font("Arial", Font.BOLD, 12);
     private static final Font FONT_VALUE_ITALIC= new Font("Arial", Font.ITALIC, 12);
 
-    public static double levelProgressFraction = 0.0;
     public static int currentFishingLevel = 1;
     public static int startFishingLevel = 1;
     public static int currentCookingLevel = 1;
@@ -584,6 +583,7 @@ public class dAIOFisher extends Script {
             xpTracking.checkXP(XPTracking.SkillType.COOKING);
         }
     }
+
     @Override
     public void onStart() {
         log(getClass().getSimpleName(), "Starting dAIOFisher v" + scriptVersion);
