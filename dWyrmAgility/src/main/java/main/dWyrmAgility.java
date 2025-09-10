@@ -9,12 +9,19 @@ import com.osmb.api.script.Script;
 import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
 import com.osmb.api.shape.Polygon;
+import com.osmb.api.ui.chatbox.Chatbox;
+import com.osmb.api.ui.chatbox.ChatboxFilterTab;
+import com.osmb.api.ui.component.tabs.skill.SkillType;
+import com.osmb.api.ui.component.tabs.skill.SkillsTabComponent;
 import com.osmb.api.utils.RandomUtils;
-import com.osmb.api.utils.UIResult;
+import com.osmb.api.trackers.experience.XPTracker;
+import com.osmb.api.utils.UIResultList;
 import com.osmb.api.utils.Utils;
 import com.osmb.api.utils.timing.Timer;
 import com.osmb.api.visual.drawing.Canvas;
+import com.osmb.api.visual.image.Image;
 import javafx.scene.Scene;
+import utils.XPTracking;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -23,105 +30,92 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 @ScriptDefinition(
         name = "dWyrmAgility",
         author = "JustDavyy",
-        version = 1.7,
+        version = 1.8,
         description = "Does the Wyrm basic or advanced agility course.",
         skillCategory = SkillCategory.AGILITY
 )
 public class dWyrmAgility extends Script {
-    public static final String scriptVersion = "1.7";
+    public static final String scriptVersion = "1.8";
+    private final String scriptName = "WyrmAgility";
     private Course selectedCourse;
     private int nextRunActivate;
     public int noMovementTimeout = RandomUtils.weightedRandom(6000, 9000);
     public static double xpGained = 0;
     public static int lapCount = 0;
+    public static int termitesGained = 0;
+    public static int shardsGained = 0;
     private final long startTime = System.currentTimeMillis();
-    private long lastStatsPrint = 0L;
 
     // Webhook config
     private static boolean webhookEnabled = false;
     private static boolean webhookShowUser = false;
-    private static boolean webhookShowStats = false;
     private static String webhookUrl = "";
     private static int webhookIntervalMinutes = 5;
     private static long lastWebhookSent = 0;
     private static String user = "";
+    private final AtomicBoolean webhookInFlight = new AtomicBoolean(false);
+    final String authorIconUrl = "https://www.osmb.co.uk/lovable-uploads/ad86059b-ce19-4540-8e53-9fd01c61c98b.png";
+    private volatile long nextWebhookEarliestMs = 0L;
+    private final AtomicReference<Image> lastCanvasFrame = new AtomicReference<>();
+
+    public static double levelProgressFraction = 0.0;
+    public static int currentLevel = 1;
+    public static int startLevel = 1;
+    public static boolean levelChecked = false;
 
     public static String task = "Initialize";
-    private final Font font = Font.getFont("Ariel");
+    private static final Font FONT_LABEL       = new Font("Arial", Font.PLAIN, 12);
+    private static final Font FONT_VALUE_BOLD  = new Font("Arial", Font.BOLD, 12);
+    private static final Font FONT_VALUE_ITALIC= new Font("Arial", Font.ITALIC, 12);
+
+    private static final List<String> PREVIOUS_CHATBOX_LINES = new ArrayList<>();
+
+    private static final java.util.regex.Pattern TERMITES_PAT =
+            java.util.regex.Pattern.compile("\\bmanaged to scoop up\\s+(\\d{1,2})\\s+termites\\b",
+                    java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    private static final java.util.regex.Pattern SHARDS_PAT =
+            java.util.regex.Pattern.compile("\\balso find\\s+(\\d{1,2})\\s+piles? of bone shards(?:\\s+they\\s+chipped\\s+off)?\\b",
+                    java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    private final XPTracking xpTracking;
+
+    // Logo image
+    private com.osmb.api.visual.image.Image logoImage = null;
 
     private int failThreshold = random(4, 6);
     private int failCount = 0;
 
     public dWyrmAgility(Object object) {
         super(object);
+        this.xpTracking = new XPTracking(this);
     }
 
-    /**
-     * Handles an agility obstacle, will run to & interact using the specified {@param menuOption} then sleep until we reach then {@param endPosition}
-     *
-     * @param core
-     * @param obstacleName The name of the obstacle
-     * @param menuOption   The name of the menu option to select
-     * @param end          The finishing {@link WorldPosition} or {@link Area} of the obstacle interaction
-     * @param timeout      The timeout when to the {@param endPosition}, method will return {@link ObstacleHandleResponse#TIMEOUT} if the specified timeout is surpassed
-     * @return
-     */
     public static ObstacleHandleResponse handleObstacle(dWyrmAgility core, String obstacleName, String menuOption, Object end, int timeout) {
         return handleObstacle(core, obstacleName, menuOption, end, 1, timeout);
     }
 
-    /**
-     * Handles an agility obstacle, will run to & interact using the specified {@param menuOption} then sleep until we reach then {@param endPosition}
-     *
-     * @param core
-     * @param obstacleName     The name of the obstacle
-     * @param menuOption       The name of the menu option to select
-     * @param end              The finishing {@link WorldPosition} or {@link Area} of the obstacle interaction
-     * @param interactDistance The tile distance away from the object which it can be interacted from.
-     * @param timeout          The timeout when to the {@param endPosition}, method will return {@link ObstacleHandleResponse#TIMEOUT} if the specified timeout is surpassed
-     * @return
-     */
     public static ObstacleHandleResponse handleObstacle(dWyrmAgility core, String obstacleName, String menuOption, Object end, int interactDistance, int timeout) {
         return handleObstacle(core, obstacleName, menuOption, end, interactDistance, true, timeout);
     }
 
-    /**
-     * Handles an agility obstacle, will run to & interact using the specified {@param menuOption} then sleep until we reach then {@param endPosition}
-     *
-     * @param core
-     * @param obstacleName     The name of the obstacle
-     * @param menuOption       The name of the menu option to select
-     * @param end              The finishing {@link WorldPosition} or {@link Area} of the obstacle interaction
-     * @param interactDistance The tile distance away from the object which it can be interacted from.
-     * @param canReach         If {@code false} then this method will avoid using {@link RSObject#canReach()} when querying objects for the obstacle.
-     * @param timeout          The timeout when to the {@param endPosition}, method will return {@link ObstacleHandleResponse#TIMEOUT} if the specified timeout is surpassed
-     * @return
-     */
     public static ObstacleHandleResponse handleObstacle(dWyrmAgility core, String obstacleName, String menuOption, Object end, int interactDistance, boolean canReach, int timeout) {
         return handleObstacle(core, obstacleName, menuOption, end, interactDistance, canReach, timeout, null);
     }
 
-    /**
-     * Handles an agility obstacle, will run to & interact using the specified {@param menuOption} then sleep until we reach then {@param endPosition}
-     *
-     * @param core
-     * @param obstacleName     The name of the obstacle
-     * @param menuOption       The name of the menu option to select
-     * @param end              The finishing {@link WorldPosition} or {@link Area} of the obstacle interaction
-     * @param interactDistance The tile distance away from the object which it can be interacted from.
-     * @param canReach         If {@code false} then this method will avoid using {@link RSObject#canReach()} when querying objects for the obstacle.
-     * @param timeout          The timeout when to the {@param endPosition}, method will return {@link ObstacleHandleResponse#TIMEOUT} if the specified timeout is surpassed
-     * @param objectBaseTile   The base tile of the object. If null we avoid this check.
-     * @return
-     */
     public static ObstacleHandleResponse handleObstacle(dWyrmAgility core, String obstacleName, String menuOption, Object end, int interactDistance, boolean canReach, int timeout, WorldPosition objectBaseTile) {
         // cache hp, we determine if we failed the obstacle via hp decrementing
         Integer hitpoints = core.getWidgetManager().getMinimapOrbs().getHitpointsPercentage();
@@ -214,7 +208,7 @@ public class dWyrmAgility extends Script {
     }
 
     private void printFail() {
-        log(dWyrmAgility.class, "Failed to handle obstacle. Fail count: " + failCount + "/" + failThreshold);
+        log(getClass(), "Failed to handle obstacle. Fail count: " + failCount + "/" + failThreshold);
     }
 
     @Override
@@ -230,13 +224,11 @@ public class dWyrmAgility extends Script {
         webhookUrl = ui.getWebhookUrl();
         webhookIntervalMinutes = ui.getWebhookInterval();
         webhookShowUser = ui.isUsernameIncluded();
-        webhookShowStats = ui.isStatsIncluded();
 
         if (webhookEnabled) {
             user = getWidgetManager().getChatbox().getUsername();
             log("WEBHOOK", "✅ Webhook enabled. Interval: " + webhookIntervalMinutes + "min. Username: " + user);
-            lastWebhookSent = System.currentTimeMillis();
-            sendWebhook();
+            queueSendWebhook();
         }
 
         checkForUpdates();
@@ -255,15 +247,23 @@ public class dWyrmAgility extends Script {
             return 0;
         }
 
-        if (webhookEnabled && System.currentTimeMillis() - lastWebhookSent >= webhookIntervalMinutes * 60_000L) {
-            sendWebhook();
-            lastWebhookSent = System.currentTimeMillis();
+        monitorChatbox();
+
+        if (!levelChecked) {
+            // Check agility level
+            task = "Get agility level";
+            SkillsTabComponent.SkillLevel agilitySkillLevel = getWidgetManager().getSkillTab().getSkillLevel(SkillType.AGILITY);
+            if (agilitySkillLevel == null) {
+                log(getClass(), "Failed to get skill levels.");
+                return 0;
+            }
+            startLevel = agilitySkillLevel.getLevel();
+            currentLevel = agilitySkillLevel.getLevel();
+            levelChecked = true;
         }
 
-        long now = System.currentTimeMillis();
-        if (now - lastStatsPrint >= 30000) {
-            printStats();
-            lastStatsPrint = now;
+        if (webhookEnabled && System.currentTimeMillis() - lastWebhookSent >= webhookIntervalMinutes * 60_000L) {
+            queueSendWebhook();
         }
 
         Boolean runEnabled = getWidgetManager().getMinimapOrbs().isRunEnabled();
@@ -292,114 +292,437 @@ public class dWyrmAgility extends Script {
     @Override
     public void onPaint(Canvas c) {
         long elapsed = System.currentTimeMillis() - startTime;
-        int xpPerHour = (int) ((xpGained * 3600000L) / elapsed);
-        int lapsPerHour = (int) ((lapCount * 3600000L) / elapsed);
+        double hours = Math.max(1e-9, elapsed / 3_600_000.0);
+        String runtime = formatRuntime(elapsed);
 
-        DecimalFormat f = new DecimalFormat("#,###");
-        DecimalFormatSymbols s = new DecimalFormatSymbols();
-        s.setGroupingSeparator('.');
-        f.setDecimalFormatSymbols(s);
+        // ==== Laps/hr ====
+        int lapsPerHour = (int) Math.round(lapCount / hours);
 
-        int y = 40;
-        c.fillRect(5, y, 220, 130, Color.BLACK.getRGB(), 0.75f);
-        c.drawRect(5, y, 220, 130, Color.BLACK.getRGB());
+        // ==== Termites / Shards ====
+        int termitesPerHour = (int) Math.round(termitesGained / hours);
+        int shardsPerHour   = (int) Math.round(shardsGained / hours);
 
-        c.drawText("XP gained: " + f.format(xpGained), 10, y += 20, Color.WHITE.getRGB(), font);
-        c.drawText("XP/hr: " + f.format(xpPerHour), 10, y += 20, Color.WHITE.getRGB(), font);
-        c.drawText("Laps done: " + f.format(lapCount), 10, y += 20, Color.WHITE.getRGB(), font);
-        c.drawText("Laps/hr: " + f.format(lapsPerHour), 10, y += 20, Color.WHITE.getRGB(), font);
-        c.drawText("Task: " + task, 10, y += 20, Color.WHITE.getRGB(), font);
-        c.drawText("Version: " + scriptVersion, 10, y += 20, Color.WHITE.getRGB(), font);
+        // ==== Live XP via tracker (single-skill) ====
+        String ttlText = "-";
+        double etl = 0.0;
+        double xpGainedLive = 0.0;
+        double currentXp = 0.0;
+
+        if (xpTracking != null) {
+            XPTracker tracker = xpTracking.getXpTracker(); // single-skill tracker for this script
+            if (tracker != null) {
+                xpGainedLive = tracker.getXpGained();
+                currentXp    = tracker.getXp();
+
+                // level sync (only ever increases)
+                final int MAX_LEVEL = 99;
+                int guard = 0;
+                while (currentLevel < MAX_LEVEL
+                        && currentXp >= tracker.getExperienceForLevel(currentLevel + 1)
+                        && guard++ < 10) {
+                    currentLevel++;
+                }
+
+                ttlText = tracker.timeToNextLevelString();
+
+                int curLevelXpStart   = tracker.getExperienceForLevel(currentLevel);
+                int nextLevelXpTarget = tracker.getExperienceForLevel(Math.min(MAX_LEVEL, currentLevel + 1));
+                int span              = Math.max(1, nextLevelXpTarget - curLevelXpStart);
+
+                etl = Math.max(0, nextLevelXpTarget - currentXp);
+
+                levelProgressFraction = Math.max(0.0, Math.min(1.0,
+                        (currentXp - curLevelXpStart) / (double) span));
+            }
+        }
+
+        int xpPerHour = (int) Math.round(xpGainedLive / hours);
+        int xpGained  = (int) Math.round(xpGainedLive);
+
+        // Current level text with (+N)
+        if (startLevel <= 0) startLevel = currentLevel;
+        int levelsGained = Math.max(0, currentLevel - startLevel);
+        String currentLevelText = (levelsGained > 0)
+                ? (currentLevel + " (+" + levelsGained + ")")
+                : String.valueOf(currentLevel);
+
+        // Percent text (dot decimal)
+        double pct = Math.max(0, Math.min(100, levelProgressFraction * 100.0));
+        String levelProgressText = (Math.abs(pct - Math.rint(pct)) < 1e-9)
+                ? String.format(java.util.Locale.US, "%.0f%%", pct)
+                : String.format(java.util.Locale.US, "%.1f%%", pct);
+
+        // === Formatting with dots ===
+        java.text.DecimalFormat intFmt = new java.text.DecimalFormat("#,###");
+        java.text.DecimalFormatSymbols sym = new java.text.DecimalFormatSymbols();
+        sym.setGroupingSeparator('.');
+        intFmt.setDecimalFormatSymbols(sym);
+
+        // === Panel + layout (standardized) ===
+        final int x = 5;
+        final int baseY = 40;
+        final int width = 225;
+        final int borderThickness = 2;
+        final int paddingX = 10;
+        final int topGap = 6;
+        final int lineGap = 16;
+        final int logoBottomGap = 8;
+
+        final int labelGray   = new Color(180,180,180).getRGB();
+        final int valueWhite  = Color.WHITE.getRGB();
+        final int valueGreen  = new Color(80, 220, 120).getRGB(); // level progress
+        final int valueBlue   = new Color(70, 130, 180).getRGB(); // highlights
+
+        ensureLogoLoaded();
+        com.osmb.api.visual.image.Image scaledLogo = (logoImage != null) ? logoImage : null;
+
+        int innerX = x;
+        int innerY = baseY;
+        int innerWidth = width;
+
+        // +4 lines for termites/shards before laps
+        int totalLines = 16;
+
+        int y = innerY + topGap;
+        if (scaledLogo != null) y += scaledLogo.height + logoBottomGap;
+        y += totalLines * lineGap;
+        y += 10;
+
+        int innerHeight = Math.max(230, y - innerY);
+
+        // Panel
+        c.fillRect(innerX - borderThickness, innerY - borderThickness,
+                innerWidth + (borderThickness * 2),
+                innerHeight + (borderThickness * 2),
+                Color.WHITE.getRGB(), 1);
+        c.fillRect(innerX, innerY, innerWidth, innerHeight, Color.decode("#01031C").getRGB(), 1);
+        c.drawRect(innerX, innerY, innerWidth, innerHeight, Color.WHITE.getRGB());
+
+        int curY = innerY + topGap;
+
+        // Logo (optional)
+        if (scaledLogo != null) {
+            int imgX = innerX + (innerWidth - scaledLogo.width) / 2;
+            c.drawAtOn(scaledLogo, imgX, curY);
+            curY += scaledLogo.height + logoBottomGap;
+        }
+
+        // 1) Runtime
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Runtime", runtime, labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 2) XP gained (live)
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "XP gained", intFmt.format(xpGained), labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 3) XP/hr (live)
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "XP/hr", intFmt.format(xpPerHour), labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 4) Termites gained (blue)
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Termites gained", intFmt.format(termitesGained), labelGray, valueBlue,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 5) Termites/hr (white)
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Termites/hr", intFmt.format(termitesPerHour), labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 6) Shards gained (blue)
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Shards gained", intFmt.format(shardsGained), labelGray, valueBlue,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 7) Shards/hr (white)
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Shards/hr", intFmt.format(shardsPerHour), labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 8) Laps done (blue)
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Laps done", intFmt.format(lapCount), labelGray, valueBlue,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 9) Laps/hr (white by your scheme)
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Laps/hr", intFmt.format(lapsPerHour), labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 10) ETL
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "ETL", intFmt.format(Math.round(etl)), labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 11) TTL
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "TTL", ttlText, labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 12) Level progress
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Level progress", levelProgressText, labelGray, valueGreen,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 13) Current level
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Current level", currentLevelText, labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 14) Task
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Task", String.valueOf(task), labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 15) Selected course
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Course", selectedCourse.name(), labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 16) Version
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Version", scriptVersion, labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // Store canvas for webhook usage
+        try {
+            lastCanvasFrame.set(c.toImageCopy());
+        } catch (Exception ignored) { }
     }
 
-    public void printStats() {
-        long elapsed = System.currentTimeMillis() - startTime;
-        if (elapsed == 0) return;
-
-        int xpPerHour = (int) ((xpGained * 3600000L) / elapsed);
-        int lapsPerHour = (int) ((lapCount * 3600000L) / elapsed);
-
-        log("STATS", String.format(
-                "XP gained: %,.1f | XP/hr: %,d | Laps done: %,d | Laps/hr: %,d",
-                xpGained, xpPerHour, lapCount, lapsPerHour
-        ));
+    private void drawStatLine(Canvas c, int innerX, int innerWidth, int paddingX, int y,
+                              String label, String value, int labelColor, int valueColor,
+                              Font labelFont, Font valueFont) {
+        c.drawText(label, innerX + paddingX, y, labelColor, labelFont);
+        int valW = c.getFontMetrics(valueFont).stringWidth(value);
+        int valX = innerX + innerWidth - paddingX - valW;
+        c.drawText(value, valX, y, valueColor, valueFont);
     }
 
-    private void sendWebhook() {
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            BufferedImage img = getScreen().getImage().toBufferedImage();
-            ImageIO.write(img, "png", baos);
-            byte[] imageBytes = baos.toByteArray();
+    private void ensureLogoLoaded() {
+        if (logoImage != null) return;
 
-            long elapsed = System.currentTimeMillis() - startTime;
-            String runtime = formatRuntime(elapsed);
-            int xpPerHour = (int) ((xpGained * 3600000L) / elapsed);
-            int lapsPerHour = (int) ((lapCount * 3600000L) / elapsed);
-
-            DecimalFormat f = new DecimalFormat("#,###");
-            DecimalFormatSymbols s = new DecimalFormatSymbols();
-            s.setGroupingSeparator('.');
-            f.setDecimalFormatSymbols(s);
-
-            StringBuilder json = new StringBuilder();
-            json.append("{\"embeds\":[{")
-                    .append("\"title\":\"📊 dWyrmAgility Stats - ").append(webhookShowUser && user != null ? escapeJson(user) : "anonymous").append("\",")
-                    .append("\"color\":15844367,");
-
-            if (webhookShowStats) {
-                json.append("\"fields\":[")
-                        .append("{\"name\":\"XP Gained\",\"value\":\"").append(f.format(xpGained)).append("\",\"inline\":true},")
-                        .append("{\"name\":\"XP/hr\",\"value\":\"").append(f.format(xpPerHour)).append("\",\"inline\":true},")
-                        .append("{\"name\":\"Laps Done\",\"value\":\"").append(f.format(lapCount)).append("\",\"inline\":true},")
-                        .append("{\"name\":\"Laps/hr\",\"value\":\"").append(f.format(lapsPerHour)).append("\",\"inline\":true},")
-                        .append("{\"name\":\"Task\",\"value\":\"").append(escapeJson(task)).append("\",\"inline\":true},")
-                        .append("{\"name\":\"Runtime\",\"value\":\"").append(runtime).append("\",\"inline\":true},")
-                        .append("{\"name\":\"Version\",\"value\":\"").append(scriptVersion).append("\",\"inline\":true}")
-                        .append("],");
-            } else {
-                json.append("\"description\":\"Currently on task: ").append(escapeJson(task)).append("\",");
+        try (InputStream in = getClass().getResourceAsStream("/logo.png")) {
+            if (in == null) {
+                log(getClass(), "Logo '/logo.png' not found on classpath.");
+                return;
             }
 
-            json.append("\"image\":{\"url\":\"attachment://screen.png\"}}]}");
+            BufferedImage src = ImageIO.read(in);
+            if (src == null) {
+                log(getClass(), "Failed to decode logo.png");
+                return;
+            }
 
-            String boundary = "----Boundary" + System.currentTimeMillis();
+            BufferedImage argb = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g = argb.createGraphics();
+            g.setComposite(AlphaComposite.Src); // copy pixels as-is
+            g.drawImage(src, 0, 0, null);
+            g.dispose();
+
+            int w = argb.getWidth();
+            int h = argb.getHeight();
+            int[] px = new int[w * h];
+            argb.getRGB(0, 0, w, h, px, 0, w);
+
+            for (int i = 0; i < px.length; i++) {
+                int p = px[i];
+                int a = (p >>> 24) & 0xFF;
+                if (a == 0) {
+                    px[i] = 0x00000000; // fully transparent black
+                }
+            }
+
+            boolean PREMULTIPLY = true;
+            if (PREMULTIPLY) {
+                for (int i = 0; i < px.length; i++) {
+                    int p = px[i];
+                    int a = (p >>> 24) & 0xFF;
+                    if (a == 0) { px[i] = 0; continue; }
+                    int r = (p >>> 16) & 0xFF;
+                    int gch = (p >>> 8) & 0xFF;
+                    int b = p & 0xFF;
+                    // premultiply
+                    r = (r * a + 127) / 255;
+                    gch = (gch * a + 127) / 255;
+                    b = (b * a + 127) / 255;
+                    px[i] = (a << 24) | (r << 16) | (gch << 8) | b;
+                }
+            }
+
+            logoImage = new Image(px, w, h);
+            log(getClass(), "Logo loaded: " + w + "x" + h + " premultiplied=" + PREMULTIPLY);
+
+        } catch (Exception e) {
+            log(getClass(), "Error loading logo: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void onNewFrame() {
+        xpTracking.checkXP();
+    }
+
+    private void sendWebhookInternal() {
+        ByteArrayOutputStream baos = null;
+        try {
+            // Only proceed if we have a painted frame
+            Image source = lastCanvasFrame.get();
+            if (source == null) {
+                log("WEBHOOK", "ℹ No painted frame available; skipping webhook.");
+                return;
+            }
+
+            BufferedImage buffered = source.toBufferedImage();
+            baos = new ByteArrayOutputStream();
+            ImageIO.write(buffered, "png", baos);
+            byte[] imageBytes = baos.toByteArray();
+
+            // Runtime for description
+            long elapsed = System.currentTimeMillis() - startTime;
+            String runtime = formatRuntime(elapsed);
+
+            // Username (or anonymous)
+            String displayUser = (webhookShowUser && user != null) ? user : "anonymous";
+
+            // Next webhook local time (Europe/Amsterdam)
+            long nextMillis = System.currentTimeMillis() + (webhookIntervalMinutes * 60_000L);
+            ZonedDateTime nextLocal = ZonedDateTime.ofInstant(
+                    Instant.ofEpochMilli(nextMillis),
+                    ZoneId.systemDefault()
+            );
+            String nextLocalStr = nextLocal.format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+
+            String imageFilename = "canvas.png";
+            StringBuilder json = new StringBuilder();
+            json.append("{ \"embeds\": [ {")
+                    .append("\"title\": \"Script run summary - ").append(displayUser).append("\",")
+
+                    .append("\"color\": 5189303,")
+
+                    .append("\"author\": {")
+                    .append("\"name\": \"Davyy's ").append(scriptName).append("\",")
+                    .append("\"icon_url\": \"").append(authorIconUrl).append("\"")
+                    .append("},")
+
+                    .append("\"description\": ")
+                    .append("\"This is your progress report after running for **")
+                    .append(runtime)
+                    .append("**.\\n")
+                    .append("Make sure to share your proggies in the OSMB proggies channel\\n")
+                    .append("https://discord.com/channels/736938454478356570/789791439487500299")
+                    .append("\",")
+
+                    .append("\"image\": { \"url\": \"attachment://").append(imageFilename).append("\" },")
+
+                    .append("\"footer\": { \"text\": \"Next update/webhook at: ").append(nextLocalStr).append("\" }")
+
+                    .append("} ] }");
+
+            // Send multipart/form-data
+            String boundary = "----WebBoundary" + System.currentTimeMillis();
             HttpURLConnection conn = (HttpURLConnection) new URL(webhookUrl).openConnection();
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
             conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
 
             try (OutputStream out = conn.getOutputStream()) {
+                // payload_json
                 out.write(("--" + boundary + "\r\n").getBytes());
                 out.write("Content-Disposition: form-data; name=\"payload_json\"\r\n\r\n".getBytes());
                 out.write(json.toString().getBytes(StandardCharsets.UTF_8));
                 out.write("\r\n".getBytes());
 
+                // image file
                 out.write(("--" + boundary + "\r\n").getBytes());
-                out.write("Content-Disposition: form-data; name=\"file\"; filename=\"screen.png\"\r\n".getBytes());
+                out.write(("Content-Disposition: form-data; name=\"file\"; filename=\"" + imageFilename + "\"\r\n").getBytes());
                 out.write("Content-Type: image/png\r\n\r\n".getBytes());
                 out.write(imageBytes);
                 out.write("\r\n".getBytes());
 
                 out.write(("--" + boundary + "--\r\n").getBytes());
+                out.flush();
             }
 
             int code = conn.getResponseCode();
-            log("WEBHOOK", (code == 200 || code == 204) ? "✅ Sent webhook successfully." : "⚠ Failed to send webhook: HTTP " + code);
+            long now = System.currentTimeMillis();
+
+            if (code == 200 || code == 204) {
+                lastWebhookSent = now;
+                log("WEBHOOK", "✅ Webhook sent.");
+            } else if (code == 429) {
+                long backoffMs = 30_000L;
+                String ra = conn.getHeaderField("Retry-After");
+                if (ra != null) {
+                    try {
+                        double sec = Double.parseDouble(ra.trim());
+                        backoffMs = Math.max(1000L, (long)Math.ceil(sec * 1000.0));
+                    } catch (NumberFormatException ignored) {}
+                }
+                nextWebhookEarliestMs = now + backoffMs + 250;
+                log("WEBHOOK", "⚠ 429 rate-limited. Backing off ~" + backoffMs + "ms");
+            } else {
+                log("WEBHOOK", "⚠ Webhook failed. HTTP " + code);
+            }
+
         } catch (Exception e) {
-            log("WEBHOOK", "❌ Error sending webhook: " + e.getMessage());
+            log("WEBHOOK", "❌ Error: " + e.getMessage());
+        } finally {
+            try { if (baos != null) baos.close(); } catch (IOException ignored) {}
+            webhookInFlight.set(false);
         }
     }
 
-    private String escapeJson(String text) {
-        return text == null ? "" : text.replace("\"", "\\\"").replace("\n", "\\n");
+    public void queueSendWebhook() {
+        if (!webhookEnabled) return;
+
+        long now = System.currentTimeMillis();
+        if (now < nextWebhookEarliestMs) return;
+        if (now - lastWebhookSent < webhookIntervalMinutes * 60_000L) return;
+
+        if (!webhookInFlight.compareAndSet(false, true)) return;
+
+        sendWebhookAsync();
     }
 
-    private String formatRuntime(long ms) {
-        long s = ms / 1000;
-        long h = (s % 86400) / 3600;
-        long m = (s % 3600) / 60;
-        long sec = s % 60;
-        return String.format("%02d:%02d:%02d", h, m, sec);
+
+    public void sendWebhookAsync() {
+        Thread t = new Thread(this::sendWebhookInternal, "WebhookSender");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private String formatRuntime(long millis) {
+        long seconds = millis / 1000;
+        long days = seconds / 86400;
+        long hours = (seconds % 86400) / 3600;
+        long minutes = (seconds % 3600) / 60;
+        long secs = seconds % 60;
+
+        if (days > 0) {
+            return String.format("%dd %02d:%02d:%02d", days, hours, minutes, secs);
+        } else {
+            return String.format("%02d:%02d:%02d", hours, minutes, secs);
+        }
     }
 
     private void checkForUpdates() {
@@ -464,5 +787,95 @@ public class dWyrmAgility extends Script {
             if (n1 != n2) return Integer.compare(n1, n2);
         }
         return 0;
+    }
+
+    private void monitorChatbox() {
+        // Make sure game filter tab is selected
+        Chatbox chatbox = getWidgetManager().getChatbox();
+        if (chatbox != null) {
+            try {
+                if (chatbox.getActiveFilterTab() != ChatboxFilterTab.GAME) {
+                    if (!chatbox.openFilterTab(ChatboxFilterTab.GAME)) {
+                        log(getClass(), "Failed to open chatbox tab (maybe not visible yet).");
+                    }
+                    return;
+                }
+            } catch (NullPointerException e) {
+                log(getClass(), "Chatbox not ready for openFilterTab yet, skipping this tick.");
+                return;
+            }
+        }
+
+        UIResultList<String> chatResult = getWidgetManager().getChatbox().getText();
+        if (!chatResult.isFound() || chatResult.isEmpty()) {
+            return;
+        }
+
+        java.util.List<String> currentLines = chatResult.asList();
+        if (currentLines.isEmpty()) return;
+
+        int firstDifference = 0;
+        if (!PREVIOUS_CHATBOX_LINES.isEmpty()) {
+            if (currentLines.equals(PREVIOUS_CHATBOX_LINES)) {
+                return;
+            }
+
+            int currSize = currentLines.size();
+            int prevSize = PREVIOUS_CHATBOX_LINES.size();
+            for (int i = 0; i < currSize; i++) {
+                int suffixLen = currSize - i;
+                if (suffixLen > prevSize) continue;
+
+                boolean match = true;
+                for (int j = 0; j < suffixLen; j++) {
+                    if (!currentLines.get(i + j).equals(PREVIOUS_CHATBOX_LINES.get(j))) {
+                        match = false;
+                        break;
+                    }
+                }
+
+                if (match) {
+                    firstDifference = i;
+                    break;
+                }
+            }
+        }
+
+        java.util.List<String> newMessages = currentLines.subList(0, firstDifference);
+        PREVIOUS_CHATBOX_LINES.clear();
+        PREVIOUS_CHATBOX_LINES.addAll(currentLines);
+
+        processNewChatboxMessages(newMessages);
+    }
+
+    private void processNewChatboxMessages(List<String> newLines) {
+        if (newLines == null || newLines.isEmpty()) return;
+
+        for (String raw : newLines) {
+            if (raw == null || raw.isEmpty()) continue;
+
+            // 1) Termites: "You managed to scoop up xx termites!"
+            java.util.regex.Matcher mt = TERMITES_PAT.matcher(raw);
+            if (mt.find()) {
+                int n = safeParseInt(mt.group(1));
+                if (n >= 1 && n <= 99) {
+                    termitesGained += n;
+                }
+                continue;
+            }
+
+            // 2) Bone shards: "You also find xx piles of bone shards they chipped off"
+            java.util.regex.Matcher ms = SHARDS_PAT.matcher(raw);
+            if (ms.find()) {
+                int n = safeParseInt(ms.group(1));
+                if (n >= 1 && n <= 99) {
+                    shardsGained += n;
+                }
+            }
+        }
+    }
+
+    private static int safeParseInt(String s) {
+        try { return Integer.parseInt(s); } catch (NumberFormatException e) { return -1; }
     }
 }

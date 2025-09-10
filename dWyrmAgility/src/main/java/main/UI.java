@@ -20,14 +20,12 @@ public class UI {
     private static final String PREF_WEBHOOK_URL = "dwyrmagility_webhook_url";
     private static final String PREF_WEBHOOK_INTERVAL = "dwyrmagility_webhook_interval";
     private static final String PREF_WEBHOOK_INCLUDE_USER = "dwyrmagility_webhook_include_user";
-    private static final String PREF_WEBHOOK_INCLUDE_STATS = "dwyrmagility_webhook_include_stats";
 
     private ComboBox<Course> selectCourseComboBox;
     private CheckBox webhookEnabledCheckBox;
     private TextField webhookUrlField;
     private ComboBox<Integer> webhookIntervalComboBox;
     private CheckBox includeUsernameCheckBox;
-    private CheckBox includeStatsCheckBox;
 
     public Scene buildScene(ScriptCore core) {
         TabPane tabPane = new TabPane();
@@ -79,7 +77,7 @@ public class UI {
         webhookUrlField.setDisable(!webhookEnabledCheckBox.isSelected());
 
         webhookIntervalComboBox = new ComboBox<>();
-        for (int i = 1; i <= 15; i++) webhookIntervalComboBox.getItems().add(i);
+        for (int i = 1; i <= 60; i++) webhookIntervalComboBox.getItems().add(i);
         webhookIntervalComboBox.getSelectionModel().select(prefs.getInt(PREF_WEBHOOK_INTERVAL, 5) - 1);
         webhookIntervalComboBox.setDisable(!webhookEnabledCheckBox.isSelected());
 
@@ -87,16 +85,11 @@ public class UI {
         includeUsernameCheckBox.setSelected(prefs.getBoolean(PREF_WEBHOOK_INCLUDE_USER, true));
         includeUsernameCheckBox.setDisable(!webhookEnabledCheckBox.isSelected());
 
-        includeStatsCheckBox = new CheckBox("Include Stats");
-        includeStatsCheckBox.setSelected(prefs.getBoolean(PREF_WEBHOOK_INCLUDE_STATS, true));
-        includeStatsCheckBox.setDisable(!webhookEnabledCheckBox.isSelected());
-
         webhookEnabledCheckBox.setOnAction(e -> {
             boolean enabled = webhookEnabledCheckBox.isSelected();
             webhookUrlField.setDisable(!enabled);
             webhookIntervalComboBox.setDisable(!enabled);
             includeUsernameCheckBox.setDisable(!enabled);
-            includeStatsCheckBox.setDisable(!enabled);
         });
 
         webhookBox.getChildren().addAll(
@@ -104,8 +97,7 @@ public class UI {
                 webhookUrlField,
                 new Label("Send interval (minutes)"),
                 webhookIntervalComboBox,
-                includeUsernameCheckBox,
-                includeStatsCheckBox
+                includeUsernameCheckBox
         );
 
         Tab webhookTab = new Tab("Webhooks", webhookBox);
@@ -158,7 +150,6 @@ public class UI {
         prefs.put(PREF_WEBHOOK_URL, getWebhookUrl());
         prefs.putInt(PREF_WEBHOOK_INTERVAL, getWebhookInterval());
         prefs.putBoolean(PREF_WEBHOOK_INCLUDE_USER, isUsernameIncluded());
-        prefs.putBoolean(PREF_WEBHOOK_INCLUDE_STATS, isStatsIncluded());
     }
 
     public Course selectedCourse() {
@@ -181,9 +172,5 @@ public class UI {
 
     public boolean isUsernameIncluded() {
         return includeUsernameCheckBox != null && includeUsernameCheckBox.isSelected();
-    }
-
-    public boolean isStatsIncluded() {
-        return includeStatsCheckBox != null && includeStatsCheckBox.isSelected();
     }
 }
