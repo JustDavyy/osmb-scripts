@@ -175,26 +175,20 @@ public class RangeTask extends Task {
         switch (resultText.toLowerCase()) {
             case "bulls-eye!":
                 shotScore = 100;
-                bullShots++;
                 break;
             case "hit yellow!":
                 shotScore = 50;
-                yellowShots++;
                 break;
             case "hit red!":
                 shotScore = 30;
-                redShots++;
                 break;
             case "hit blue!":
                 shotScore = 20;
-                blueShots++;
                 break;
             case "hit black!":
                 shotScore = 10;
-                blackShots++;
                 break;
             case "missed!":
-                missedShots++;
                 break;
             default:
                 script.log(getClass().getSimpleName(), "⚠ Unrecognized result text: " + resultText);

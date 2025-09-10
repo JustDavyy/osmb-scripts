@@ -4,6 +4,8 @@ import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.item.ItemID;
 import com.osmb.api.location.area.Area;
 import com.osmb.api.location.area.impl.RectangleArea;
+import com.osmb.api.ui.component.tabs.skill.SkillType;
+import com.osmb.api.ui.component.tabs.skill.SkillsTabComponent;
 import com.osmb.api.ui.tabs.Tab;
 import com.osmb.api.script.Script;
 import main.dRangingGuild;
@@ -27,6 +29,15 @@ public class Setup extends Task {
         task = getClass().getSimpleName();
         script.log(getClass().getSimpleName(), "We are now inside the Setup task logic");
 
+        // Check required ranged level
+        task = "Get ranged level";
+        SkillsTabComponent.SkillLevel rangedSkillLevel = script.getWidgetManager().getSkillTab().getSkillLevel(SkillType.RANGE);
+        if (rangedSkillLevel == null) {
+            script.log(getClass(), "Failed to get skill levels.");
+            return false;
+        }
+        startLevel = rangedSkillLevel.getLevel();
+        currentLevel = rangedSkillLevel.getLevel();
 
         // Open inventory
         task = "Open inventory tab";

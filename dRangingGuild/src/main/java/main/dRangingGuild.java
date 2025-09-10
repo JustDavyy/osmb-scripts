@@ -2,8 +2,9 @@ package main;
 
 import com.osmb.api.ui.chatbox.dialogue.DialogueType;
 import com.osmb.api.utils.UIResult;
-import com.osmb.api.utils.timing.Stopwatch;
 import com.osmb.api.visual.drawing.Canvas;
+import com.osmb.api.visual.image.Image;
+import com.osmb.api.trackers.experience.XPTracker;
 import component.TargetView;
 import javafx.scene.Scene;
 import tasks.*;
@@ -17,16 +18,23 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
 import com.osmb.api.script.Script;
+import utils.XPTracking;
 
 import javax.imageio.ImageIO;
 
@@ -34,24 +42,34 @@ import javax.imageio.ImageIO;
         name = "dRangingGuild",
         description = "Trains ranged by doing the ranging guild minigame",
         skillCategory = SkillCategory.COMBAT,
-        version = 2.0,
+        version = 2.1,
         author = "JustDavyy"
 )
 public class dRangingGuild extends Script {
-    public static final String scriptVersion = "2.0";
+    public static final String scriptVersion = "2.1";
+    private final String scriptName = "RangingGuild";
     public static boolean setupDone = false;
     public static boolean failSafeNeeded = false;
     public static boolean needsToSwitchGear = false;
     public static int rangedLevel = 0;
 
     // Webhook settings
-    private static final Stopwatch webhookTimer = new Stopwatch();
-    public static boolean webhookEnabled;
-    public static String webhookUrl;
-    public static int webhookInterval;
-    public static boolean webhookIncludeUser;
-    public static boolean webhookIncludeStats;
+    private static boolean webhookEnabled = false;
+    private static boolean webhookShowUser = false;
+    private static String webhookUrl = "";
+    private static int webhookIntervalMinutes = 5;
+    private static long lastWebhookSent = 0;
     private static String user = "";
+    private final AtomicBoolean webhookInFlight = new AtomicBoolean(false);
+    final String authorIconUrl = "https://www.osmb.co.uk/lovable-uploads/ad86059b-ce19-4540-8e53-9fd01c61c98b.png";
+    private volatile long nextWebhookEarliestMs = 0L;
+    private final AtomicReference<Image> lastCanvasFrame = new AtomicReference<>();
+
+    public static double levelProgressFraction = 0.0;
+    public static int currentLevel = 1;
+    public static int startLevel = 1;
+
+    public static long startTime = System.currentTimeMillis();
 
     // Ranging Guild stuff
     public static int totalRounds = 0;
@@ -60,17 +78,15 @@ public class dRangingGuild extends Script {
     public static int currentScore = 0;
     public static int totalScore = 0;
     public static int shotsLeft = 0;
-    public static int missedShots = 0;
-    public static int blackShots = 0;
-    public static int blueShots = 0;
-    public static int redShots = 0;
-    public static int yellowShots = 0;
-    public static int bullShots = 0;
 
-    // Fixed-size, shared fonts (prevents layout jitter)
-    private static final Font ARIAL        = new Font("Arial", Font.PLAIN, 14);
-    private static final Font ARIAL_BOLD   = new Font("Arial", Font.BOLD, 14);
-    private static final Font ARIAL_ITALIC = new Font("Arial", Font.ITALIC, 14);
+    private static final Font FONT_LABEL       = new Font("Arial", Font.PLAIN, 12);
+    private static final Font FONT_VALUE_BOLD  = new Font("Arial", Font.BOLD, 12);
+    private static final Font FONT_VALUE_ITALIC= new Font("Arial", Font.ITALIC, 12);
+
+    private final XPTracking xpTracking;
+
+    // Logo image
+    private com.osmb.api.visual.image.Image logoImage = null;
 
     // Failsafes
     public static long lastTaskRanAt = System.currentTimeMillis() + 120000;
@@ -81,6 +97,7 @@ public class dRangingGuild extends Script {
 
     public dRangingGuild(Object scriptCore) {
         super(scriptCore);
+        this.xpTracking = new XPTracking(this);
     }
 
     @Override
@@ -92,185 +109,263 @@ public class dRangingGuild extends Script {
 
     @Override
     public void onPaint(Canvas c) {
-        long now = System.currentTimeMillis();
-        long elapsed = now - startTime;
-        double hours = Math.max(1e-9, elapsed / 3_600_000.0); // avoid div-by-zero
+        long elapsed = System.currentTimeMillis() - startTime;
+        double hours = Math.max(1e-9, elapsed / 3_600_000.0);
+        String runtime = formatRuntime(elapsed);
 
-        // ---- Formatting helpers ----
-        java.text.DecimalFormat fmt = new java.text.DecimalFormat("#,###");
-        java.text.DecimalFormatSymbols sy = new java.text.DecimalFormatSymbols();
-        sy.setGroupingSeparator('.');
-        fmt.setDecimalFormatSymbols(sy);
+        // ===== Derived stats from game counters =====
+        int scoreTotal     = totalScore + currentScore;   // your running total logic
+        int ticketsEarned  = scoreTotal / 10;
+        // Ranged XP in the minigame is 0.5 per point; but we now display LIVE via tracker below.
 
-        // ---- Derived stats ----
-        String runtime = formatTime(elapsed);
+        // ===== Live XP via tracker (Ranged) =====
+        String ttlText = "-";
+        double etl = 0.0;                 // xp to next level
+        double xpGainedLive = 0.0;        // gained since start (live)
+        double currentXp = 0.0;           // absolute xp (live)
+        double levelProgressFraction = 0.0;
 
-        int scoreTotal   = totalScore + currentScore;
-        int ticketsEarned= scoreTotal / 10;
-        int xpGained     = scoreTotal / 2;
-        int xpPerHour    = (int) Math.round(xpGained / hours);
+        if (xpTracking != null) {
+            XPTracker tracker = xpTracking.getXpTracker(); // single-skill usage for this script
+            if (tracker != null) {
+                xpGainedLive = tracker.getXpGained();
+                currentXp    = tracker.getXp();
 
-        int totalShots   = bullShots + yellowShots + redShots + blueShots + blackShots + missedShots;
+                // level sync (only ever increases)
+                final int MAX_LEVEL = 99;
+                int guard = 0;
+                while (currentLevel < MAX_LEVEL
+                        && currentXp >= tracker.getExperienceForLevel(currentLevel + 1)
+                        && guard++ < 10) {
+                    currentLevel++;
+                }
 
-        // ---- Text lines ----
-        String title        = "dRangingGuild";
+                ttlText = tracker.timeToNextLevelString();
 
-        String lineTickets  = "Tickets earned: " + fmt.format(ticketsEarned);
-        String lineRounds   = "Rounds completed: " + fmt.format(totalRounds);
+                int curLevelXpStart   = tracker.getExperienceForLevel(currentLevel);
+                int nextLevelXpTarget = tracker.getExperienceForLevel(Math.min(MAX_LEVEL, currentLevel + 1));
+                int span              = Math.max(1, nextLevelXpTarget - curLevelXpStart);
 
-        String lineXPG      = "Ranged XP gained: " + fmt.format(xpGained);
-        String lineXPH      = "XP per hour: " + fmt.format(xpPerHour);
+                etl = Math.max(0, nextLevelXpTarget - currentXp);
 
-        String lineShotHdr  = "Shot Stats: (" + totalShots + " shots)";
-        String lineBull     = "• Bulls-eye: " + bullShots   + " (" + percent(bullShots,   totalShots) + ")";
-        String lineYellow   = "• Yellow: "    + yellowShots + " (" + percent(yellowShots, totalShots) + ")";
-        String lineRed      = "• Red: "       + redShots    + " (" + percent(redShots,    totalShots) + ")";
-        String lineBlue     = "• Blue: "      + blueShots   + " (" + percent(blueShots,   totalShots) + ")";
-        String lineBlack    = "• Black: "     + blackShots  + " (" + percent(blackShots,  totalShots) + ")";
-        String lineMissed   = "• Missed: "    + missedShots + " (" + percent(missedShots, totalShots) + ")";
+                levelProgressFraction = Math.max(0.0, Math.min(1.0,
+                        (currentXp - curLevelXpStart) / (double) span));
+            }
+        }
 
-        String lineTask     = "Task: " + task;
-        String lineRuntime  = "Runtime: " + runtime;
-        String lineVersion  = "Version: " + scriptVersion;
+        int xpPerHour = (int) Math.round(xpGainedLive / hours);
+        int xpGained  = (int) Math.round(xpGainedLive);
 
-        // ---- Layout config (dynamic sizing via FontMetrics) ----
+        // current level text with (+N)
+        if (startLevel <= 0) startLevel = currentLevel;
+        int levelsGained = Math.max(0, currentLevel - startLevel);
+        String currentLevelText = (levelsGained > 0)
+                ? (currentLevel + " (+" + levelsGained + ")")
+                : String.valueOf(currentLevel);
+
+        // percent text (dot decimal)
+        double pct = Math.max(0, Math.min(100, levelProgressFraction * 100.0));
+        String levelProgressText = (Math.abs(pct - Math.rint(pct)) < 1e-9)
+                ? String.format(java.util.Locale.US, "%.0f%%", pct)
+                : String.format(java.util.Locale.US, "%.1f%%", pct);
+
+        // formatting with dots for grouping
+        java.text.DecimalFormat intFmt = new java.text.DecimalFormat("#,###");
+        java.text.DecimalFormatSymbols sym = new java.text.DecimalFormatSymbols();
+        sym.setGroupingSeparator('.');
+        intFmt.setDecimalFormatSymbols(sym);
+
+        // ===== Panel + layout (standardized) =====
         final int x = 5;
-        final int yTop = 40;
+        final int baseY = 40;
+        final int width = 225;
         final int borderThickness = 2;
-        final int headerHeight = 25;
-        final int paddingLeft = 10, paddingRight = 10;
-        final int contentTopPad = 5, contentBottomPad = 8;
-        final int groupGap = 10;
-        final int bulletIndent = 10; // indent bullet lines visually
+        final int paddingX = 10;
+        final int topGap = 6;
+        final int lineGap = 16;
+        final int smallGap = 6;
+        final int logoBottomGap = 8;
 
-        FontMetrics fm       = c.getFontMetrics(ARIAL);
-        FontMetrics fmBold   = c.getFontMetrics(ARIAL_BOLD);
-        FontMetrics fmItalic = c.getFontMetrics(ARIAL_ITALIC);
+        final int labelGray  = new java.awt.Color(180,180,180).getRGB();
+        final int valueWhite = java.awt.Color.WHITE.getRGB();
+        final int valueGreen = new java.awt.Color(80, 220, 120).getRGB(); // level progress
+        final int valueBlue  = new java.awt.Color(70, 130, 180).getRGB(); // highlights
 
-        // ---- Measure max width ----
-        AtomicInteger maxWidth = new AtomicInteger();
-        java.util.function.Consumer<String> widen = s -> { if (s != null) maxWidth.set(Math.max(maxWidth.get(), fm.stringWidth(s))); };
+        ensureLogoLoaded();
+        com.osmb.api.visual.image.Image scaledLogo = (logoImage != null) ? logoImage : null;
 
-        maxWidth.set(Math.max(maxWidth.get(), fmBold.stringWidth(title)));
-        widen.accept(lineTickets);
-        widen.accept(lineRounds);
-        widen.accept(lineXPG);
-        widen.accept(lineXPH);
-        widen.accept(lineShotHdr);
-        widen.accept(lineBull);
-        widen.accept(lineYellow);
-        widen.accept(lineRed);
-        widen.accept(lineBlue);
-        widen.accept(lineBlack);
-        widen.accept(lineMissed);
-        maxWidth.set(Math.max(maxWidth.get(), fmBold.stringWidth(lineTask)));
-        widen.accept(lineRuntime);
-        maxWidth.set(Math.max(maxWidth.get(), fmItalic.stringWidth(lineVersion)));
-
-        // ---- Measure total height ----
-        int totalHeight = 0;
-        totalHeight += headerHeight + contentTopPad;
-
-        totalHeight += fm.getHeight(); // tickets
-        totalHeight += fm.getHeight(); // rounds
-        totalHeight += groupGap;
-
-        totalHeight += fm.getHeight(); // xpg
-        totalHeight += fm.getHeight(); // xph
-        totalHeight += groupGap;
-
-        totalHeight += fm.getHeight(); // Shot header
-        totalHeight += fm.getHeight(); // bull
-        totalHeight += fm.getHeight(); // yellow
-        totalHeight += fm.getHeight(); // red
-        totalHeight += fm.getHeight(); // blue
-        totalHeight += fm.getHeight(); // black
-        totalHeight += fm.getHeight(); // missed
-        totalHeight += groupGap;
-
-        totalHeight += fmBold.getHeight();   // task
-        totalHeight += fm.getHeight();       // runtime
-        totalHeight += fmItalic.getHeight(); // version
-        totalHeight += contentBottomPad;
-
-        int innerWidth  = maxWidth.get() + paddingLeft + paddingRight + bulletIndent; // add indent budget
-        int innerHeight = totalHeight;
-
-        // ---- Outer white border highlight
-        c.fillRect(x - borderThickness, yTop - borderThickness,
-                innerWidth + (borderThickness * 2), innerHeight + (borderThickness * 2),
-                Color.WHITE.getRGB(), 1);
-
-        // ---- Black background box
         int innerX = x;
-        int innerY = yTop;
-        c.fillRect(innerX, innerY, innerWidth, innerHeight, Color.BLACK.getRGB(), 1);
+        int innerY = baseY;
+        int innerWidth = width;
 
-        // ---- White inner border
-        c.drawRect(innerX, innerY, innerWidth, innerHeight, Color.WHITE.getRGB());
+        int totalLines = 11;
 
-        // ---- Gradient header
-        for (int i = 0; i < headerHeight; i++) {
-            int gradientColor = new Color(80 + (i * 3), 150 + (i * 3), 255, 255).getRGB();
-            c.drawLine(innerX + 1, innerY + 1 + i, innerX + innerWidth - 2, innerY + 1 + i, gradientColor);
+        int y = innerY + topGap;
+        if (scaledLogo != null) y += scaledLogo.height + logoBottomGap;
+        y += totalLines * lineGap;
+        y += smallGap;
+        y += 10;
+
+        int innerHeight = Math.max(220, y - innerY);
+
+        // panel
+        c.fillRect(innerX - borderThickness, innerY - borderThickness,
+                innerWidth + (borderThickness * 2),
+                innerHeight + (borderThickness * 2),
+                java.awt.Color.WHITE.getRGB(), 1);
+        c.fillRect(innerX, innerY, innerWidth, innerHeight, java.awt.Color.decode("#01031C").getRGB(), 1);
+        c.drawRect(innerX, innerY, innerWidth, innerHeight, java.awt.Color.WHITE.getRGB());
+
+        int curY = innerY + topGap;
+
+        // optional logo
+        if (scaledLogo != null) {
+            int imgX = innerX + (innerWidth - scaledLogo.width) / 2;
+            c.drawAtOn(scaledLogo, imgX, curY);
+            curY += scaledLogo.height + logoBottomGap;
         }
-        // Header bottom border
-        for (int i = 0; i < borderThickness; i++) {
-            c.drawLine(innerX + 1, innerY + headerHeight + i + 1, innerX + innerWidth - 2, innerY + headerHeight + i + 1, Color.WHITE.getRGB());
+
+        // 1) Runtime
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Runtime", runtime, labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 2) Tickets earned
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Tickets earned", intFmt.format(ticketsEarned), labelGray, valueBlue,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 3) Rounds completed
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Rounds completed", intFmt.format(totalRounds), labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 4) XP Gained (live Ranged)
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "XP Gained", intFmt.format(xpGained), labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 5) XP/hr (live)
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "XP/hr", intFmt.format(xpPerHour), labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 6) ETL
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "ETL", intFmt.format(Math.round(etl)), labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 7) TTL
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "TTL", ttlText, labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 8) Level progress
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Level progress", levelProgressText, labelGray, valueGreen,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 9) Current level
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Current level", currentLevelText, labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 10) Task
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Task", String.valueOf(task), labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // 11) Version
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY,
+                "Version", scriptVersion, labelGray, valueWhite,
+                FONT_VALUE_BOLD, FONT_LABEL);
+
+        // (optional) store canvas for webhook usage
+        try { lastCanvasFrame.set(c.toImageCopy()); } catch (Exception ignored) {}
+    }
+
+    private void drawStatLine(Canvas c, int innerX, int innerWidth, int paddingX, int y,
+                              String label, String value, int labelColor, int valueColor,
+                              Font labelFont, Font valueFont) {
+        c.drawText(label, innerX + paddingX, y, labelColor, labelFont);
+        int valW = c.getFontMetrics(valueFont).stringWidth(value);
+        int valX = innerX + innerWidth - paddingX - valW;
+        c.drawText(value, valX, y, valueColor, valueFont);
+    }
+
+    private void ensureLogoLoaded() {
+        if (logoImage != null) return;
+
+        try (InputStream in = getClass().getResourceAsStream("/logo.png")) {
+            if (in == null) {
+                log(getClass(), "Logo '/logo.png' not found on classpath.");
+                return;
+            }
+
+            BufferedImage src = ImageIO.read(in);
+            if (src == null) {
+                log(getClass(), "Failed to decode logo.png");
+                return;
+            }
+
+            BufferedImage argb = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g = argb.createGraphics();
+            g.setComposite(AlphaComposite.Src); // copy pixels as-is
+            g.drawImage(src, 0, 0, null);
+            g.dispose();
+
+            int w = argb.getWidth();
+            int h = argb.getHeight();
+            int[] px = new int[w * h];
+            argb.getRGB(0, 0, w, h, px, 0, w);
+
+            for (int i = 0; i < px.length; i++) {
+                int p = px[i];
+                int a = (p >>> 24) & 0xFF;
+                if (a == 0) {
+                    px[i] = 0x00000000; // fully transparent black
+                }
+            }
+
+            boolean PREMULTIPLY = true;
+            if (PREMULTIPLY) {
+                for (int i = 0; i < px.length; i++) {
+                    int p = px[i];
+                    int a = (p >>> 24) & 0xFF;
+                    if (a == 0) { px[i] = 0; continue; }
+                    int r = (p >>> 16) & 0xFF;
+                    int gch = (p >>> 8) & 0xFF;
+                    int b = p & 0xFF;
+                    // premultiply
+                    r = (r * a + 127) / 255;
+                    gch = (gch * a + 127) / 255;
+                    b = (b * a + 127) / 255;
+                    px[i] = (a << 24) | (r << 16) | (gch << 8) | b;
+                }
+            }
+
+            logoImage = new Image(px, w, h);
+            log(getClass(), "Logo loaded: " + w + "x" + h + " premultiplied=" + PREMULTIPLY);
+
+        } catch (Exception e) {
+            log(getClass(), "Error loading logo: " + e.getMessage());
         }
+    }
 
-        // ---- Title
-        int titleWidth = fmBold.stringWidth(title);
-        int titleX = innerX + (innerWidth / 2) - (titleWidth / 2);
-        c.drawText(title, titleX, innerY + 18, Color.BLACK.getRGB(), ARIAL_BOLD);
-
-        // ---- Content draw
-        int cx = innerX + paddingLeft;
-        int y  = innerY + headerHeight + contentTopPad;
-
-        // tickets / rounds
-        y += fm.getHeight();
-        c.drawText(lineTickets, cx, y, Color.WHITE.getRGB(), ARIAL);
-        y += fm.getHeight();
-        c.drawText(lineRounds,  cx, y, Color.WHITE.getRGB(), ARIAL);
-
-        y += groupGap;
-
-        // xp
-        y += fm.getHeight();
-        c.drawText(lineXPG, cx, y, new Color(144, 238, 144).getRGB(), ARIAL); // light green
-        y += fm.getHeight();
-        c.drawText(lineXPH, cx, y, new Color(255, 215, 0).getRGB(),   ARIAL); // gold
-
-        y += groupGap;
-
-        // shot breakdown
-        y += fm.getHeight();
-        c.drawText(lineShotHdr, cx, y, Color.WHITE.getRGB(), ARIAL);
-
-        int bx = cx + bulletIndent;
-        y += fm.getHeight();
-        c.drawText(lineBull,   bx, y, new Color(0, 255, 127).getRGB(), ARIAL);    // spring green
-        y += fm.getHeight();
-        c.drawText(lineYellow, bx, y, new Color(255, 215, 0).getRGB(), ARIAL);    // gold
-        y += fm.getHeight();
-        c.drawText(lineRed,    bx, y, new Color(255, 99, 71).getRGB(), ARIAL);    // tomato
-        y += fm.getHeight();
-        c.drawText(lineBlue,   bx, y, new Color(173, 216, 230).getRGB(), ARIAL);  // light blue
-        y += fm.getHeight();
-        c.drawText(lineBlack,  bx, y, new Color(200, 200, 200).getRGB(), ARIAL);  // grey-ish
-        y += fm.getHeight();
-        c.drawText(lineMissed, bx, y, new Color(255, 182, 193).getRGB(), ARIAL);  // pink
-
-        y += groupGap;
-
-        // footer
-        y += fmBold.getHeight();
-        c.drawText(lineTask,    cx, y, new Color(0, 255, 255).getRGB(), ARIAL_BOLD); // cyan
-        y += fm.getHeight();
-        c.drawText(lineRuntime, cx, y, Color.WHITE.getRGB(), ARIAL);
-        y += fmItalic.getHeight();
-        c.drawText(lineVersion, cx, y, new Color(180, 180, 180).getRGB(), ARIAL_ITALIC);
+    @Override
+    public void onNewFrame() {
+        xpTracking.checkXP();
     }
 
     @Override
@@ -283,14 +378,14 @@ public class dRangingGuild extends Script {
 
         // WEBHOOKS
         webhookEnabled = ui.isWebhookEnabled();
+        webhookUrl = ui.getWebhookUrl();
+        webhookIntervalMinutes = ui.getWebhookInterval();
+        webhookShowUser = ui.isUsernameIncluded();
+
         if (webhookEnabled) {
             user = getWidgetManager().getChatbox().getUsername();
-            webhookUrl = ui.getWebhookUrl();
-            webhookInterval = ui.getWebhookInterval();
-            webhookIncludeUser = ui.isUsernameIncluded();
-            webhookIncludeStats = ui.isStatsIncluded();
-            webhookTimer.reset(webhookInterval * 60_000L);
-            log("WEBHOOK", "Webhook enabled, sending every " + webhookInterval + " minutes.");
+            log("WEBHOOK", "✅ Webhook enabled. Interval: " + webhookIntervalMinutes + "min. Username: " + user);
+            queueSendWebhook();
         }
 
         // Initialize targetview component
@@ -310,9 +405,8 @@ public class dRangingGuild extends Script {
 
     @Override
     public int poll() {
-        if (webhookEnabled && webhookTimer.hasFinished()) {
-            sendWebhook();
-            webhookTimer.reset(webhookInterval * 60_000L);
+        if (webhookEnabled && System.currentTimeMillis() - lastWebhookSent >= webhookIntervalMinutes * 60_000L) {
+            queueSendWebhook();
         }
 
         var dialogue = getWidgetManager().getDialogue();
@@ -443,87 +537,147 @@ public class dRangingGuild extends Script {
         return 0;
     }
 
-    private void sendWebhook() {
+    private void sendWebhookInternal() {
+        ByteArrayOutputStream baos = null;
         try {
-            if (webhookUrl == null || webhookUrl.isEmpty()) return;
+            // Only proceed if we have a painted frame
+            Image source = lastCanvasFrame.get();
+            if (source == null) {
+                log("WEBHOOK", "ℹ No painted frame available; skipping webhook.");
+                return;
+            }
 
-            com.osmb.api.visual.image.Image screenImage = getScreen().getImage();
-            BufferedImage bufferedImage = screenImage.toBufferedImage();
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ImageIO.write(bufferedImage, "png", baos);
+            BufferedImage buffered = source.toBufferedImage();
+            baos = new ByteArrayOutputStream();
+            ImageIO.write(buffered, "png", baos);
             byte[] imageBytes = baos.toByteArray();
 
-            String boundary = "----WebhookBoundary" + System.currentTimeMillis();
+            // Runtime for description
+            long elapsed = System.currentTimeMillis() - startTime;
+            String runtime = formatRuntime(elapsed);
+
+            // Username (or anonymous)
+            String displayUser = (webhookShowUser && user != null) ? user : "anonymous";
+
+            // Next webhook local time (Europe/Amsterdam)
+            long nextMillis = System.currentTimeMillis() + (webhookIntervalMinutes * 60_000L);
+            ZonedDateTime nextLocal = ZonedDateTime.ofInstant(
+                    Instant.ofEpochMilli(nextMillis),
+                    ZoneId.systemDefault()
+            );
+            String nextLocalStr = nextLocal.format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+
+            String imageFilename = "canvas.png";
+            StringBuilder json = new StringBuilder();
+            json.append("{ \"embeds\": [ {")
+                    .append("\"title\": \"Script run summary - ").append(displayUser).append("\",")
+
+                    .append("\"color\": 5189303,")
+
+                    .append("\"author\": {")
+                    .append("\"name\": \"Davyy's ").append(scriptName).append("\",")
+                    .append("\"icon_url\": \"").append(authorIconUrl).append("\"")
+                    .append("},")
+
+                    .append("\"description\": ")
+                    .append("\"This is your progress report after running for **")
+                    .append(runtime)
+                    .append("**.\\n")
+                    .append("Make sure to share your proggies in the OSMB proggies channel\\n")
+                    .append("https://discord.com/channels/736938454478356570/789791439487500299")
+                    .append("\",")
+
+                    .append("\"image\": { \"url\": \"attachment://").append(imageFilename).append("\" },")
+
+                    .append("\"footer\": { \"text\": \"Next update/webhook at: ").append(nextLocalStr).append("\" }")
+
+                    .append("} ] }");
+
+            // Send multipart/form-data
+            String boundary = "----WebBoundary" + System.currentTimeMillis();
             HttpURLConnection conn = (HttpURLConnection) new URL(webhookUrl).openConnection();
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
             conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
 
-            long now = System.currentTimeMillis();
-            long elapsed = now - startTime;
-            String formattedRuntime = formatTime(elapsed);
-
-            // ✅ Calculate values
-            int scoreTotal = totalScore + currentScore;
-            int ticketsEarned = scoreTotal / 10;
-            int xpGained = scoreTotal / 2;
-            int xpPerHour = (int) ((xpGained * 3600000.0) / elapsed);
-
-            DecimalFormatSymbols symbols = new DecimalFormatSymbols();
-            symbols.setGroupingSeparator('.');
-            DecimalFormat f = new DecimalFormat("#,###");
-            f.setDecimalFormatSymbols(symbols);
-
-            StringBuilder payload = new StringBuilder();
-            payload.append("{\"embeds\": [{");
-            payload.append("\"title\": \"🏹 dRangingGuild Stats - ")
-                    .append(webhookIncludeUser && user != null ? escapeJson(user) : "anonymous").append("\",");
-            payload.append("\"color\": 15844367,");
-            payload.append("\"fields\": [")
-                    .append("{\"name\": \"Tickets\", \"value\": \"").append(f.format(ticketsEarned)).append("\", \"inline\": true},")
-                    .append("{\"name\": \"Rounds\", \"value\": \"").append(f.format(totalRounds)).append("\", \"inline\": true},")
-                    .append("{\"name\": \"Ranged XP\", \"value\": \"").append(f.format(xpGained)).append("\", \"inline\": true},")
-                    .append("{\"name\": \"XP/hr\", \"value\": \"").append(f.format(xpPerHour)).append("\", \"inline\": true},")
-                    .append("{\"name\": \"Current Task\", \"value\": \"").append(escapeJson(task)).append("\", \"inline\": true},")
-                    .append("{\"name\": \"Runtime\", \"value\": \"").append(formattedRuntime).append("\", \"inline\": true},")
-                    .append("{\"name\": \"Version\", \"value\": \"").append(scriptVersion).append("\", \"inline\": true}")
-                    .append("],");
-            payload.append("\"image\": {\"url\": \"attachment://screen.png\"}}]}");
-
             try (OutputStream out = conn.getOutputStream()) {
+                // payload_json
                 out.write(("--" + boundary + "\r\n").getBytes());
                 out.write("Content-Disposition: form-data; name=\"payload_json\"\r\n\r\n".getBytes());
-                out.write(payload.toString().getBytes(StandardCharsets.UTF_8));
+                out.write(json.toString().getBytes(StandardCharsets.UTF_8));
                 out.write("\r\n".getBytes());
 
+                // image file
                 out.write(("--" + boundary + "\r\n").getBytes());
-                out.write("Content-Disposition: form-data; name=\"file\"; filename=\"screen.png\"\r\n".getBytes());
+                out.write(("Content-Disposition: form-data; name=\"file\"; filename=\"" + imageFilename + "\"\r\n").getBytes());
                 out.write("Content-Type: image/png\r\n\r\n".getBytes());
                 out.write(imageBytes);
                 out.write("\r\n".getBytes());
+
                 out.write(("--" + boundary + "--\r\n").getBytes());
                 out.flush();
             }
 
-            int response = conn.getResponseCode();
-            log("WEBHOOK", response == 204 || response == 200 ? "✅ Sent webhook" : "⚠ Failed with HTTP " + response);
+            int code = conn.getResponseCode();
+            long now = System.currentTimeMillis();
+
+            if (code == 200 || code == 204) {
+                lastWebhookSent = now;
+                log("WEBHOOK", "✅ Webhook sent.");
+            } else if (code == 429) {
+                long backoffMs = 30_000L;
+                String ra = conn.getHeaderField("Retry-After");
+                if (ra != null) {
+                    try {
+                        double sec = Double.parseDouble(ra.trim());
+                        backoffMs = Math.max(1000L, (long)Math.ceil(sec * 1000.0));
+                    } catch (NumberFormatException ignored) {}
+                }
+                nextWebhookEarliestMs = now + backoffMs + 250;
+                log("WEBHOOK", "⚠ 429 rate-limited. Backing off ~" + backoffMs + "ms");
+            } else {
+                log("WEBHOOK", "⚠ Webhook failed. HTTP " + code);
+            }
+
         } catch (Exception e) {
-            log("WEBHOOK", "❌ Failed to send webhook: " + e.getMessage());
+            log("WEBHOOK", "❌ Error: " + e.getMessage());
+        } finally {
+            try { if (baos != null) baos.close(); } catch (IOException ignored) {}
+            webhookInFlight.set(false);
         }
     }
 
-    private static String escapeJson(String text) {
-        return text.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n");
+    public void queueSendWebhook() {
+        if (!webhookEnabled) return;
+
+        long now = System.currentTimeMillis();
+        if (now < nextWebhookEarliestMs) return;
+        if (now - lastWebhookSent < webhookIntervalMinutes * 60_000L) return;
+
+        if (!webhookInFlight.compareAndSet(false, true)) return;
+
+        sendWebhookAsync();
     }
 
-    private static String formatTime(long millis) {
-        long seconds = Math.max(millis / 1000, 0);
-        long hours = seconds / 3600;
+
+    public void sendWebhookAsync() {
+        Thread t = new Thread(this::sendWebhookInternal, "WebhookSender");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private String formatRuntime(long millis) {
+        long seconds = millis / 1000;
+        long days = seconds / 86400;
+        long hours = (seconds % 86400) / 3600;
         long minutes = (seconds % 3600) / 60;
         long secs = seconds % 60;
-        return String.format("%02d:%02d:%02d", hours, minutes, secs);
+
+        if (days > 0) {
+            return String.format("%dd %02d:%02d:%02d", days, hours, minutes, secs);
+        } else {
+            return String.format("%02d:%02d:%02d", hours, minutes, secs);
+        }
     }
 
     private String percent(int count, int totalShots) {

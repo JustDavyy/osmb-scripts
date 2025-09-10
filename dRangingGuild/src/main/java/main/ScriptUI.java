@@ -29,13 +29,11 @@ public class ScriptUI {
     private static final String PREF_WEBHOOK_URL = "drangingguild_webhook_url";
     private static final String PREF_WEBHOOK_INTERVAL = "drangingguild_webhook_interval";
     private static final String PREF_WEBHOOK_INCLUDE_USER = "drangingguild_webhook_include_user";
-    private static final String PREF_WEBHOOK_INCLUDE_STATS = "drangingguild_webhook_include_stats";
 
     private CheckBox webhookEnabledCheckBox;
     private TextField webhookUrlField;
     private ComboBox<Integer> webhookIntervalComboBox;
     private CheckBox includeUsernameCheckBox;
-    private CheckBox includeStatsCheckBox;
 
     public ScriptUI(Script script) {
         this.script = script;
@@ -136,10 +134,6 @@ public class ScriptUI {
         includeUsernameCheckBox.setStyle("-fx-text-fill: white;");
         includeUsernameCheckBox.setSelected(prefs.getBoolean(PREF_WEBHOOK_INCLUDE_USER, true));
 
-        includeStatsCheckBox = new CheckBox("Include Stats");
-        includeStatsCheckBox.setStyle("-fx-text-fill: white;");
-        includeStatsCheckBox.setSelected(prefs.getBoolean(PREF_WEBHOOK_INCLUDE_STATS, true));
-
         Label intervalLabel = new Label("Send interval (minutes)");
         intervalLabel.setStyle("-fx-text-fill: white;");
 
@@ -148,12 +142,11 @@ public class ScriptUI {
             webhookUrlField.setDisable(!enabled);
             webhookIntervalComboBox.setDisable(!enabled);
             includeUsernameCheckBox.setDisable(!enabled);
-            includeStatsCheckBox.setDisable(!enabled);
         });
 
         webhookBox.getChildren().addAll(webhookEnabledCheckBox, webhookUrlField,
                 intervalLabel, webhookIntervalComboBox,
-                includeUsernameCheckBox, includeStatsCheckBox);
+                includeUsernameCheckBox);
 
         tabPane.getTabs().add(new Tab("Webhooks", webhookBox));
 
@@ -232,7 +225,6 @@ public class ScriptUI {
         prefs.put(PREF_WEBHOOK_URL, getWebhookUrl());
         prefs.putInt(PREF_WEBHOOK_INTERVAL, getWebhookInterval());
         prefs.putBoolean(PREF_WEBHOOK_INCLUDE_USER, isUsernameIncluded());
-        prefs.putBoolean(PREF_WEBHOOK_INCLUDE_STATS, isStatsIncluded());
 
         ((Stage) webhookEnabledCheckBox.getScene().getWindow()).close();
     }
@@ -245,21 +237,6 @@ public class ScriptUI {
     public String getWebhookUrl() { return webhookUrlField.getText().trim(); }
     public int getWebhookInterval() { return webhookIntervalComboBox.getValue() != null ? webhookIntervalComboBox.getValue() : 5; }
     public boolean isUsernameIncluded() { return includeUsernameCheckBox.isSelected(); }
-    public boolean isStatsIncluded() { return includeStatsCheckBox.isSelected(); }
-
-    public int getGearItemId(String level, String slot) {
-        for (int i = 0; i < LEVELS.length; i++) {
-            if (LEVELS[i].equals(level)) {
-                for (int j = 0; j < SLOTS.length; j++) {
-                    if (SLOTS[j].equals(slot)) {
-                        ComboBox<Integer> cb = gearSelections[i][j];
-                        return cb != null && cb.getValue() != null ? cb.getValue() : NONE;
-                    }
-                }
-            }
-        }
-        return NONE;
-    }
 
     private Integer[] getOptionsForLevelAndSlot(String level, String slot) {
         return switch (level) {
