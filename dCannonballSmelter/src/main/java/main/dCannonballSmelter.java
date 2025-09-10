@@ -73,6 +73,7 @@ public class dCannonballSmelter extends Script implements WebhookSender {
     private final AtomicBoolean webhookInFlight = new AtomicBoolean(false);
     final String authorIconUrl = "https://www.osmb.co.uk/lovable-uploads/ad86059b-ce19-4540-8e53-9fd01c61c98b.png";
     private volatile long nextWebhookEarliestMs = 0L;
+    private final AtomicReference<Image> lastCanvasFrame = new AtomicReference<>();
     private static String user = "";
 
     private static final Font FONT_LABEL       = new Font("Arial", Font.PLAIN, 12);
@@ -83,7 +84,6 @@ public class dCannonballSmelter extends Script implements WebhookSender {
 
     // Logo image
     private com.osmb.api.visual.image.Image logoImage = null;
-    private final AtomicReference<Image> lastCanvasFrame = new AtomicReference<>();
 
     private List<Task> tasks;
 
