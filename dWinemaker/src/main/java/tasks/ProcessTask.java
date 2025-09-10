@@ -73,7 +73,6 @@ public class ProcessTask extends Task {
             waitUntilFinishedProducing();
             task = "Update stats";
             craftCount += 14;
-            printStats();
         }
 
         return false;
@@ -137,20 +136,5 @@ public class ProcessTask extends Task {
 
         task = "Checking wait condition";
         script.submitHumanTask(condition, script.random(18000, 20000));
-    }
-
-    private void printStats() {
-        task = "Print stats";
-        long elapsed = System.currentTimeMillis() - startTime;
-        int winesPerHour = (int) ((craftCount * 3600000L) / elapsed);
-
-        int xpPerWine = 200;
-        int totalXp = craftCount * xpPerWine;
-        int xpPerHour = (int) ((totalXp * 3600000L) / elapsed);
-
-        script.log("STATS", String.format(
-                "Wines made: %d | Wines/hr: %,d | XP gained: %,d | XP/hr: %,d",
-                craftCount, winesPerHour, totalXp, xpPerHour
-        ));
     }
 }
