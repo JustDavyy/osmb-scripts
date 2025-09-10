@@ -220,16 +220,13 @@ public class MineTask extends Task {
 
         Timer animationTimer = new Timer();
         Timer debounceTimer = new Timer();
-        Timer lastXpGain = new Timer(); // NEW
+
         long start = System.currentTimeMillis();
 
         final long gracePeriodMs = script.random(3500, 4500);
         final long maxNoAnimTime = script.random(6000, 8000);
 
         script.submitHumanTask(() -> {
-            if (readyToReadXP) {
-                readXp();
-            }
 
             ItemGroupResult currentInv = script.getWidgetManager().getInventory()
                     .search(Set.of(ItemID.BLESSED_BONE_SHARDS));
@@ -274,9 +271,6 @@ public class MineTask extends Task {
                     animationTimer.reset();
                     debounceTimer.reset();
                     lastXpGain.reset();
-                    if (!readyToReadXP) {
-                        readyToReadXP = true;
-                    }
                     script.log(getClass(), "+" + gained + " blessed shard(s) mined! (" + blessedShardCount + " in total)");
                 }
             } else if (currentCount < lastCount) {
@@ -304,49 +298,5 @@ public class MineTask extends Task {
         }, maxMiningDuration);
 
         script.submitHumanTask(() -> false, script.random(300, 800));
-    }
-
-    private void readXp() {
-        task = "Read XP";
-        XPDropsComponent xpComponent = (XPDropsComponent) script.getWidgetManager().getComponent(XPDropsComponent.class);
-
-        if (xpComponent == null) {
-            script.log(getClass(), "XP button component not found.");
-            return;
-        }
-
-        ComponentSearchResult<Integer> result = xpComponent.getResult();
-        if (result == null || result.getComponentImage().getGameFrameStatusType() != 1) return;
-
-        Rectangle componentBounds = result.getBounds();
-        Rectangle xpTextRect = new Rectangle(componentBounds.x - 140, componentBounds.y - 1, 119, 38);
-
-        script.submitTask(() -> false, script.random(200, 400));
-        String xpText = script.getOCR().getText(Font.SMALL_FONT, xpTextRect, Color.WHITE.getRGB());
-
-        if (xpText == null || xpText.isBlank()) return;
-        xpText = xpText.replaceAll("[^\\d]", "");
-        if (xpText.isEmpty()) return;
-
-        try {
-            double currentXp = Double.parseDouble(xpText);
-            if (currentXp <= 0) return;
-
-            if (previousXPRead < 0) {
-                previousXPRead = currentXp;
-                return;
-            }
-
-            double xpGained = currentXp - previousXPRead;
-            if (xpGained > 0 && xpGained <= 15000) {
-                miningXpGained += (int) xpGained;
-                script.log(getClass(), "Mining XP gained: " + xpGained + " (" + miningXpGained + ")");
-                previousXPRead = currentXp;
-            }
-
-        } catch (NumberFormatException e) {
-            script.log(getClass(), "Failed to parse Fishing XP text: " + xpText);
-        }
-
     }
 }

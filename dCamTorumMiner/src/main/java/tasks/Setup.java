@@ -3,6 +3,8 @@ package tasks;
 // GENERAL JAVA IMPORTS
 
 // OSMB SPECIFIC IMPORTS
+import com.osmb.api.ui.component.tabs.skill.SkillType;
+import com.osmb.api.ui.component.tabs.skill.SkillsTabComponent;
 import com.osmb.api.ui.tabs.Tab;
 import com.osmb.api.script.Script;
 
@@ -22,7 +24,15 @@ public class Setup extends Task {
     }
 
     public boolean execute() {
-        task = getClass().getSimpleName();
+        // Check required mining level
+        task = "Get mining level";
+        SkillsTabComponent.SkillLevel miningSkillLevel = script.getWidgetManager().getSkillTab().getSkillLevel(SkillType.MINING);
+        if (miningSkillLevel == null) {
+            script.log(getClass(), "Failed to get skill levels.");
+            return false;
+        }
+        startLevel = miningSkillLevel.getLevel();
+        currentLevel = miningSkillLevel.getLevel();
 
         task = "Open inventory";
         script.log(dCamTorumMiner.class, "Opening inventory tab");
