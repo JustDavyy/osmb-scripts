@@ -18,7 +18,6 @@ public class ScriptUI {
     private static final String PREF_WEBHOOK_URL = "dspookycollector_webhook_url";
     private static final String PREF_WEBHOOK_INTERVAL = "dspookycollector_webhook_interval";
     private static final String PREF_WEBHOOK_INCLUDE_USER = "dspookycollector_webhook_include_user";
-    private static final String PREF_WEBHOOK_INCLUDE_STATS = "dspookycollector_webhook_include_stats";
 
     private final Script script;
 
@@ -28,7 +27,6 @@ public class ScriptUI {
     private TextField webhookUrlField;
     private ComboBox<Integer> webhookIntervalComboBox;
     private CheckBox includeUsernameCheckBox;
-    private CheckBox includeStatsCheckBox;
 
     public ScriptUI(Script script) {
         this.script = script;
@@ -74,16 +72,11 @@ public class ScriptUI {
         includeUsernameCheckBox.setSelected(prefs.getBoolean(PREF_WEBHOOK_INCLUDE_USER, true));
         includeUsernameCheckBox.setDisable(!webhookEnabledCheckBox.isSelected());
 
-        includeStatsCheckBox = new CheckBox("Include Stats");
-        includeStatsCheckBox.setSelected(prefs.getBoolean(PREF_WEBHOOK_INCLUDE_STATS, true));
-        includeStatsCheckBox.setDisable(!webhookEnabledCheckBox.isSelected());
-
         webhookEnabledCheckBox.setOnAction(e -> {
             boolean enabled = webhookEnabledCheckBox.isSelected();
             webhookUrlField.setDisable(!enabled);
             webhookIntervalComboBox.setDisable(!enabled);
             includeUsernameCheckBox.setDisable(!enabled);
-            includeStatsCheckBox.setDisable(!enabled);
         });
 
         webhookBox.getChildren().addAll(
@@ -91,8 +84,7 @@ public class ScriptUI {
                 webhookUrlField,
                 new Label("Send interval (minutes)"),
                 webhookIntervalComboBox,
-                includeUsernameCheckBox,
-                includeStatsCheckBox
+                includeUsernameCheckBox
         );
         Tab webhookTab = new Tab("Webhooks", webhookBox);
         webhookTab.setClosable(false);
@@ -119,7 +111,6 @@ public class ScriptUI {
         prefs.put(PREF_WEBHOOK_URL, getWebhookUrl());
         prefs.putInt(PREF_WEBHOOK_INTERVAL, getWebhookInterval());
         prefs.putBoolean(PREF_WEBHOOK_INCLUDE_USER, isUsernameIncluded());
-        prefs.putBoolean(PREF_WEBHOOK_INCLUDE_STATS, isStatsIncluded());
 
         script.log("SAVESETTINGS", "Saved selected item and webhook config.");
         ((Stage) itemComboBox.getScene().getWindow()).close();
@@ -146,9 +137,5 @@ public class ScriptUI {
 
     public boolean isUsernameIncluded() {
         return includeUsernameCheckBox != null && includeUsernameCheckBox.isSelected();
-    }
-
-    public boolean isStatsIncluded() {
-        return includeStatsCheckBox != null && includeStatsCheckBox.isSelected();
     }
 }
