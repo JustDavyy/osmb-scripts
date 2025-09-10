@@ -2,6 +2,8 @@ package tasks;
 
 import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.item.ItemID;
+import com.osmb.api.ui.component.tabs.skill.SkillType;
+import com.osmb.api.ui.component.tabs.skill.SkillsTabComponent;
 import com.osmb.api.ui.tabs.Tab;
 import com.osmb.api.script.Script;
 import utils.Task;
@@ -22,6 +24,16 @@ public class Setup extends Task {
     public boolean execute() {
         task = getClass().getSimpleName();
         script.log("DEBUG", "We are now inside the Setup task logic");
+
+        // Check required crafting level
+        task = "Get crafting level";
+        SkillsTabComponent.SkillLevel craftingSkillLevel = script.getWidgetManager().getSkillTab().getSkillLevel(SkillType.CRAFTING);
+        if (craftingSkillLevel == null) {
+            script.log(getClass(), "Failed to get skill levels.");
+            return false;
+        }
+        startLevel = craftingSkillLevel.getLevel();
+        currentLevel = craftingSkillLevel.getLevel();
 
         task = "Open inventory";
         script.log(getClass().getSimpleName(), "Opening inventory tab");

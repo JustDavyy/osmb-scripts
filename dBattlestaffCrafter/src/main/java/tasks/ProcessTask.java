@@ -81,8 +81,6 @@ public class ProcessTask extends Task {
                 script.log(getClass().getSimpleName(), "Adding extra randomized delay");
                 script.submitHumanTask(() -> false, script.random(250, 1200));
             }
-            craftedCount += 14;
-            printStats();
         }
 
         return false;
@@ -133,31 +131,6 @@ public class ProcessTask extends Task {
 
         script.log(getClass(), "Using human task to wait until crafting finishes.");
         script.submitHumanTask(condition, script.random(18000, 20000));
-    }
-
-    private void printStats() {
-        task = "Print stats";
-        long elapsed = System.currentTimeMillis() - startTime;
-        int craftsPerHour = (int) ((craftedCount * 3600000L) / elapsed);
-
-        double xpPerCraft = getXPForStaff(staffID);
-        totalXpGained = (int) (craftedCount * xpPerCraft);
-        int xpPerHour = (int) ((totalXpGained * 3600000L) / elapsed);
-
-        script.log("STATS", String.format(
-                "Staffs crafted: %d | Staffs/hr: %,d | XP gained: %,d | XP/hr: %,d",
-                craftedCount, craftsPerHour, (int) totalXpGained, xpPerHour
-        ));
-    }
-
-    private double getXPForStaff(int staffId) {
-        return switch (staffId) {
-            case ItemID.AIR_BATTLESTAFF -> 137.5;
-            case ItemID.WATER_BATTLESTAFF -> 100.0;
-            case ItemID.EARTH_BATTLESTAFF -> 112.5;
-            case ItemID.FIRE_BATTLESTAFF -> 125.0;
-            default -> 0.0;
-        };
     }
 
     public static int getOrbIdForStaff(int staffId) {
