@@ -707,8 +707,7 @@ public class dBoltEnchanter extends Script {
                 log("UPDATE", "❌ Error downloading new version: " + e.getMessage());
             }
         } else {
-            log("SCRIPTVERSION", "✅ You are running a newer version (v" + scriptVersion + ") than the published one (v" + latest + ").");
-            log("SCRIPTVERSION", "🙏 Thank you for testing a development build — your time and feedback are appreciated!");
+            log("SCRIPTVERSION", "✅ You are running the latest version (v" + scriptVersion + ").");
         }
     }
 }
