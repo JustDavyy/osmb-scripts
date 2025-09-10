@@ -239,8 +239,6 @@ public class dBoltEnchanter extends Script {
         final int lineGap = 16;
         final int smallGap = 6;
         final int logoBottomGap = 8;
-        final int maxLogoWidth  = width - paddingX * 2;
-        final int maxLogoHeight = 48;
 
         // colors
         final int labelGray   = new Color(180,180,180).getRGB();
