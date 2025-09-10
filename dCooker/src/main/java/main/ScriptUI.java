@@ -31,7 +31,6 @@ public class ScriptUI {
     private static final String PREF_WEBHOOK_URL = "dcooker_webhook_url";
     private static final String PREF_WEBHOOK_INTERVAL = "dcooker_webhook_interval";
     private static final String PREF_WEBHOOK_INCLUDE_USER = "dcooker_webhook_include_user";
-    private static final String PREF_WEBHOOK_INCLUDE_STATS = "dcooker_webhook_include_stats";
 
     private final Script script;
     private ComboBox<String> selectionModeComboBox;
@@ -43,12 +42,13 @@ public class ScriptUI {
 
     private VBox itemSelectionBox;
 
+    private CookingItem pendingSingleSelect = null;
+
     // Webhook UI
     private CheckBox webhookEnabledCheckBox;
     private TextField webhookUrlField;
     private ComboBox<Integer> webhookIntervalComboBox;
     private CheckBox includeUsernameCheckBox;
-    private CheckBox includeStatsCheckBox;
 
     private static final String[] BANK_METHOD_OPTIONS = {"Item by item", "Deposit all"};
 
@@ -62,6 +62,7 @@ public class ScriptUI {
         // === Main Tab ===
         VBox mainBox = new VBox(10);
         mainBox.setStyle("-fx-background-color: #636E72; -fx-padding: 15; -fx-alignment: center");
+        mainBox.setFillWidth(true);
 
         Label modeLabel = new Label("Selection mode");
         selectionModeComboBox = new ComboBox<>();
@@ -70,8 +71,32 @@ public class ScriptUI {
 
         itemSelectionBox = new VBox(8);
         itemSelectionBox.setStyle("-fx-alignment: center");
+        itemSelectionBox.setFillWidth(true);
         updateItemSelectionUI(core);
-        selectionModeComboBox.setOnAction(e -> updateItemSelectionUI(core));
+        selectionModeComboBox.setOnAction(e -> {
+            boolean toMultiple = isMultipleSelectionMode();
+
+            if (toMultiple) {
+                if (singleItemComboBox != null) {
+                    CookingItem sel = singleItemComboBox.getSelectionModel().getSelectedItem();
+                    if (sel != null) {
+                        int id = sel.getRawItemId();
+                        if (!multipleItemIds.contains(id)) {
+                            multipleItemIds.add(id);
+                        }
+                    }
+                }
+            } else {
+                if (!multipleItemIds.isEmpty()) {
+                    CookingItem ci = CookingItem.fromRawItemId(multipleItemIds.get(0));
+                    if (ci != null) {
+                        pendingSingleSelect = ci;
+                    }
+                }
+            }
+
+            updateItemSelectionUI(core);
+        });
 
         Label bankLabel = new Label("Bank method");
         bankMethodComboBox = new ComboBox<>();
@@ -102,16 +127,11 @@ public class ScriptUI {
         includeUsernameCheckBox.setSelected(prefs.getBoolean(PREF_WEBHOOK_INCLUDE_USER, true));
         includeUsernameCheckBox.setDisable(!webhookEnabledCheckBox.isSelected());
 
-        includeStatsCheckBox = new CheckBox("Include Script Stats in Webhook");
-        includeStatsCheckBox.setSelected(prefs.getBoolean(PREF_WEBHOOK_INCLUDE_STATS, true));
-        includeStatsCheckBox.setDisable(!webhookEnabledCheckBox.isSelected());
-
         webhookEnabledCheckBox.setOnAction(e -> {
             boolean enabled = webhookEnabledCheckBox.isSelected();
             webhookUrlField.setDisable(!enabled);
             webhookIntervalComboBox.setDisable(!enabled);
             includeUsernameCheckBox.setDisable(!enabled);
-            includeStatsCheckBox.setDisable(!enabled);
         });
 
         webhookBox.getChildren().addAll(
@@ -119,8 +139,7 @@ public class ScriptUI {
                 webhookUrlField,
                 new Label("Send interval (minutes)"),
                 webhookIntervalComboBox,
-                includeUsernameCheckBox,
-                includeStatsCheckBox
+                includeUsernameCheckBox
         );
         Tab webhookTab = new Tab("Webhooks", webhookBox);
         webhookTab.setClosable(false);
@@ -146,7 +165,6 @@ public class ScriptUI {
         prefs.put(PREF_WEBHOOK_URL, getWebhookUrl());
         prefs.putInt(PREF_WEBHOOK_INTERVAL, getWebhookInterval());
         prefs.putBoolean(PREF_WEBHOOK_INCLUDE_USER, isUsernameIncluded());
-        prefs.putBoolean(PREF_WEBHOOK_INCLUDE_STATS, isStatsIncluded());
 
         if (isMultipleSelectionMode()) {
             String joined = multipleItemIds.stream().map(String::valueOf).collect(Collectors.joining(","));
@@ -170,6 +188,11 @@ public class ScriptUI {
         } else {
             setupSingleSelection(core);
         }
+
+        javafx.application.Platform.runLater(() -> {
+            itemSelectionBox.requestLayout();
+            itemSelectionBox.autosize();
+        });
     }
 
     private void setupSingleSelection(ScriptCore core) {
@@ -198,13 +221,24 @@ public class ScriptUI {
         }
 
         itemSelectionBox.getChildren().addAll(label, singleItemComboBox);
+
+        // If we're returning from Multiple mode, prefer the carried selection
+        if (pendingSingleSelect != null) {
+            singleItemComboBox.getSelectionModel().select(pendingSingleSelect);
+            pendingSingleSelect = null;
+        }
     }
 
     private void setupMultipleSelection(ScriptCore core) {
         Label label = new Label("Select multiple items to cook");
 
         multipleItemsListView = new ListView<>(multipleItemIds);
+        multipleItemsListView.setMinHeight(75);
         multipleItemsListView.setPrefHeight(280);
+        multipleItemsListView.setMaxWidth(Double.MAX_VALUE);
+        multipleItemsListView.setMaxHeight(Double.MAX_VALUE);
+        VBox.setVgrow(multipleItemsListView, javafx.scene.layout.Priority.ALWAYS);
+        multipleItemsListView.prefWidthProperty().bind(itemSelectionBox.widthProperty());
         multipleItemsListView.setCellFactory(param -> new ListCell<>() {
             @Override
             protected void updateItem(Integer itemId, boolean empty) {
@@ -259,6 +293,10 @@ public class ScriptUI {
         buttons.setStyle("-fx-alignment: center");
 
         itemSelectionBox.getChildren().addAll(label, multipleItemsListView, buttons);
+
+        if (!multipleItemIds.isEmpty()) {
+            multipleItemsListView.getSelectionModel().select(0);
+        }
     }
 
     private ListCell<CookingItem> createItemCell(ScriptCore core) {
@@ -321,9 +359,5 @@ public class ScriptUI {
 
     public boolean isUsernameIncluded() {
         return includeUsernameCheckBox != null && includeUsernameCheckBox.isSelected();
-    }
-
-    public boolean isStatsIncluded() {
-        return includeStatsCheckBox != null && includeStatsCheckBox.isSelected();
     }
 }

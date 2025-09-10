@@ -482,7 +482,6 @@ public class dBoltEnchanter extends Script {
     public int poll() {
         if (webhookEnabled && System.currentTimeMillis() - lastWebhookSent >= webhookIntervalMinutes * 60_000L) {
             queueSendWebhook();
-            lastWebhookSent = System.currentTimeMillis();
         }
 
         if (tasks != null) {

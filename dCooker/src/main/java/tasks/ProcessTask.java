@@ -147,11 +147,9 @@ public class ProcessTask extends Task {
                     totalCookCount += 28;
                     cookCount += cookedNow;
                     burnCount += (28 - cookedNow);
-                    totalXpGained += cookedNow * getXpForFood(cookingItemID);
                 } else {
                     totalCookCount += 6;
                     cookCount += cookedNow;
-                    totalXpGained += cookedNow * getXpForFood(cookingItemID);
                 }
             }
         }
