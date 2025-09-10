@@ -23,27 +23,28 @@ public class Setup extends Task {
     }
 
     public boolean execute() {
-        task = "Open skills tab";
-        script.getWidgetManager().getTabManager().openTab(Tab.Type.SKILLS);
-
+        // Check required agility level
         task = "Get agility level";
-        SkillsTabComponent skillsTab = (SkillsTabComponent) script.getWidgetManager()
-                .getTabManager().getTabComponent(Tab.Type.SKILLS);
-
-        if (skillsTab != null) {
-            var agilitySkill = skillsTab.getSkillLevel(SkillType.AGILITY);
-            int agilityLevel = agilitySkill.getLevel();
-            int boostedLevel = agilitySkill.getBoostedLevel();
-            script.log(getClass(), "Agility level: " + agilityLevel + " (Boosted: " + boostedLevel + ")");
-
-            if (agilityLevel < 70) {
-                script.log(getClass(), "Agility level is below 70 (" + agilityLevel + "). Disabling usage of the shortcut.");
-                useShortcut = false;
-            }
-        } else {
-            script.log(getClass(), "Failed to get SkillsTabComponent");
+        SkillsTabComponent.SkillLevel agilitySkillLevel = script.getWidgetManager().getSkillTab().getSkillLevel(SkillType.AGILITY);
+        if (agilitySkillLevel == null) {
+            script.log(getClass(), "Failed to get skill levels.");
             return false;
         }
+
+        if (agilitySkillLevel.getLevel() < 70) {
+            script.log(getClass(), "Agility level is below 70 (" + agilitySkillLevel.getLevel() + "). Disabling usage of the shortcut.");
+            useShortcut = false;
+        }
+
+        // Check required woodcutting level
+        task = "Get woodcutting level";
+        SkillsTabComponent.SkillLevel woodcuttingSkillLevel = script.getWidgetManager().getSkillTab().getSkillLevel(SkillType.WOODCUTTING);
+        if (woodcuttingSkillLevel == null) {
+            script.log(getClass(), "Failed to get skill levels.");
+            return false;
+        }
+        startLevel = woodcuttingSkillLevel.getLevel();
+        currentLevel = woodcuttingSkillLevel.getLevel();
 
         task = "Get screen center";
         // Get and store center bounds
