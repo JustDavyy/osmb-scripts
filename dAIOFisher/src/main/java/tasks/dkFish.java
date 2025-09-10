@@ -46,7 +46,7 @@ public class dkFish extends Task {
     private int consecutiveNoSpotChecks = 0;
     private int relocationAttempts = 0;
 
-    private long lastAnimationDetected = System.currentTimeMillis();
+    public static long lastAnimationDetected = System.currentTimeMillis();
     private long currentIdleThreshold = getRandomIdleThreshold();
     private final PixelAnalyzer pixelAnalyzer = script.getPixelAnalyzer();
 
