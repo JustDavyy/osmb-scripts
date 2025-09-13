@@ -75,6 +75,11 @@ public class dkTravel extends Task {
     public boolean execute() {
         task = getClass().getSimpleName();
 
+        if (script.getWidgetManager().getBank().isVisible()) {
+            script.getWidgetManager().getBank().close();
+            return false;
+        }
+
         currentPos = script.getWorldPosition();
         // Handle if we're within the fishing area still
         if (fishingArea.contains(currentPos)) {
