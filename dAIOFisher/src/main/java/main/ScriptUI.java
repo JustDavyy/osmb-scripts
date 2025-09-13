@@ -31,12 +31,15 @@ public class ScriptUI {
     private static final String PREF_SELECTED_LOCATION = "daiofisher_selected_location";
     private static final String PREF_SELECTED_METHOD = "daiofisher_selected_method";
     private static final String PREF_SELECTED_HANDLING = "daiofisher_selected_handling";
+    private static final String PREF_SELECTED_BAREHAND = "daiofisher_selected_barehand";
+    private static final String PREF_SELECTED_SKIPDELAY = "daiofisher_minnow_skip_delay";
 
     private final Script script;
     private ComboBox<FishingLocation> locationComboBox;
     private ComboBox<FishingMethod> methodComboBox;
     private ComboBox<HandlingMode> handlingComboBox;
     private CheckBox skipMinnowDelayCheckBox;
+    private CheckBox useBarehandCheckBox;
     private Label minnowWarningLabel;
 
     private HBox fishPreviewBox;
@@ -86,18 +89,24 @@ public class ScriptUI {
         // AFTER creating the controls (keep your existing code), tweak initial state:
         skipMinnowDelayCheckBox = new CheckBox("Disable human delay on Minnow spot switch");
         skipMinnowDelayCheckBox.setStyle("-fx-text-fill: white;");
+        useBarehandCheckBox = new CheckBox("Use barehanded fish style (replace harpoon)");
+        useBarehandCheckBox.setStyle("-fx-text-fill: white;");
         minnowWarningLabel = new Label("⚠ Might result in a higher ban rate\nUse at your own risk.");
         minnowWarningLabel.setStyle("-fx-font-style: italic; -fx-text-fill: orange;");
 
         // Initially hide (and don't reserve layout space)
         skipMinnowDelayCheckBox.setVisible(false);
         minnowWarningLabel.setVisible(false);
+        useBarehandCheckBox.setVisible(false);
         skipMinnowDelayCheckBox.managedProperty().bind(skipMinnowDelayCheckBox.visibleProperty());
         minnowWarningLabel.managedProperty().bind(minnowWarningLabel.visibleProperty());
+        useBarehandCheckBox.managedProperty().bind(useBarehandCheckBox.visibleProperty());
 
         // Restore saved state
-        skipMinnowDelayCheckBox.setSelected(prefs.getBoolean("daiofisher_minnow_skip_delay", false));
+        skipMinnowDelayCheckBox.setSelected(prefs.getBoolean(PREF_SELECTED_SKIPDELAY, false));
+        useBarehandCheckBox.setSelected(prefs.getBoolean(PREF_SELECTED_BAREHAND, false));
         updateMinnowControlsVisibility();
+        updateBarehandControlsVisibility();
 
         // === Listeners ===
         locationComboBox.valueProperty().addListener((obs, oldVal, newVal) -> {
@@ -105,9 +114,11 @@ public class ScriptUI {
                 methodComboBox.setItems(FXCollections.observableArrayList(newVal.getMethods()));
                 methodComboBox.getSelectionModel().selectFirst();
                 updateMinnowControlsVisibility();
+                updateBarehandControlsVisibility();
             }
         });
         skipMinnowDelayCheckBox.setOnAction(e -> updateMinnowControlsVisibility());
+        useBarehandCheckBox.setOnAction(e -> updateBarehandControlsVisibility());
 
         methodComboBox.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
@@ -144,7 +155,7 @@ public class ScriptUI {
                 locationLabel, locationComboBox,
                 methodLabel, methodComboBox,
                 previewLabel, fishPreviewBox,
-                handlingLabel, handlingComboBox,
+                handlingLabel, handlingComboBox, useBarehandCheckBox,
                 skipMinnowDelayCheckBox, minnowWarningLabel
         );
 
@@ -211,6 +222,27 @@ public class ScriptUI {
         minnowWarningLabel.setVisible(showWarn);
     }
 
+    private void updateBarehandControlsVisibility() {
+        boolean isHarpoon = (
+                        locationComboBox.getValue() == FishingLocation.Fishing_Guild_South ||
+                        locationComboBox.getValue() == FishingLocation.Fishing_Guild_North ||
+                        locationComboBox.getValue() == FishingLocation.Port_Piscarilius_West ||
+                        locationComboBox.getValue() == FishingLocation.Catherby ||
+                        locationComboBox.getValue() == FishingLocation.Myths_Guild ||
+                        locationComboBox.getValue() == FishingLocation.Prifddinas_North ||
+                        locationComboBox.getValue() == FishingLocation.Piscatoris ||
+                        locationComboBox.getValue() == FishingLocation.Burgh_de_Rott ||
+                        locationComboBox.getValue() == FishingLocation.Isle_Of_Souls_North ||
+                        locationComboBox.getValue() == FishingLocation.Isle_Of_Souls_East ||
+                        locationComboBox.getValue() == FishingLocation.Lands_End_West ||
+                        locationComboBox.getValue() == FishingLocation.Jatizso ||
+                        locationComboBox.getValue() == FishingLocation.Rellekka_NorthPier ||
+                        locationComboBox.getValue() == FishingLocation.Rellekka_MiddlePier
+                );
+
+        useBarehandCheckBox.setVisible(isHarpoon);
+    }
+
     private void startFishPreviewCycle(ScriptCore core, FishingMethod method) {
         if (fishCycleTimeline != null) {
             fishCycleTimeline.stop();
@@ -256,7 +288,8 @@ public class ScriptUI {
         prefs.put(PREF_WEBHOOK_URL, getWebhookUrl());
         prefs.putInt(PREF_WEBHOOK_INTERVAL, getWebhookInterval());
         prefs.putBoolean(PREF_WEBHOOK_INCLUDE_USER, isUsernameIncluded());
-        prefs.putBoolean("daiofisher_minnow_skip_delay", skipMinnowDelayCheckBox.isSelected());
+        prefs.putBoolean(PREF_SELECTED_SKIPDELAY, skipMinnowDelayCheckBox.isSelected());
+        prefs.putBoolean(PREF_SELECTED_BAREHAND, useBarehandCheckBox.isSelected());
 
         if (fishCycleTimeline != null) {
             fishCycleTimeline.stop();
@@ -293,6 +326,10 @@ public class ScriptUI {
 
     public boolean isSkippingMinnowDelay() {
         return skipMinnowDelayCheckBox != null && skipMinnowDelayCheckBox.isSelected();
+    }
+
+    public boolean isUseBarehanded() {
+        return useBarehandCheckBox != null && useBarehandCheckBox.isSelected();
     }
 
     public boolean isUsernameIncluded() {

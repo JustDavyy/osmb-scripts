@@ -255,7 +255,7 @@ public class Setup extends Task {
                     }
                 }
                 case ItemID.HARPOON -> {
-                    if (!hasToolEquipped) {
+                    if (!hasToolEquipped && !useBarehand) {
                         searchIds.addAll(TOOL_EQUIVALENTS.get("harpoon"));
                     }
                 }
@@ -294,7 +294,7 @@ public class Setup extends Task {
                         inv.containsAny(Set.copyOf(TOOL_EQUIVALENTS.get("fishingrod")));
                 case ItemID.FLY_FISHING_ROD -> hasToolEquipped ||
                         inv.containsAny(Set.copyOf(TOOL_EQUIVALENTS.get("flyfishingrod")));
-                case ItemID.HARPOON -> hasToolEquipped ||
+                case ItemID.HARPOON -> hasToolEquipped || useBarehand ||
                         inv.containsAny(Set.copyOf(TOOL_EQUIVALENTS.get("harpoon")));
                 case ItemID.OILY_FISHING_ROD -> hasToolEquipped ||
                         inv.containsAny(Set.copyOf(TOOL_EQUIVALENTS.get("oilyfishingrod")));
@@ -304,7 +304,7 @@ public class Setup extends Task {
                     if (hasBarbRod && needsFeather) {
                         yield inv.containsAny(Set.copyOf(BAIT_EQUIVALENTS.get("barbbait")));
                     } else {
-                        yield inv.containsAny(Set.copyOf(BAIT_EQUIVALENTS.get("feather")));
+                        yield inv.contains(ItemID.FEATHER);
                     }
                 }
                 case ItemID.SANDWORMS -> inv.containsAny(Set.copyOf(BAIT_EQUIVALENTS.get("sandworm")));
