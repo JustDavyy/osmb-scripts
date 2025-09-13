@@ -170,7 +170,6 @@ public class dkTravel extends Task {
 
             return false;
         }
-
         // Handle if we're at the zanaris fairy ring area
         RSObject zanarisRing = getSpecificObjectAt("Fairy ring", 2412, 4434, 0);
         if (!inventorySnapshot.isFull()

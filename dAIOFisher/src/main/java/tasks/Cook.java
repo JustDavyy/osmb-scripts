@@ -94,6 +94,17 @@ public class Cook extends Task {
         for (int rawId : rawFish) {
             if (!inventory.contains(rawId)) continue;
 
+            if (rawId == ItemID.RAW_SALMON && currentCookingLevel < 25) {
+                script.log(getClass(), "Not high enough cooking level to cook salmon. Have: " + currentCookingLevel + " need: 25");
+                script.log(getClass(), "Dropping raw salmon since we cannot cook them yet.");
+                script.getWidgetManager().getInventory().dropItems(rawId);
+            }
+            if (rawId == ItemID.RAW_TROUT && currentCookingLevel < 15) {
+                script.log(getClass(), "Not high enough cooking level to cook trout. Have: " + currentCookingLevel + " need: 25");
+                script.log(getClass(), "Dropping raw trout since we cannot cook them yet.");
+                script.getWidgetManager().getInventory().dropItems(rawId);
+            }
+
             RSObject cookObject = getClosestCookObject(fishingMethod.getCookingObjectName(), fishingMethod.getCookingObjectAction());
             if (cookObject == null) {
                 script.log(getClass(), "No cookable object found nearby (" + fishingMethod.getCookingObjectName() + ").");

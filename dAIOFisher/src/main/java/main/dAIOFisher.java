@@ -22,13 +22,11 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -45,12 +43,15 @@ import javax.imageio.ImageIO;
         name = "dAIOFisher",
         description = "AIO Fisher that fishes, banks and/or drops to get those gains!",
         skillCategory = SkillCategory.FISHING,
-        version = 2.8,
+        version = 2.9,
         author = "JustDavyy"
 )
 public class dAIOFisher extends Script {
-    public static String scriptVersion = "2.8";
+    public static String scriptVersion = "2.9";
     private final String scriptName = "AIOFisher";
+    private static String sessionId = UUID.randomUUID().toString();
+    private static long lastStatsSent = 0;
+    private static final long STATS_INTERVAL_MS = 600_000L;
     public static boolean setupDone = false;
     public static boolean usingBarrel = false;
     public static boolean skipMinnowDelay = false;
@@ -62,7 +63,7 @@ public class dAIOFisher extends Script {
     public static boolean dropMode = false;
     public static boolean cookMode = false;
     public static boolean noteMode = false;
-    public static boolean hasHarpoonEquipped = false;
+    public static boolean hasToolEquipped = false;
     public static FishingMethod fishingMethod;
     public static FishingLocation fishingLocation;
     public static HandlingMode handlingMode;
@@ -71,6 +72,7 @@ public class dAIOFisher extends Script {
 
     public static double fishingXp = 0;
     public static double cookingXp = 0;
+    public static long totalXPGained = 0;
 
     public static long lastXpGained = System.currentTimeMillis() - 20000;
 
@@ -124,6 +126,19 @@ public class dAIOFisher extends Script {
     public static int startFishingLevel = 1;
     public static int currentCookingLevel = 1;
     public static int startCookingLevel = 1;
+
+    public static final Map<String, Set<Integer>> TOOL_EQUIVALENTS = Map.of(
+            "harpoon", Set.of(ItemID.HARPOON, ItemID.BARBTAIL_HARPOON, ItemID.DRAGON_HARPOON, ItemID.DRAGON_HARPOON_OR, ItemID.DRAGON_HARPOON_OR_30349, ItemID.INFERNAL_HARPOON, ItemID.INFERNAL_HARPOON_UNCHARGED_25367, ItemID.INFERNAL_HARPOON_OR, ItemID.INFERNAL_HARPOON_UNCHARGED, ItemID.INFERNAL_HARPOON_OR_30342, ItemID.INFERNAL_HARPOON_UNCHARGED_30343, ItemID.CRYSTAL_HARPOON, ItemID.CRYSTAL_HARPOON_23864, ItemID.CRYSTAL_HARPOON_INACTIVE),
+            "fishingrod", Set.of(ItemID.FISHING_ROD, ItemID.PEARL_FISHING_ROD),
+            "oilyfishingrod", Set.of(ItemID.OILY_FISHING_ROD, ItemID.OILY_PEARL_FISHING_ROD),
+            "flyfishingrod", Set.of(ItemID.FLY_FISHING_ROD, ItemID.PEARL_FLY_FISHING_ROD),
+            "barbarianrod", Set.of(ItemID.BARBARIAN_ROD, ItemID.PEARL_BARBARIAN_ROD)
+    );
+
+    public static final Map<String, Set<Integer>> BAIT_EQUIVALENTS = Map.of(
+            "sandworm", Set.of(ItemID.SANDWORMS, ItemID.DIABOLIC_WORMS),
+            "barbbait", Set.of(ItemID.FISHING_BAIT, ItemID.FEATHER, ItemID.RED_FEATHER, ItemID.YELLOW_FEATHER, ItemID.ORANGE_FEATHER, ItemID.BLUE_FEATHER, ItemID.FISH_OFFCUTS)
+    );
 
     private List<Task> tasks;
 
@@ -672,6 +687,13 @@ public class dAIOFisher extends Script {
             queueSendWebhook();
         }
 
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - lastStatsSent >= STATS_INTERVAL_MS) {
+            long elapsed = nowMs - startTime;
+            sendStats(0, (long) (fishingXp + cookingXp), elapsed);
+            lastStatsSent = nowMs;
+        }
+
         if (tasks != null) {
             for (Task task : tasks) {
                 if (task.activate()) {
@@ -915,6 +937,39 @@ public class dAIOFisher extends Script {
             for (int y = startY; y < endY; y++) {
                 image.setRGB(x, y, ColorUtils.TRANSPARENT_PIXEL);
             }
+        }
+    }
+
+    private void sendStats(long gpEarned, long xpGained, long runtimeMs) {
+        try {
+            String json = String.format(
+                    "{\"script\":\"%s\",\"session\":\"%s\",\"gp\":%d,\"xp\":%d,\"runtime\":%d}",
+                    scriptName,
+                    sessionId,
+                    gpEarned,
+                    xpGained,
+                    runtimeMs / 1000
+            );
+
+            URL url = new URL(obf.Secrets.STATS_URL);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("X-Stats-Key", obf.Secrets.STATS_API);
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(json.getBytes(StandardCharsets.UTF_8));
+            }
+
+            int code = conn.getResponseCode();
+            if (code == 200) {
+                log("STATS", "✅ Stats reported: gp=" + gpEarned + ", runtime=" + (runtimeMs/1000) + "s");
+            } else {
+                log("STATS", "⚠ Failed to report stats, HTTP " + code);
+            }
+        } catch (Exception e) {
+            log("STATS", "❌ Error sending stats: " + e.getMessage());
         }
     }
 }

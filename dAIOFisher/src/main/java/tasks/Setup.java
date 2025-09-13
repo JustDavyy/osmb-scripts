@@ -11,6 +11,9 @@ import com.osmb.api.utils.UIResult;
 import data.FishingLocation;
 import utils.Task;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -61,60 +64,52 @@ public class Setup extends Task {
         script.log(getClass().getSimpleName(), "We are now inside the Setup task logic");
 
         // Check if we have all the necessary tools in our inventory
-        ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(
-                Set.copyOf(fishingMethod.getRequiredTools())
-        );
+        ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Collections.emptySet());
 
         if (inventorySnapshot == null) {
             // Inventory not visible
             return false;
         }
 
-        if (!fishingMethod.getRequiredTools().contains(ItemID.SMALL_FISHING_NET) && !fishingMethod.getRequiredTools().contains(ItemID.BIG_FISHING_NET)) {
-            task = "Check required tools";
-            if (!inventorySnapshot.containsAll(Set.copyOf(fishingMethod.getRequiredTools()))) {
-                script.log(getClass().getSimpleName(), "Not all required tools could be located in inventory, stopping script!");
-                script.getWidgetManager().getLogoutTab().logout();
-                script.stop();
-                return false;
-            }
-        } else {
-            script.log(getClass(), "Skipped required tools check, as one or more is a textured item!");
-            if (fishingLocation.equals(FishingLocation.Karamja_West)) {
-                ItemGroupResult invCheck = script.getWidgetManager().getInventory().search(Set.of(ItemID.RAW_KARAMBWANJI));
+        task = "Check equipped tools";
+        if (hasAnyRequiredEquipped(fishingMethod.getRequiredTools())) {
+            script.log(getClass(), "Equipped fishing tool detected, marking as true!");
+            hasToolEquipped = true;
+        }
 
-                if (inventorySnapshot == null) {
-                    // Inventory not visible
-                    return false;
-                }
+        task = "Check required tools";
+        if (!hasAllRequirements(fishingMethod.getRequiredTools())) {
+            script.log(getClass().getSimpleName(), "Not all required tools could be located in inventory, stopping script!");
+            script.getWidgetManager().getLogoutTab().logout();
+            script.stop();
+            return false;
+        }
 
-                task = "Check karambwanji start count";
-                script.log(getClass(), "Checking initial Karambwanji count.");
-                startAmount = invCheck.getAmount(ItemID.RAW_KARAMBWANJI);
-                script.log(getClass(), "Karambwanji start count detected: " + startAmount);
-            }
-            if (fishingLocation.equals(FishingLocation.Minnows)) {
-                ItemGroupResult invCheck = script.getWidgetManager().getInventory().search(Set.of(ItemID.MINNOW));
+        if (fishingLocation.equals(FishingLocation.Karamja_West)) {
+            ItemGroupResult invCheck = script.getWidgetManager().getInventory().search(Set.of(ItemID.RAW_KARAMBWANJI));
 
-                if (inventorySnapshot == null) {
-                    // Inventory not visible
-                    return false;
-                }
+            if (invCheck == null) {return false;}
 
-                task = "Check minnow start count";
-                script.log(getClass(), "Checking initial Minnow count.");
-                startAmount = invCheck.getAmount(ItemID.MINNOW);
-                script.log(getClass(), "Minnow start count detected: " + startAmount);
-            }
+            task = "Check karambwanji start count";
+            script.log(getClass(), "Checking initial Karambwanji count.");
+            startAmount = invCheck.getAmount(ItemID.RAW_KARAMBWANJI);
+            script.log(getClass(), "Karambwanji start count detected: " + startAmount);
+        }
+        if (fishingLocation.equals(FishingLocation.Minnows)) {
+            ItemGroupResult invCheck = script.getWidgetManager().getInventory().search(Set.of(ItemID.MINNOW));
+
+            if (invCheck == null) {return false;}
+
+            task = "Check minnow start count";
+            script.log(getClass(), "Checking initial Minnow count.");
+            startAmount = invCheck.getAmount(ItemID.MINNOW);
+            script.log(getClass(), "Minnow start count detected: " + startAmount);
         }
 
         // Check if we have a fishing barrel in our inventory
         ItemGroupResult inventorySnapshot2 = script.getWidgetManager().getInventory().search(Set.of(ItemID.FISH_BARREL, ItemID.OPEN_FISH_BARREL));
 
-        if (inventorySnapshot2 == null) {
-            // Inventory not visible
-            return false;
-        }
+        if (inventorySnapshot2 == null) {return false;}
 
         // Check if we're using fishing barrel
         task = "Check fish barrel";
@@ -237,6 +232,121 @@ public class Setup extends Task {
         task = "Finish set up";
         currentPos = script.getWorldPosition();
         setupDone = true;
+        return false;
+    }
+
+
+    public boolean hasAllRequirements(Collection<Integer> requiredIds) {
+        boolean hasBarbRod   = requiredIds.contains(ItemID.BARBARIAN_ROD);
+        boolean needsFeather = requiredIds.contains(ItemID.FEATHER);
+
+        // Collect all relevant search IDs (but skip equippable tools if already equipped)
+        Set<Integer> searchIds = new HashSet<>();
+        for (int requiredId : requiredIds) {
+            switch (requiredId) {
+                case ItemID.FISHING_ROD -> {
+                    if (!hasToolEquipped) {
+                        searchIds.addAll(TOOL_EQUIVALENTS.get("fishingrod"));
+                    }
+                }
+                case ItemID.FLY_FISHING_ROD -> {
+                    if (!hasToolEquipped) {
+                        searchIds.addAll(TOOL_EQUIVALENTS.get("flyfishingrod"));
+                    }
+                }
+                case ItemID.HARPOON -> {
+                    if (!hasToolEquipped) {
+                        searchIds.addAll(TOOL_EQUIVALENTS.get("harpoon"));
+                    }
+                }
+                case ItemID.OILY_FISHING_ROD -> {
+                    if (!hasToolEquipped) {
+                        searchIds.addAll(TOOL_EQUIVALENTS.get("oilyfishingrod"));
+                    }
+                }
+                case ItemID.BARBARIAN_ROD -> {
+                    if (!hasToolEquipped) {
+                        searchIds.addAll(TOOL_EQUIVALENTS.get("barbarianrod"));
+                    }
+                }
+                case ItemID.FEATHER -> {
+                    if (hasBarbRod && needsFeather) {
+                        searchIds.addAll(BAIT_EQUIVALENTS.get("barbbait"));
+                    } else {
+                        searchIds.add(requiredId);
+                    }
+                }
+                case ItemID.SANDWORMS -> searchIds.addAll(BAIT_EQUIVALENTS.get("sandworm"));
+                default -> searchIds.add(requiredId);
+            }
+        }
+
+        ItemGroupResult inv = script.getWidgetManager().getInventory().search(Set.copyOf(searchIds));
+        if (inv == null) {
+            script.log(getClass().getSimpleName(), "Inventory not visible.");
+            return false;
+        }
+
+        // Validate each requirement
+        for (int requiredId : requiredIds) {
+            boolean satisfied = switch (requiredId) {
+                case ItemID.FISHING_ROD -> hasToolEquipped ||
+                        inv.containsAny(Set.copyOf(TOOL_EQUIVALENTS.get("fishingrod")));
+                case ItemID.FLY_FISHING_ROD -> hasToolEquipped ||
+                        inv.containsAny(Set.copyOf(TOOL_EQUIVALENTS.get("flyfishingrod")));
+                case ItemID.HARPOON -> hasToolEquipped ||
+                        inv.containsAny(Set.copyOf(TOOL_EQUIVALENTS.get("harpoon")));
+                case ItemID.OILY_FISHING_ROD -> hasToolEquipped ||
+                        inv.containsAny(Set.copyOf(TOOL_EQUIVALENTS.get("oilyfishingrod")));
+                case ItemID.BARBARIAN_ROD -> hasToolEquipped ||
+                        inv.containsAny(Set.copyOf(TOOL_EQUIVALENTS.get("barbarianrod")));
+                case ItemID.FEATHER -> {
+                    if (hasBarbRod && needsFeather) {
+                        yield inv.containsAny(Set.copyOf(BAIT_EQUIVALENTS.get("barbbait")));
+                    } else {
+                        yield inv.containsAny(Set.copyOf(BAIT_EQUIVALENTS.get("feather")));
+                    }
+                }
+                case ItemID.SANDWORMS -> inv.containsAny(Set.copyOf(BAIT_EQUIVALENTS.get("sandworm")));
+                default -> inv.containsAny(Set.of(requiredId));
+            };
+
+            if (!satisfied) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public boolean hasAnyRequiredEquipped(Collection<Integer> requiredIds) {
+        Equipment equipment = script.getWidgetManager().getEquipment();
+
+        for (int requiredId : requiredIds) {
+            boolean equipped = switch (requiredId) {
+                case ItemID.HARPOON -> {
+                    boolean found = false;
+                    for (int id : TOOL_EQUIVALENTS.get("harpoon")) {
+                        UIResult<Boolean> res = equipment.isEquiped(id);
+                        if (res.isFound()) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    yield found;
+                }
+                case ItemID.FISHING_ROD -> equipment.isEquiped(ItemID.PEARL_FISHING_ROD).isFound();
+                case ItemID.OILY_FISHING_ROD -> equipment.isEquiped(ItemID.OILY_PEARL_FISHING_ROD).isFound();
+                case ItemID.FLY_FISHING_ROD -> equipment.isEquiped(ItemID.PEARL_FLY_FISHING_ROD).isFound();
+                case ItemID.BARBARIAN_ROD -> equipment.isEquiped(ItemID.PEARL_BARBARIAN_ROD).isFound();
+                default -> false;
+            };
+
+            if (equipped) {
+                return true;
+            }
+        }
+
         return false;
     }
 }

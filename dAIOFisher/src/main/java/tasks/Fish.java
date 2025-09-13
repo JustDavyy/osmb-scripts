@@ -76,7 +76,7 @@ public class Fish extends Task {
             return true;
         }
 
-        ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Set.copyOf(fishingMethod.getRequiredTools()));
+        ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Collections.emptySet());
         if (inventorySnapshot == null) {
             script.log(getClass().getSimpleName(), "Inventory not visible.");
             return false;
@@ -92,13 +92,8 @@ public class Fish extends Task {
             return false;
         }
 
-        // Special case, fishing net is textured.
-        if (fishingMethod.getRequiredTools().contains(ItemID.SMALL_FISHING_NET) || fishingMethod.getRequiredTools().contains(ItemID.BIG_FISHING_NET)) {
-            return !inventorySnapshot.isFull();
-        }
-
-        // For other locations: require all tools
-        if (!inventorySnapshot.containsAll(Set.copyOf(fishingMethod.getRequiredTools()))) {
+        // Require all tools
+        if (!hasAllRequirements(fishingMethod.getRequiredTools())) {
             script.log(getClass().getSimpleName(), "Not all required tools could be located in inventory, stopping script!");
             script.getWidgetManager().getLogoutTab().logout();
             script.stop();
@@ -431,5 +426,88 @@ public class Fish extends Task {
 
         Area chosen = candidates.get(script.random(candidates.size()));
         return chosen.getRandomPosition();
+    }
+
+    public boolean hasAllRequirements(Collection<Integer> requiredIds) {
+        boolean hasBarbRod   = requiredIds.contains(ItemID.BARBARIAN_ROD);
+        boolean needsFeather = requiredIds.contains(ItemID.FEATHER);
+
+        // Collect all relevant search IDs (but skip equippable tools if already equipped)
+        Set<Integer> searchIds = new HashSet<>();
+        for (int requiredId : requiredIds) {
+            switch (requiredId) {
+                case ItemID.FISHING_ROD -> {
+                    if (!hasToolEquipped) {
+                        searchIds.addAll(TOOL_EQUIVALENTS.get("fishingrod"));
+                    }
+                }
+                case ItemID.FLY_FISHING_ROD -> {
+                    if (!hasToolEquipped) {
+                        searchIds.addAll(TOOL_EQUIVALENTS.get("flyfishingrod"));
+                    }
+                }
+                case ItemID.HARPOON -> {
+                    if (!hasToolEquipped) {
+                        searchIds.addAll(TOOL_EQUIVALENTS.get("harpoon"));
+                    }
+                }
+                case ItemID.OILY_FISHING_ROD -> {
+                    if (!hasToolEquipped) {
+                        searchIds.addAll(TOOL_EQUIVALENTS.get("oilyfishingrod"));
+                    }
+                }
+                case ItemID.BARBARIAN_ROD -> {
+                    if (!hasToolEquipped) {
+                        searchIds.addAll(TOOL_EQUIVALENTS.get("barbarianrod"));
+                    }
+                }
+                case ItemID.FEATHER -> {
+                    if (hasBarbRod && needsFeather) {
+                        searchIds.addAll(BAIT_EQUIVALENTS.get("barbbait"));
+                    } else {
+                        searchIds.add(requiredId);
+                    }
+                }
+                case ItemID.SANDWORMS -> searchIds.addAll(BAIT_EQUIVALENTS.get("sandworm"));
+                default -> searchIds.add(requiredId);
+            }
+        }
+
+        ItemGroupResult inv = script.getWidgetManager().getInventory().search(Set.copyOf(searchIds));
+        if (inv == null) {
+            script.log(getClass().getSimpleName(), "Inventory not visible.");
+            return false;
+        }
+
+        // Validate each requirement
+        for (int requiredId : requiredIds) {
+            boolean satisfied = switch (requiredId) {
+                case ItemID.FISHING_ROD -> hasToolEquipped ||
+                        inv.containsAny(Set.copyOf(TOOL_EQUIVALENTS.get("fishingrod")));
+                case ItemID.FLY_FISHING_ROD -> hasToolEquipped ||
+                        inv.containsAny(Set.copyOf(TOOL_EQUIVALENTS.get("flyfishingrod")));
+                case ItemID.HARPOON -> hasToolEquipped ||
+                        inv.containsAny(Set.copyOf(TOOL_EQUIVALENTS.get("harpoon")));
+                case ItemID.OILY_FISHING_ROD -> hasToolEquipped ||
+                        inv.containsAny(Set.copyOf(TOOL_EQUIVALENTS.get("oilyfishingrod")));
+                case ItemID.BARBARIAN_ROD -> hasToolEquipped ||
+                        inv.containsAny(Set.copyOf(TOOL_EQUIVALENTS.get("barbarianrod")));
+                case ItemID.FEATHER -> {
+                    if (hasBarbRod && needsFeather) {
+                        yield inv.containsAny(Set.copyOf(BAIT_EQUIVALENTS.get("barbbait")));
+                    } else {
+                        yield inv.containsAny(Set.copyOf(BAIT_EQUIVALENTS.get("feather")));
+                    }
+                }
+                case ItemID.SANDWORMS -> inv.containsAny(Set.copyOf(BAIT_EQUIVALENTS.get("sandworm")));
+                default -> inv.containsAny(Set.of(requiredId));
+            };
+
+            if (!satisfied) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
