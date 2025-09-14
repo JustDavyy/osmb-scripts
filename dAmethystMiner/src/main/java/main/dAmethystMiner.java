@@ -6,7 +6,6 @@ import com.osmb.api.location.area.impl.RectangleArea;
 import com.osmb.api.script.Script;
 import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
-import com.osmb.api.ui.component.tabs.skill.SkillType;
 import com.osmb.api.visual.drawing.Canvas;
 import com.osmb.api.visual.image.Image;
 import com.osmb.api.trackers.experience.XPTracker;
@@ -25,28 +24,29 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 @ScriptDefinition(
         name = "dAmethystMiner",
         description = "Mines and crafts/banks amethyst in the mining guild",
         skillCategory = SkillCategory.MINING,
-        version = 2.0,
+        version = 2.1,
         author = "JustDavyy"
 )
 public class dAmethystMiner extends Script {
-    public static final String scriptVersion = "2.0";
+    public static final String scriptVersion = "2.1";
     private final String scriptName = "AmethystMiner";
+    private static String sessionId = UUID.randomUUID().toString();
+    private static long lastStatsSent = 0;
+    private static final long STATS_INTERVAL_MS = 600_000L;
 
     public static boolean bankMode = false;
     public static boolean craftMode = false;
@@ -149,6 +149,13 @@ public class dAmethystMiner extends Script {
     public int poll() {
         if (webhookEnabled && System.currentTimeMillis() - lastWebhookSent >= webhookIntervalMinutes * 60_000L) {
             queueSendWebhook();
+        }
+
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - lastStatsSent >= STATS_INTERVAL_MS) {
+            long elapsed = nowMs - startTime;
+            sendStats((amethystMined * 3702L), (long) (miningXpGained + craftingXpGained), elapsed);
+            lastStatsSent = nowMs;
         }
 
         for (Task task : tasks) {
@@ -742,5 +749,38 @@ public class dAmethystMiner extends Script {
             case ItemID.AMETHYST_JAVELIN_HEADS -> amethystUsed * 5;
             default -> 0;
         };
+    }
+
+    private void sendStats(long gpEarned, long xpGained, long runtimeMs) {
+        try {
+            String json = String.format(
+                    "{\"script\":\"%s\",\"session\":\"%s\",\"gp\":%d,\"xp\":%d,\"runtime\":%d}",
+                    scriptName,
+                    sessionId,
+                    gpEarned,
+                    xpGained,
+                    runtimeMs / 1000
+            );
+
+            URL url = new URL(obf.Secrets.STATS_URL);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("X-Stats-Key", obf.Secrets.STATS_API);
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(json.getBytes(StandardCharsets.UTF_8));
+            }
+
+            int code = conn.getResponseCode();
+            if (code == 200) {
+                log("STATS", "✅ Stats reported: gp=" + gpEarned + ", runtime=" + (runtimeMs/1000) + "s");
+            } else {
+                log("STATS", "⚠ Failed to report stats, HTTP " + code);
+            }
+        } catch (Exception e) {
+            log("STATS", "❌ Error sending stats: " + e.getMessage());
+        }
     }
 }
