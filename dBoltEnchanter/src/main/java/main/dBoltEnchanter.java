@@ -22,6 +22,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -38,12 +39,15 @@ import javax.imageio.ImageIO;
         name = "dBoltEnchanter",
         description = "Casts the enchant crossbow bolt spell to enchant gem tipped bolts.",
         skillCategory = SkillCategory.MAGIC,
-        version = 1.1,
+        version = 1.2,
         author = "JustDavyy"
 )
 public class dBoltEnchanter extends Script {
-    public static final String scriptVersion = "1.1";
+    public static final String scriptVersion = "1.2";
     private final String scriptName = "BoltEnchanter";
+    private static String sessionId = UUID.randomUUID().toString();
+    private static long lastStatsSent = 0;
+    private static final long STATS_INTERVAL_MS = 600_000L;
     public static boolean setupDone = false;
     public static int boltStartStackSize = 0;
     public static int enchantedBoltStartStackSize = 0;
@@ -76,6 +80,7 @@ public class dBoltEnchanter extends Script {
     private static final Font FONT_VALUE_ITALIC= new Font("Arial", Font.ITALIC, 12);
 
     private final XPTracking xpTracking;
+    private int xpGained = 0;
 
     // Logo image
     private com.osmb.api.visual.image.Image logoImage = null;
@@ -194,7 +199,7 @@ public class dBoltEnchanter extends Script {
         }
 
         int xpPerHour = (int) Math.round(xpGainedLive / hours);
-        int xpGained  = (int) Math.round(xpGainedLive);
+        xpGained  = (int) Math.round(xpGainedLive);
 
         int castsCompleted = (int) Math.floor((xpGained / xpPerCast) + 1e-9);
 
@@ -468,8 +473,6 @@ public class dBoltEnchanter extends Script {
             queueSendWebhook();
         }
 
-        checkForUpdates();
-
         tasks = Arrays.asList(
                 new Setup(this),
                 new Enchant(this)
@@ -480,6 +483,13 @@ public class dBoltEnchanter extends Script {
     public int poll() {
         if (webhookEnabled && System.currentTimeMillis() - lastWebhookSent >= webhookIntervalMinutes * 60_000L) {
             queueSendWebhook();
+        }
+
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - lastStatsSent >= STATS_INTERVAL_MS) {
+            long elapsed = nowMs - startTime;
+            sendStats(0, xpGained, elapsed);
+            lastStatsSent = nowMs;
         }
 
         if (tasks != null) {
@@ -705,6 +715,39 @@ public class dBoltEnchanter extends Script {
             }
         } else {
             log("SCRIPTVERSION", "✅ You are running the latest version (v" + scriptVersion + ").");
+        }
+    }
+
+    private void sendStats(long gpEarned, long xpGained, long runtimeMs) {
+        try {
+            String json = String.format(
+                    "{\"script\":\"%s\",\"session\":\"%s\",\"gp\":%d,\"xp\":%d,\"runtime\":%d}",
+                    scriptName,
+                    sessionId,
+                    gpEarned,
+                    xpGained,
+                    runtimeMs / 1000
+            );
+
+            URL url = new URL(obf.Secrets.STATS_URL);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("X-Stats-Key", obf.Secrets.STATS_API);
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(json.getBytes(StandardCharsets.UTF_8));
+            }
+
+            int code = conn.getResponseCode();
+            if (code == 200) {
+                log("STATS", "✅ Stats reported: gp=" + gpEarned + ", runtime=" + (runtimeMs/1000) + "s");
+            } else {
+                log("STATS", "⚠ Failed to report stats, HTTP " + code);
+            }
+        } catch (Exception e) {
+            log("STATS", "❌ Error sending stats: " + e.getMessage());
         }
     }
 }
