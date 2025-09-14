@@ -30,6 +30,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -37,12 +38,16 @@ import java.util.concurrent.atomic.AtomicReference;
         name = "dGemstoneCrabber",
         description = "Trains combat by hunting the gem stone crab",
         skillCategory = SkillCategory.COMBAT,
-        version = 1.6,
+        version = 1.7,
         author = "JustDavyy"
 )
 public class dGemstoneCrabber extends Script implements WebhookSender {
-    public static final String scriptVersion = "1.6";
+    public static final String scriptVersion = "1.7";
     private final String scriptName = "GemstoneCrabber";
+    private static String sessionId = UUID.randomUUID().toString();
+    private static long lastStatsSent = 0;
+    private static final long STATS_INTERVAL_MS = 600_000L;
+    private static double xpGainedLive = 0.0;
     public static boolean setupDone = false;
     public static boolean canHopNow = false;
     public static boolean canBreakNow = false;
@@ -176,6 +181,13 @@ public class dGemstoneCrabber extends Script implements WebhookSender {
             queueSendWebhook();
         }
 
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - lastStatsSent >= STATS_INTERVAL_MS) {
+            long elapsed = nowMs - startTime;
+            sendStats(0L, (long) xpGainedLive, elapsed);
+            lastStatsSent = nowMs;
+        }
+
         if (tasks != null) {
             for (Task taskObj : tasks) {
                 if (taskObj.activate()) {
@@ -194,7 +206,6 @@ public class dGemstoneCrabber extends Script implements WebhookSender {
         String runtime = formatRuntime(elapsed);
 
         // === Live XP via tracker ===
-        double xpGainedLive = 0.0;
         if (xpTracking != null) {
             XPTracker t = xpTracking.getXpTracker();
             if (t != null) {
@@ -241,20 +252,7 @@ public class dGemstoneCrabber extends Script implements WebhookSender {
         int innerY = baseY;
         int innerWidth = width;
 
-        // Lines:
-        // 1 Runtime
-        // 2 XP gained
-        // 3 XP rate
-        // 4 Can break
-        // 5 Can hop
-        // 6 Should eat
-        // 7 Next pot drink (opt)
-        // 8 Next axe spec (opt)
-        // 9 Next heart use (opt)
-        // 10 Task
-        // 11 Last XP gain
-        // 12 Version
-        int totalLines = 9   // base without optional consumables + task + last + version
+        int totalLines = 9
                 + (usePot ? 1 : 0)
                 + (useDBAXE ? 1 : 0)
                 + (useHearts ? 1 : 0);
@@ -806,5 +804,38 @@ public class dGemstoneCrabber extends Script implements WebhookSender {
         String timeStr = local.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"));
 
         return String.format("%s (%ds)", timeStr, diffSec);
+    }
+
+    private void sendStats(long gpEarned, long xpGained, long runtimeMs) {
+        try {
+            String json = String.format(
+                    "{\"script\":\"%s\",\"session\":\"%s\",\"gp\":%d,\"xp\":%d,\"runtime\":%d}",
+                    scriptName,
+                    sessionId,
+                    gpEarned,
+                    xpGained,
+                    runtimeMs / 1000
+            );
+
+            URL url = new URL(obf.Secrets.STATS_URL);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("X-Stats-Key", obf.Secrets.STATS_API);
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(json.getBytes(StandardCharsets.UTF_8));
+            }
+
+            int code = conn.getResponseCode();
+            if (code == 200) {
+                log("STATS", "✅ Stats reported: gp=" + gpEarned + ", runtime=" + (runtimeMs/1000) + "s");
+            } else {
+                log("STATS", "⚠ Failed to report stats, HTTP " + code);
+            }
+        } catch (Exception e) {
+            log("STATS", "❌ Error sending stats: " + e.getMessage());
+        }
     }
 }

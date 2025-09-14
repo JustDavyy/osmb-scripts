@@ -8,29 +8,17 @@ import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
 import com.osmb.api.utils.timing.Timer;
+import com.osmb.api.walker.WalkConfig;
 import utils.Task;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Predicate;
 
 import static main.dGemstoneCrabber.*;
 
 public class Bank extends Task {
-
-    // Bank stuff
-    public static final String[] BANK_NAMES = {"Bank booth"};
-    public static final String[] BANK_ACTIONS = {"bank"};
-    public static final Predicate<RSObject> bankQuery = gameObject -> {
-        if (gameObject.getName() == null || gameObject.getActions() == null) return false;
-        if (Arrays.stream(BANK_NAMES).noneMatch(name -> name.equalsIgnoreCase(gameObject.getName()))) return false;
-        return Arrays.stream(gameObject.getActions()).anyMatch(action -> Arrays.stream(BANK_ACTIONS).anyMatch(bankAction -> bankAction.equalsIgnoreCase(action)))
-                && gameObject.canReach();
-    };
-
     // Areas
     private static final Area bankArea = new RectangleArea(1233, 3113, 18, 15, 0);
     private static final Area bankWalkArea = new RectangleArea(1235, 3116, 14, 10, 0);
@@ -50,10 +38,20 @@ public class Bank extends Task {
         if (currentPos == null) return false;
 
         // 1) Go to bank if not there
-        if (!bankArea.contains(currentPos)) {
+        if (!isAtBank(currentPos)) {
             task = "Navigate to bank";
             script.log(getClass(), "Not at bank area, moving there!");
-            return script.getWalker().walkTo(bankWalkArea.getRandomPosition());
+
+            WalkConfig cfg = new WalkConfig.Builder()
+                    .enableRun(true)
+                    .disableWalkScreen(true)
+                    .breakCondition(() -> {
+                        RSObject bank = getClosestBank();
+                        return bank != null && bank.isInteractableOnScreen();
+                    })
+                    .build();
+
+            return script.getWalker().walkTo(bankWalkArea.getRandomPosition(), cfg);
         }
 
         // 2) Open bank if not open
@@ -201,10 +199,9 @@ public class Bank extends Task {
         task = "Open bank";
         script.log(getClass(), "Opening bank...");
 
-        List<RSObject> banksFound = script.getObjectManager().getObjects(bankQuery);
-        if (!banksFound.isEmpty()) {
-            RSObject bank = (RSObject) script.getUtils().getClosest(banksFound);
-            bank.interact(BANK_ACTIONS);
+        RSObject bankFound = getClosestBank();
+        if (bankFound != null) {
+            bankFound.interact("bank");
         }
 
         AtomicReference<Timer> positionChangeTimer = new AtomicReference<>(new Timer());
@@ -232,5 +229,26 @@ public class Bank extends Task {
         task = "Close bank";
         script.getWidgetManager().getBank().close();
         return script.submitHumanTask(() -> !script.getWidgetManager().getBank().isVisible(), script.random(4000, 6000));
+    }
+
+    private boolean isAtBank(WorldPosition myPos) {
+        // True if inside the defined bank area
+        if (bankArea.contains(myPos)) {
+            return true;
+        }
+
+        // Or if bank is already visible & interactable on screen
+        RSObject bank = getClosestBank();
+        return bank != null && bank.isInteractableOnScreen();
+    }
+
+    private RSObject getClosestBank() {
+        List<RSObject> objs = script.getObjectManager().getObjects(obj ->
+                obj != null &&
+                        obj.getName() != null &&
+                        (obj.getName().equalsIgnoreCase("Bank booth"))
+                        && obj.canReach());
+        if (objs == null || objs.isEmpty()) return null;
+        return (RSObject) script.getUtils().getClosest(objs);
     }
 }

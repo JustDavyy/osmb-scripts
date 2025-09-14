@@ -16,19 +16,16 @@ import com.osmb.api.shape.Rectangle;
 import com.osmb.api.ui.chatbox.Chatbox;
 import com.osmb.api.ui.chatbox.ChatboxFilterTab;
 import com.osmb.api.ui.chatbox.dialogue.DialogueType;
-import com.osmb.api.ui.component.ComponentSearchResult;
 import com.osmb.api.ui.component.minimap.xpcounter.XPDropsComponent;
 import com.osmb.api.ui.overlay.HealthOverlay;
 import com.osmb.api.ui.tabs.Tab;
 import com.osmb.api.ui.tabs.TabManager;
 import com.osmb.api.utils.UIResult;
 import com.osmb.api.utils.UIResultList;
-import com.osmb.api.visual.ocr.fonts.Font;
 import com.osmb.api.walker.WalkConfig;
 import main.WebhookSender;
 import utils.Task;
 
-import java.awt.*;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -50,7 +47,7 @@ public class Fight extends Task {
     private static final Area crabNorthArea = new RectangleArea(1267, 3159, 15, 20, 0);
     private static final Area crabEastArea = new RectangleArea(1341, 3098, 24, 28, 0);
     private static final Area crabSouthArea = new RectangleArea(1229, 3032, 27, 19, 0);
-    private static final Area bankWalkArea = new RectangleArea(1235, 3116, 14, 10, 0);
+    private static final Area bankArea = new RectangleArea(1233, 3113, 18, 15, 0);
 
     // Cave entrances
     private static final Area caveNorthArea = new RectangleArea(1275, 3167, 2, 2, 0);
@@ -98,13 +95,13 @@ public class Fight extends Task {
             // Check if we need to bank
             if (needToBank) {
                 task = "Prepare to bank (idle)";
-                if (atNorth()) {
-                    script.log(getClass(), "Need to bank and idle at NORTH. Handing off to bank...");
+                if (atNorthOrSouth()) {
+                    script.log(getClass(), "Need to bank and idle at NORTH or SOUTH. Heading off to bank...");
                     canBankNow = true;
                     foundCrab = false;
-                    return false; // let Bank task activate
-                } else if (atEastOrSouth()) {
-                    script.log(getClass(), "Need to bank but idle at EAST/SOUTH. Going through cave to reach NORTH...");
+                    return false;
+                } else if (atEast()) {
+                    script.log(getClass(), "Need to bank but idle at EAST. Going through cave to reach NORTH or SOUTH...");
                     if (waitCrabDieThenTraverseCave()) {
                         canBankNow = true;
                         foundCrab = false;
@@ -118,11 +115,43 @@ public class Fight extends Task {
                     return false;
                 }
             }
+            // Check if we are at the bank, if so move to the north crab spawn
+            task = "Check if at bank";
+            if (atBank()) {
+                script.log(getClass(), "We are at the bank area, walk back to north crab spawn!");
+
+                WalkConfig cfg = new WalkConfig.Builder()
+                        .enableRun(true)
+                        .disableWalkScreen(true)
+                        .breakCondition(() -> {
+                            currentPos = script.getWorldPosition();
+                            if (currentPos == null) return false;
+                            return crabNorthArea.contains(currentPos);
+                        })
+                        .build();
+
+                return script.getWalker().walkTo(crabNorthArea.getRandomPosition(), cfg);
+            }
+
             // Check if we're in any of the crab locations, otherwise move to the nearest one.
             task = "Check if at any crab location";
             if (!atCrabLocation()) {
                 script.log(getClass(), "Not at any of the crab locations, moving to the closest one!");
-                script.getWalker().walkTo(Objects.requireNonNull(getClosestCrabArea()).getRandomPosition());
+
+                Area closest = getClosestCrabArea();
+                if (closest == null) return false;
+
+                WalkConfig cfg = new WalkConfig.Builder()
+                        .enableRun(true)
+                        .disableWalkScreen(true)
+                        .breakCondition(() -> {
+                            currentPos = script.getWorldPosition();
+                            if (currentPos == null) return false;
+                            return closest.contains(currentPos);
+                        })
+                        .build();
+
+                return script.getWalker().walkTo(closest.getRandomPosition(), cfg);
             }
 
             // Logic for if we found the crab (using minimap dots)
@@ -136,61 +165,53 @@ public class Fight extends Task {
             }
             // Logic if the crab cannot be found in that location
             else {
-                if (alreadyFought) {
-                    task = "Locate Gemstone crab";
-                    script.log(getClass(), "Already fought Gemstone crab, using cave to travel!");
-                    task = "Move to next area";
-                    Area currentArea = getClosestCrabArea();
-                    if (!handleObject("Cave", "Crawl-through", getClosestCaveSpot(), getClosestCaveArea())) {
-                        script.log(getClass(), "Failed to go through cave.");
-                        return false;
-                    } else {
-                        task = "Wait till arrival at new area";
-                        if (script.submitHumanTask(() -> getClosestCrabArea() != currentArea || isDialogueOpen(), script.random(15000, 20000))) {
+                task = "Locate Gemstone crab";
+                script.log(getClass(), "Already fought Gemstone crab, using cave to travel!");
+                task = "Move to next area";
+                Area currentArea = getClosestCrabArea();
+                if (!handleObject("Cave", "Crawl-through", getClosestCaveSpot(), getClosestCaveArea())) {
+                    script.log(getClass(), "Failed to go through cave.");
+                    return false;
+                } else {
+                    task = "Wait till arrival at new area";
+                    if (script.submitHumanTask(() -> getClosestCrabArea() != currentArea || isDialogueOpen(), script.random(15000, 20000))) {
 
-                            if (isDialogueOpen()) {
-                                script.log(getClass(), "Dialogue detected, could not use the cave...");
-                                script.getWidgetManager().getDialogue().continueChatDialogue();
-                                script.submitHumanTask(() -> false, script.random(1, 1000));
-                                foundCrab = false;
-                                alreadyFought = false;
-                                return false;
-                            }
-
-                            script.log(getClass(), "Waiting for Gemstone crab to spawn...");
-                            task = "Wait for Gemstone crab spawn.";
-                            script.submitHumanTask(this::crabActive3s, script.random(15000, 20000));
-                            script.log(getClass(), "Add additional humanized delay");
-                            task = "Additional human delay";
-                            script.submitHumanTask(() -> false, script.random(1, 500));
-                            if (findCrabNPC(true)) {
-                                boolean succeeded = initiateAttack();
-
-                                if (!succeeded) {
-                                    script.log(getClass(), "Failed to attack crab, resetting flags.");
-                                    foundCrab = false;
-                                    needToAttack = true;
-                                    return false;
-                                }
-                                resetAntiAfkTimer();
-                                foundCrab = true;
-                                alreadyFought = true;
-                                return false;
-                            } else {
-                                foundCrab = false;
-                                return false;
-                            }
-                        } else {
+                        if (isDialogueOpen()) {
+                            script.log(getClass(), "Dialogue detected, could not use the cave...");
+                            script.getWidgetManager().getDialogue().continueChatDialogue();
+                            script.submitHumanTask(() -> false, script.random(1, 1000));
+                            foundCrab = false;
+                            alreadyFought = false;
                             return false;
                         }
+
+                        script.log(getClass(), "Waiting for Gemstone crab to spawn...");
+                        task = "Wait for Gemstone crab spawn.";
+                        script.submitHumanTask(this::crabActive3s, script.random(15000, 20000));
+                        script.log(getClass(), "Add additional humanized delay");
+                        task = "Additional human delay";
+                        script.submitHumanTask(() -> false, script.random(1, 500));
+                        if (findCrabNPC(true)) {
+                            boolean succeeded = initiateAttack();
+
+                            if (!succeeded) {
+                                script.log(getClass(), "Failed to attack crab, resetting flags.");
+                                foundCrab = false;
+                                needToAttack = true;
+                                return false;
+                            }
+                            resetAntiAfkTimer();
+                            foundCrab = true;
+                            alreadyFought = true;
+                            return false;
+                        } else {
+                            foundCrab = false;
+                            return false;
+                        }
+                    } else {
+                        return false;
                     }
                 }
-                task = "Hop to find Gemstone crab";
-                script.log(getClass(), "Gemstone crab NPC not found, force hopping to a different world to find it.");
-                script.getProfileManager().forceHop();
-                script.log(getClass(), "Adding humanized delay.");
-                script.submitHumanTask(() -> false, script.random(1, 250));
-                return false;
             }
 
         }
@@ -200,12 +221,12 @@ public class Fight extends Task {
         // Monitor the need to bank
         if (needToBank) {
             task = "Prepare to bank";
-            if (atNorth()) {
-                script.log(getClass(), "Need to bank and we are at NORTH. Disengaging and handing off to bank...");
+            if (atNorthOrSouth()) {
+                script.log(getClass(), "Need to bank and we are at NORTH or SOUTH. Disengaging and heading off to bank...");
                 disengageAndArmBanking();
                 return true;
-            } else if (atEastOrSouth()) {
-                script.log(getClass(), "Need to bank but at EAST/SOUTH. AFK at cave until crab dies, then traverse to NORTH...");
+            } else if (atEast()) {
+                script.log(getClass(), "Need to bank but at EAST. AFK at cave until crab dies, then traverse to NORTH/SOUTH...");
                 if (needToEat()) {
                     if (useFood) {
                         // Build ordered list of candidate IDs (lowest → highest)
@@ -490,7 +511,7 @@ public class Fight extends Task {
         if (!crabActive) {
             if (needToStop) {
                 if (onlyHopAfterKill) {
-                    task = "Finish current kill before hop/break";
+                    task = "Finish kill before hop/break";
                     // Delay the hop/break until the crab is gone for a few seconds
                     if (!crabInactive3s()) {
                         script.submitTask(this::crabInactive3s, script.random(10000, 15000));
@@ -554,6 +575,28 @@ public class Fight extends Task {
                 } else {
                     return false;
                 }
+            }
+        } else {
+            if (needToStop) {
+                if (onlyHopAfterKill) {
+                    task = "Finish kill before hop/break";
+                    // Delay the hop/break until the crab is gone for a few seconds
+                    if (!crabInactive3s()) {
+                        script.submitTask(this::crabInactive3s, script.random(10000, 15000));
+                        return false;
+                    }
+                }
+
+                task = "Walk away from combat";
+                script.log("BreakManager", "Walking away as we need to break/hop!");
+
+                walkToObject("Cave", "Crawl-through");
+                script.submitHumanTask(() -> false, script.random(10000, 12500));
+                canBreakNow = true;
+                canHopNow   = true;
+                foundCrab   = false;
+
+                return true;
             }
         }
 
@@ -659,7 +702,13 @@ public class Fight extends Task {
         task = "Check gemcrab tile";
         if (!npcTile.isOnGameScreen()) {
             script.log(getClass(), "NPC tile not on screen, walking...");
-            script.getWalker().walkTo(npcTilePosition);
+
+            WalkConfig cfg = new WalkConfig.Builder()
+                    .enableRun(true)
+                    .breakCondition(npcTile::isOnGameScreen)
+                    .build();
+
+            script.getWalker().walkTo(npcTilePosition, cfg);
             return false;
         }
 
@@ -774,7 +823,7 @@ public class Fight extends Task {
                 .enableRun(true)
                 .build();
 
-        return script.getWalker().walkTo(target.getWorldPosition());
+        return script.getWalker().walkTo(target.getWorldPosition(), cfg);
     }
 
     private boolean handleObject(String objectName, String objectAction, WorldPosition objectLocation, Area objectArea) {
@@ -908,7 +957,7 @@ public class Fight extends Task {
 
     private Area getClosestCrabArea() {
         WorldPosition pos = script.getWorldPosition();
-        if (pos == null) return null;
+        if (pos == null) return crabNorthArea;
         currentPos = pos;
 
         long n = samePlaneManhattan(pos, crabNorthSpot);
@@ -937,8 +986,7 @@ public class Fight extends Task {
     private Area getClosestCaveArea() {
         WorldPosition pos = script.getWorldPosition();
         if (pos == null) {
-            script.log(getClass(), "Pos is null");
-            return new RectangleArea(0, 0, 0, 0, 0);
+            return caveNorthArea;
         }
         currentPos = pos;
 
@@ -954,12 +1002,24 @@ public class Fight extends Task {
             return caveSouthArea;
         }
 
-        return new RectangleArea(0, 0, 0, 0, 0);
+        // Check the closest crab area instead seeing as couldn't find anything
+        Area closestArea = getClosestCrabArea();
+        if (closestArea.equals(crabNorthArea)) {
+            return caveNorthArea;
+        }
+        if (closestArea.equals(crabEastArea)) {
+            return caveEastArea;
+        }
+        if (closestArea.equals(crabSouthArea)) {
+            return caveSouthArea;
+        }
+
+        return caveNorthArea;
     }
 
     private WorldPosition getClosestCaveSpot() {
         WorldPosition pos = script.getWorldPosition();
-        if (pos == null) return new WorldPosition(0, 0, 0);
+        if (pos == null) return caveNorthSpot;
         currentPos = pos;
 
         int plane = pos.getPlane();
@@ -974,7 +1034,19 @@ public class Fight extends Task {
             return caveSouthSpot;
         }
 
-        return new WorldPosition(0, 0, 0); // fallback, not found
+        // Check the closest crab area instead seeing as couldn't find anything
+        Area closestArea = getClosestCrabArea();
+        if (closestArea.equals(crabNorthArea)) {
+            return caveNorthSpot;
+        }
+        if (closestArea.equals(crabEastArea)) {
+            return caveEastSpot;
+        }
+        if (closestArea.equals(crabSouthArea)) {
+            return caveSouthSpot;
+        }
+
+        return caveNorthSpot;
     }
 
     private boolean atCrabLocation() {
@@ -984,6 +1056,13 @@ public class Fight extends Task {
         if (crabNorthArea.contains(currentPos)) return true;
         if (crabEastArea.contains(currentPos)) return true;
         return crabSouthArea.contains(currentPos);
+    }
+
+    private boolean atBank() {
+        WorldPosition cPos = script.getWorldPosition();
+        if (cPos == null) return false;
+        currentPos = cPos;
+        return bankArea.contains(currentPos);
     }
 
     private boolean findCrabNPC(boolean log) {
@@ -1056,30 +1135,43 @@ public class Fight extends Task {
 
     private WorldPosition getCrabLocation() {
         WorldPosition pos = script.getWorldPosition();
-        if (pos == null) return new WorldPosition(0, 0, 0);
+        if (pos == null) return crabNorthSpot;
         currentPos = pos;
         if (crabNorthArea.contains(currentPos)) {
             return crabNorthSpot;
-        } else if (crabEastArea.contains(currentPos)) {
-            return crabEastSpot;
-        } else if (crabSouthArea.contains(currentPos)) {
-            return crabSouthSpot;
-        } else {
-            script.log("We are not in any of the crab locations, cannot return crab spot...");
-            return new WorldPosition(0, 0, 0);
         }
+        if (crabEastArea.contains(currentPos)) {
+            return crabEastSpot;
+        }
+        if (crabSouthArea.contains(currentPos)) {
+            return crabSouthSpot;
+        }
+
+        // Check the closest crab area instead seeing as couldn't find anything
+        Area closestArea = getClosestCrabArea();
+        if (closestArea.equals(crabNorthArea)) {
+            return crabNorthSpot;
+        }
+        if (closestArea.equals(crabEastArea)) {
+            return crabEastSpot;
+        }
+        if (closestArea.equals(crabSouthArea)) {
+            return crabSouthSpot;
+        }
+
+        return crabNorthSpot;
     }
 
-    private boolean atNorth() {
+    private boolean atNorthOrSouth() {
         WorldPosition pos = script.getWorldPosition();
         if (pos == null) return false;
-        return crabNorthArea.contains(pos);
+        return crabNorthArea.contains(pos) || crabSouthArea.contains(pos);
     }
 
-    private boolean atEastOrSouth() {
+    private boolean atEast() {
         WorldPosition pos = script.getWorldPosition();
         if (pos == null) return false;
-        return crabEastArea.contains(pos) || crabSouthArea.contains(pos);
+        return crabEastArea.contains(pos);
     }
 
     private static Rectangle intersectRect(Rectangle a, Rectangle b) {
@@ -1120,13 +1212,12 @@ public class Fight extends Task {
 
         canBankNow = true;     // allow bank task to proceed
         foundCrab = false;     // leave the fight loop
-        // needToBank stays true; bank task will set it false when finished
-        script.log(getClass(), "Banking armed: canBankNow=true, foundCrab=false");
+        script.log(getClass(), "Banking armed: canBankNow=" + canBankNow + ", foundCrab=" + foundCrab);
     }
 
     private boolean needToEat() {
         if (useFood) {
-            Integer hpPerc = script.getWidgetManager().getMinimapOrbs().getHitpointsPercentage();
+            Integer hpPerc = script.getWidgetManager().getMinimapOrbs().getHitpoints();
             if (hpPerc == null || !(hpPerc == -1)) {
                 return false; // Can't see HP orb -> don't try to eat
             }
