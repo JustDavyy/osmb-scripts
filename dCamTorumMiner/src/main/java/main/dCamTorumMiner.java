@@ -25,30 +25,28 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.HashSet;
+import java.util.*;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 @ScriptDefinition(
         name = "dCamTorumMiner",
         description = "Mines blessed bone shards in the Cam Torum mine",
         skillCategory = SkillCategory.MINING,
-        version = 2.4,
+        version = 2.5,
         author = "JustDavyy"
 )
 public class dCamTorumMiner extends Script {
-    public static final String scriptVersion = "2.4";
+    public static final String scriptVersion = "2.5";
     private final String scriptName = "CamTorumMiner";
+    private static String sessionId = UUID.randomUUID().toString();
+    private static long lastStatsSent = 0;
+    private static final long STATS_INTERVAL_MS = 600_000L;
     public static boolean setupDone = false;
     public static boolean hasReqs;
     public static int blessedShardCount = 0;
@@ -75,11 +73,6 @@ public class dCamTorumMiner extends Script {
 
     public static String task = "Initialize";
 
-    // Fixed-size, shared fonts (prevents layout jitter)
-    private static final Font ARIAL        = new Font("Arial", Font.PLAIN, 14);
-    private static final Font ARIAL_BOLD   = new Font("Arial", Font.BOLD, 14);
-    private static final Font ARIAL_ITALIC = new Font("Arial", Font.ITALIC, 14);
-
     // Webhook
     private static boolean webhookEnabled = false;
     private static boolean webhookShowUser = false;
@@ -104,6 +97,7 @@ public class dCamTorumMiner extends Script {
     private static final Font FONT_VALUE_ITALIC= new Font("Arial", Font.ITALIC, 12);
 
     private final XPTracking xpTracking;
+    private int xpGained = 0;
 
     // Logo image
     private com.osmb.api.visual.image.Image logoImage = null;
@@ -158,6 +152,13 @@ public class dCamTorumMiner extends Script {
             queueSendWebhook();
         }
 
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - lastStatsSent >= STATS_INTERVAL_MS) {
+            long elapsed = nowMs - startTime;
+            sendStats(0, xpGained, elapsed);
+            lastStatsSent = nowMs;
+        }
+
         for (Task task : tasks) {
             if (task.activate()) {
                 task.execute();
@@ -207,14 +208,12 @@ public class dCamTorumMiner extends Script {
             }
         }
 
-        // Fallback to your accumulator if tracker hasn't kicked in yet
-        if (xpGainedLive <= 0 && miningXpGained > 0) xpGainedLive = miningXpGained;
-
         // ==== Your derived stats ====
         int shardsHr    = (int) Math.round(blessedShardCount / hours);
         int miningXpHr  = (int) Math.round(xpGainedLive / hours);
         double prayerXp = blessedShardCount * 5.5;
         int prayerXpHr  = (int) Math.round(prayerXp / hours);
+        xpGained = (int) (xpGainedLive + prayerXp);
 
         // Level text (+N)
         if (startLevel <= 0) startLevel = currentLevel;
@@ -649,5 +648,38 @@ public class dCamTorumMiner extends Script {
             if (n1 != n2) return Integer.compare(n1, n2);
         }
         return 0;
+    }
+
+    private void sendStats(long gpEarned, long xpGained, long runtimeMs) {
+        try {
+            String json = String.format(
+                    "{\"script\":\"%s\",\"session\":\"%s\",\"gp\":%d,\"xp\":%d,\"runtime\":%d}",
+                    scriptName,
+                    sessionId,
+                    gpEarned,
+                    xpGained,
+                    runtimeMs / 1000
+            );
+
+            URL url = new URL(obf.Secrets.STATS_URL);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("X-Stats-Key", obf.Secrets.STATS_API);
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(json.getBytes(StandardCharsets.UTF_8));
+            }
+
+            int code = conn.getResponseCode();
+            if (code == 200) {
+                log("STATS", "✅ Stats reported: gp=" + gpEarned + ", runtime=" + (runtimeMs/1000) + "s");
+            } else {
+                log("STATS", "⚠ Failed to report stats, HTTP " + code);
+            }
+        } catch (Exception e) {
+            log("STATS", "❌ Error sending stats: " + e.getMessage());
+        }
     }
 }
