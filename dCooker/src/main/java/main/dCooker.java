@@ -31,6 +31,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -39,12 +40,15 @@ import java.util.function.Predicate;
         name = "dCooker",
         description = "Cooks a wide variety of fish and other items at cookable objects.",
         skillCategory = SkillCategory.COOKING,
-        version = 2.6,
+        version = 2.7,
         author = "JustDavyy"
 )
 public class dCooker extends Script {
-    public static String scriptVersion = "2.6";
+    public static String scriptVersion = "2.7";
     private final String scriptName = "Cooker";
+    private static String sessionId = UUID.randomUUID().toString();
+    private static long lastStatsSent = 0;
+    private static final long STATS_INTERVAL_MS = 600_000L;
     public static final String[] BANK_NAMES = {"Bank", "Chest", "Bank booth", "Bank chest", "Grand Exchange booth", "Bank counter", "Bank table"};
     public static final String[] BANK_ACTIONS = {"bank", "open", "use", "bank banker"};
     public static final String[] COOKING_ACTIONS = {"cook"};
@@ -59,6 +63,7 @@ public class dCooker extends Script {
     public static int cookCount = 0;
     public static int burnCount = 0;
     public static int totalCookCount = 0;
+    private int xpGained = 0;
     public static boolean setupDone = false;
     public static int cookingItemID;
     public static int cookedItemID;
@@ -174,6 +179,7 @@ public class dCooker extends Script {
 
         xpPerHourLive  = (int) Math.round(xpGainedLive / hours);
         xpGainedLiveInt = (int) Math.round(xpGainedLive);
+        xpGained = xpGainedLiveInt;
 
         // Current level text with (+N)
         if (startLevel <= 0) startLevel = currentLevel;
@@ -532,6 +538,13 @@ public class dCooker extends Script {
             queueSendWebhook();
         }
 
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - lastStatsSent >= STATS_INTERVAL_MS) {
+            long elapsed = nowMs - startTime;
+            sendStats(0, xpGained, elapsed);
+            lastStatsSent = nowMs;
+        }
+
         if (tasks != null) {
             for (Task task : tasks) {
                 if (task.activate()) {
@@ -732,6 +745,39 @@ public class dCooker extends Script {
             return String.format("%dd %02d:%02d:%02d", days, hours, minutes, secs);
         } else {
             return String.format("%02d:%02d:%02d", hours, minutes, secs);
+        }
+    }
+
+    private void sendStats(long gpEarned, long xpGained, long runtimeMs) {
+        try {
+            String json = String.format(
+                    "{\"script\":\"%s\",\"session\":\"%s\",\"gp\":%d,\"xp\":%d,\"runtime\":%d}",
+                    scriptName,
+                    sessionId,
+                    gpEarned,
+                    xpGained,
+                    runtimeMs / 1000
+            );
+
+            URL url = new URL(obf.Secrets.STATS_URL);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("X-Stats-Key", obf.Secrets.STATS_API);
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(json.getBytes(StandardCharsets.UTF_8));
+            }
+
+            int code = conn.getResponseCode();
+            if (code == 200) {
+                log("STATS", "✅ Stats reported: gp=" + gpEarned + ", runtime=" + (runtimeMs/1000) + "s");
+            } else {
+                log("STATS", "⚠ Failed to report stats, HTTP " + code);
+            }
+        } catch (Exception e) {
+            log("STATS", "❌ Error sending stats: " + e.getMessage());
         }
     }
 }

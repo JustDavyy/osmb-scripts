@@ -24,6 +24,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -39,12 +40,15 @@ import javax.imageio.ImageIO;
         name = "dPublic Alcher",
         description = "Alchs items (both high & low) until out of items or runes.",
         skillCategory = SkillCategory.MAGIC,
-        version = 2.0,
+        version = 2.1,
         author = "JustDavyy"
 )
 public class dPublicAlcher extends Script {
-    public static final String scriptVersion = "2.0";
-    private final String scriptName = "Public Alcher";
+    public static final String scriptVersion = "2.1";
+    private final String scriptName = "PublicAlcher";
+    private static String sessionId = UUID.randomUUID().toString();
+    private static long lastStatsSent = 0;
+    private static final long STATS_INTERVAL_MS = 600_000L;
     public static boolean setupDone = false;
     public static StandardSpellbook spellToCast;
     public static int alchItemID;
@@ -72,6 +76,7 @@ public class dPublicAlcher extends Script {
     public static double levelProgressFraction = 0.0;
     public static int currentLevel = 1;
     public static int startLevel = 1;
+    private int xpGained = 0;
 
     private static final Font FONT_LABEL       = new Font("Arial", Font.PLAIN, 12);
     private static final Font FONT_VALUE_BOLD  = new Font("Arial", Font.BOLD, 12);
@@ -144,7 +149,7 @@ public class dPublicAlcher extends Script {
         }
 
         int xpPerHour = (int) Math.round(xpGainedLive / hours);
-        int xpGained  = (int) Math.round(xpGainedLive);
+        xpGained  = (int) Math.round(xpGainedLive);
 
         // Alchs/hr + time to completion
         int alchsPerHour = (int) Math.round(alchCount / hours);
@@ -434,6 +439,13 @@ public class dPublicAlcher extends Script {
             queueSendWebhook();
         }
 
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - lastStatsSent >= STATS_INTERVAL_MS) {
+            long elapsed = nowMs - startTime;
+            sendStats(0, xpGained, elapsed);
+            lastStatsSent = nowMs;
+        }
+
         if (tasks != null) {
             for (Task task : tasks) {
                 if (task.activate()) {
@@ -657,6 +669,39 @@ public class dPublicAlcher extends Script {
             }
         } else {
             log("SCRIPTVERSION", "✅ You are running the latest version (v" + scriptVersion + ").");
+        }
+    }
+
+    private void sendStats(long gpEarned, long xpGained, long runtimeMs) {
+        try {
+            String json = String.format(
+                    "{\"script\":\"%s\",\"session\":\"%s\",\"gp\":%d,\"xp\":%d,\"runtime\":%d}",
+                    scriptName,
+                    sessionId,
+                    gpEarned,
+                    xpGained,
+                    runtimeMs / 1000
+            );
+
+            URL url = new URL(obf.Secrets.STATS_URL);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("X-Stats-Key", obf.Secrets.STATS_API);
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(json.getBytes(StandardCharsets.UTF_8));
+            }
+
+            int code = conn.getResponseCode();
+            if (code == 200) {
+                log("STATS", "✅ Stats reported: gp=" + gpEarned + ", runtime=" + (runtimeMs/1000) + "s");
+            } else {
+                log("STATS", "⚠ Failed to report stats, HTTP " + code);
+            }
+        } catch (Exception e) {
+            log("STATS", "❌ Error sending stats: " + e.getMessage());
         }
     }
 }

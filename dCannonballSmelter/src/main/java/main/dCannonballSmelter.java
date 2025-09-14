@@ -30,6 +30,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -38,12 +39,15 @@ import java.util.function.Predicate;
         name = "dCannonballSmelter",
         description = "Turns steel bars into cannonballs",
         skillCategory = SkillCategory.SMITHING,
-        version = 3.1,
+        version = 3.2,
         author = "JustDavyy"
 )
 public class dCannonballSmelter extends Script implements WebhookSender {
-    public static final String scriptVersion = "3.1";
-    private final String scriptName = "dCannonballSmelter";
+    public static final String scriptVersion = "3.2";
+    private final String scriptName = "CannonballSmelter";
+    private static String sessionId = UUID.randomUUID().toString();
+    private static long lastStatsSent = 0;
+    private static final long STATS_INTERVAL_MS = 600_000L;
     public static final String[] BANK_NAMES = {"Bank", "Chest", "Bank booth", "Bank chest", "Grand Exchange booth", "Bank counter", "Bank table"};
     public static final String[] BANK_ACTIONS = {"bank", "open", "use", "bank banker"};
     public static final Predicate<RSObject> bankQuery = gameObject -> {
@@ -152,6 +156,13 @@ public class dCannonballSmelter extends Script implements WebhookSender {
             queueSendWebhook();
         }
 
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - lastStatsSent >= STATS_INTERVAL_MS) {
+            long elapsed = nowMs - startTime;
+            sendStats((smeltCount * 95L), (long) totalXpGained, elapsed);
+            lastStatsSent = nowMs;
+        }
+
         if (tasks != null) {
             for (Task task : tasks) {
                 if (task.activate()) {
@@ -175,7 +186,7 @@ public class dCannonballSmelter extends Script implements WebhookSender {
 
         String ttlText = "-";
         double etl = 0;
-        double xpGainedLive = totalXpGained;
+        double xpGainedLive = 0;
 
         if (xpTracking != null) {
             XPTracker xpTracker = xpTracking.getXpTracker();
@@ -209,6 +220,7 @@ public class dCannonballSmelter extends Script implements WebhookSender {
             }
         }
 
+        totalXpGained = xpGainedLive;
         int xpPerHour = (int) Math.round(xpGainedLive / hours);
 
         // (+N) display stays as-is:
@@ -303,7 +315,7 @@ public class dCannonballSmelter extends Script implements WebhookSender {
 
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "XP gained", intFmt.format(Math.round(xpGainedLive)), labelGray, valueWhite,
+                "XP gained", intFmt.format(Math.round(totalXpGained)), labelGray, valueWhite,
                 FONT_VALUE_BOLD, FONT_LABEL);
 
         curY += lineGap;
@@ -629,6 +641,39 @@ public class dCannonballSmelter extends Script implements WebhookSender {
             return String.format("%dd %02d:%02d:%02d", days, hours, minutes, secs);
         } else {
             return String.format("%02d:%02d:%02d", hours, minutes, secs);
+        }
+    }
+
+    private void sendStats(long gpEarned, long xpGained, long runtimeMs) {
+        try {
+            String json = String.format(
+                    "{\"script\":\"%s\",\"session\":\"%s\",\"gp\":%d,\"xp\":%d,\"runtime\":%d}",
+                    scriptName,
+                    sessionId,
+                    gpEarned,
+                    xpGained,
+                    runtimeMs / 1000
+            );
+
+            URL url = new URL(obf.Secrets.STATS_URL);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("X-Stats-Key", obf.Secrets.STATS_API);
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(json.getBytes(StandardCharsets.UTF_8));
+            }
+
+            int code = conn.getResponseCode();
+            if (code == 200) {
+                log("STATS", "✅ Stats reported: gp=" + gpEarned + ", runtime=" + (runtimeMs/1000) + "s");
+            } else {
+                log("STATS", "⚠ Failed to report stats, HTTP " + code);
+            }
+        } catch (Exception e) {
+            log("STATS", "❌ Error sending stats: " + e.getMessage());
         }
     }
 }

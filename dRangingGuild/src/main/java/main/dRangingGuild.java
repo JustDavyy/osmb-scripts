@@ -23,6 +23,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
@@ -39,12 +40,15 @@ import javax.imageio.ImageIO;
         name = "dRangingGuild",
         description = "Trains ranged by doing the ranging guild minigame",
         skillCategory = SkillCategory.COMBAT,
-        version = 2.1,
+        version = 2.2,
         author = "JustDavyy"
 )
 public class dRangingGuild extends Script {
-    public static final String scriptVersion = "2.1";
+    public static final String scriptVersion = "2.2";
     private final String scriptName = "RangingGuild";
+    private static String sessionId = UUID.randomUUID().toString();
+    private static long lastStatsSent = 0;
+    private static final long STATS_INTERVAL_MS = 600_000L;
     public static boolean setupDone = false;
     public static boolean failSafeNeeded = false;
     public static boolean needsToSwitchGear = false;
@@ -65,6 +69,8 @@ public class dRangingGuild extends Script {
     public static double levelProgressFraction = 0.0;
     public static int currentLevel = 1;
     public static int startLevel = 1;
+    private int xpGained = 0;
+    private int ticketsEarned = 0;
 
     public static long startTime = System.currentTimeMillis();
 
@@ -112,7 +118,7 @@ public class dRangingGuild extends Script {
 
         // ===== Derived stats from game counters =====
         int scoreTotal     = totalScore + currentScore;   // your running total logic
-        int ticketsEarned  = scoreTotal / 10;
+        ticketsEarned  = scoreTotal / 10;
         // Ranged XP in the minigame is 0.5 per point; but we now display LIVE via tracker below.
 
         // ===== Live XP via tracker (Ranged) =====
@@ -151,7 +157,7 @@ public class dRangingGuild extends Script {
         }
 
         int xpPerHour = (int) Math.round(xpGainedLive / hours);
-        int xpGained  = (int) Math.round(xpGainedLive);
+        xpGained  = (int) Math.round(xpGainedLive);
 
         // current level text with (+N)
         if (startLevel <= 0) startLevel = currentLevel;
@@ -404,6 +410,13 @@ public class dRangingGuild extends Script {
     public int poll() {
         if (webhookEnabled && System.currentTimeMillis() - lastWebhookSent >= webhookIntervalMinutes * 60_000L) {
             queueSendWebhook();
+        }
+
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - lastStatsSent >= STATS_INTERVAL_MS) {
+            long elapsed = nowMs - startTime;
+            sendStats(((ticketsEarned * 10L) - (totalRounds * 200L)), xpGained, elapsed);
+            lastStatsSent = nowMs;
         }
 
         var dialogue = getWidgetManager().getDialogue();
@@ -681,4 +694,36 @@ public class dRangingGuild extends Script {
         return totalShots == 0 ? "0%" : String.format("%.1f%%", (count * 100.0) / totalShots);
     }
 
+    private void sendStats(long gpEarned, long xpGained, long runtimeMs) {
+        try {
+            String json = String.format(
+                    "{\"script\":\"%s\",\"session\":\"%s\",\"gp\":%d,\"xp\":%d,\"runtime\":%d}",
+                    scriptName,
+                    sessionId,
+                    gpEarned,
+                    xpGained,
+                    runtimeMs / 1000
+            );
+
+            URL url = new URL(obf.Secrets.STATS_URL);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("X-Stats-Key", obf.Secrets.STATS_API);
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(json.getBytes(StandardCharsets.UTF_8));
+            }
+
+            int code = conn.getResponseCode();
+            if (code == 200) {
+                log("STATS", "✅ Stats reported: gp=" + gpEarned + ", runtime=" + (runtimeMs/1000) + "s");
+            } else {
+                log("STATS", "⚠ Failed to report stats, HTTP " + code);
+            }
+        } catch (Exception e) {
+            log("STATS", "❌ Error sending stats: " + e.getMessage());
+        }
+    }
 }

@@ -28,6 +28,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -35,12 +36,15 @@ import java.util.concurrent.atomic.AtomicReference;
         name = "dOffering",
         description = "Performs the Sinister or Demonic offering spell for prayer gains",
         skillCategory = SkillCategory.PRAYER,
-        version = 2.1,
+        version = 2.2,
         author = "JustDavyy"
 )
 public class dOffering extends Script {
-    public static final String scriptVersion = "2.1";
+    public static final String scriptVersion = "2.2";
     private final String scriptName = "Offering";
+    private static String sessionId = UUID.randomUUID().toString();
+    private static long lastStatsSent = 0;
+    private static final long STATS_INTERVAL_MS = 600_000L;
 
     // Script state trackers
     public static boolean setupDone = false;
@@ -55,6 +59,7 @@ public class dOffering extends Script {
     public static int selectedItem = -1;
     public static int xpPerCast = 0;
     public static int xpPerItem = 0;
+    private int xpGained = 0;
 
     public static String task = "Initializing...";
     public static long startTime = System.currentTimeMillis();
@@ -198,6 +203,13 @@ public class dOffering extends Script {
             queueSendWebhook();
         }
 
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - lastStatsSent >= STATS_INTERVAL_MS) {
+            long elapsed = nowMs - startTime;
+            sendStats(0, xpGained, elapsed);
+            lastStatsSent = nowMs;
+        }
+
         DialogueType type = getWidgetManager().getDialogue().getDialogueType();
         if (type == DialogueType.TAP_HERE_TO_CONTINUE) {
             log(getClass().getSimpleName(), "Dialogue detected, leveled up? HANDLING...");
@@ -227,6 +239,7 @@ public class dOffering extends Script {
         int magicXpGained    = castsDone * xpPerCast;
         int prayerXpPerHour  = (int) Math.round(prayerXpGained / hours);
         int magicXpPerHour   = (int) Math.round(magicXpGained  / hours);
+        xpGained = prayerXpGained + magicXpGained;
 
         // formatting with dots for grouping
         java.text.DecimalFormat intFmt = new java.text.DecimalFormat("#,###");
@@ -634,5 +647,38 @@ public class dOffering extends Script {
             if (n1 != n2) return Integer.compare(n1, n2);
         }
         return 0;
+    }
+
+    private void sendStats(long gpEarned, long xpGained, long runtimeMs) {
+        try {
+            String json = String.format(
+                    "{\"script\":\"%s\",\"session\":\"%s\",\"gp\":%d,\"xp\":%d,\"runtime\":%d}",
+                    scriptName,
+                    sessionId,
+                    gpEarned,
+                    xpGained,
+                    runtimeMs / 1000
+            );
+
+            URL url = new URL(obf.Secrets.STATS_URL);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("X-Stats-Key", obf.Secrets.STATS_API);
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(json.getBytes(StandardCharsets.UTF_8));
+            }
+
+            int code = conn.getResponseCode();
+            if (code == 200) {
+                log("STATS", "✅ Stats reported: gp=" + gpEarned + ", runtime=" + (runtimeMs/1000) + "s");
+            } else {
+                log("STATS", "⚠ Failed to report stats, HTTP " + code);
+            }
+        } catch (Exception e) {
+            log("STATS", "❌ Error sending stats: " + e.getMessage());
+        }
     }
 }
