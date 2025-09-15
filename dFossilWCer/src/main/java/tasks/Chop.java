@@ -119,8 +119,9 @@ public class Chop extends Task {
                     }
                 }
                 clusterFailCount = 0;
-                script.submitHumanTask(() -> false, script.random(400, 800));
             }
+
+            script.submitHumanTask(() -> false, script.random(400, 800));
             return false;
         }
 
