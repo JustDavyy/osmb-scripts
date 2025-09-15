@@ -62,6 +62,13 @@ public class ProcessTask extends Task {
             return false;
         }
 
+        if (getLevelForFood(cookingItemID) > currentLevel) {
+            script.log(getClass(), "Current cooking level is not high enough to cook the selected food. Have: " + currentLevel + " Need: " + getLevelForFood(cookingItemID));
+            script.log(getClass(), "Stopping script!");
+            script.stop();
+            return false;
+        }
+
         if (!inventorySnapshot.contains(cookingItemID)) {
             if (failCount >= 3) {
                 script.log(getClass(), "No cookable fish found for three times in a row, stopping script!");
@@ -242,46 +249,34 @@ public class ProcessTask extends Task {
         };
     }
 
-    private double getXpForFood(int itemId) {
+    private int getLevelForFood(int itemId) {
         return switch (itemId) {
-            case ItemID.RAW_SHRIMPS -> 30.0;
-            case ItemID.SEAWEED -> 0.0;
-            case ItemID.GIANT_SEAWEED -> 0.0;
-            case ItemID.BREAD_DOUGH -> 40.0;
-            case ItemID.RAW_CHICKEN -> 30.0;
-            case ItemID.RAW_ANCHOVIES -> 30.0;
-            case ItemID.RAW_SARDINE -> 40.0;
-            case ItemID.RAW_HERRING -> 50.0;
-            case ItemID.RAW_MACKEREL -> 60.0;
-            case ItemID.UNCOOKED_BERRY_PIE -> 78.0;
-            case ItemID.RAW_TROUT -> 70.0;
-            case ItemID.RAW_COD -> 75.0;
-            case ItemID.RAW_PIKE -> 80.0;
-            case ItemID.UNCOOKED_MEAT_PIE -> 110.0;
-            case ItemID.RAW_SALMON -> 90.0;
-            case ItemID.UNCOOKED_STEW -> 117.0;
-            case ItemID.RAW_TUNA -> 100.0;
-            case ItemID.UNCOOKED_APPLE_PIE -> 130.0;
-            case ItemID.RAW_KARAMBWAN -> 190.0;
-            case ItemID.RAW_GARDEN_PIE -> 138.0;
-            case ItemID.RAW_LOBSTER -> 120.0;
-            case ItemID.RAW_BASS -> 130.0;
-            case ItemID.RAW_SWORDFISH -> 140.0;
-            case ItemID.RAW_FISH_PIE -> 164.0;
-            case ItemID.UNCOOKED_BOTANICAL_PIE -> 180.0;
-            case ItemID.UNCOOKED_MUSHROOM_PIE -> 200.0;
-            case ItemID.UNCOOKED_CURRY -> 280.0;
-            case ItemID.RAW_MONKFISH -> 150.0;
-            case ItemID.RAW_ADMIRAL_PIE -> 210.0;
-            case ItemID.UNCOOKED_DRAGONFRUIT_PIE -> 220.0;
-            case ItemID.RAW_SHARK -> 210.0;
-            case ItemID.RAW_SEA_TURTLE -> 211.3;
-            case ItemID.RAW_ANGLERFISH -> 230.0;
-            case ItemID.RAW_WILD_PIE -> 240.0;
-            case ItemID.RAW_DARK_CRAB -> 215.0;
-            case ItemID.RAW_MANTA_RAY -> 216.2;
-            case ItemID.RAW_SUMMER_PIE -> 260.0;
-            default -> 1.0; // fallback value
+            case ItemID.RAW_HERRING -> 5;
+            case ItemID.RAW_MACKEREL, ItemID.UNCOOKED_BERRY_PIE -> 10;
+            case ItemID.RAW_TROUT -> 15;
+            case ItemID.RAW_COD -> 18;
+            case ItemID.RAW_PIKE, ItemID.UNCOOKED_MEAT_PIE -> 20;
+            case ItemID.RAW_SALMON, ItemID.UNCOOKED_STEW -> 25;
+            case ItemID.RAW_TUNA, ItemID.UNCOOKED_APPLE_PIE, ItemID.RAW_KARAMBWAN -> 30;
+            case ItemID.RAW_GARDEN_PIE -> 34;
+            case ItemID.RAW_LOBSTER -> 40;
+            case ItemID.RAW_BASS -> 43;
+            case ItemID.RAW_SWORDFISH -> 45;
+            case ItemID.RAW_FISH_PIE -> 47;
+            case ItemID.UNCOOKED_BOTANICAL_PIE -> 52;
+            case ItemID.UNCOOKED_MUSHROOM_PIE -> 60;
+            case ItemID.UNCOOKED_CURRY -> 60;
+            case ItemID.RAW_MONKFISH -> 62;
+            case ItemID.RAW_ADMIRAL_PIE -> 70;
+            case ItemID.UNCOOKED_DRAGONFRUIT_PIE -> 73;
+            case ItemID.RAW_SHARK -> 80;
+            case ItemID.RAW_SEA_TURTLE -> 82;
+            case ItemID.RAW_ANGLERFISH -> 84;
+            case ItemID.RAW_WILD_PIE -> 85;
+            case ItemID.RAW_DARK_CRAB -> 90;
+            case ItemID.RAW_MANTA_RAY -> 91;
+            case ItemID.RAW_SUMMER_PIE -> 95;
+            default -> 1;
         };
     }
 }
