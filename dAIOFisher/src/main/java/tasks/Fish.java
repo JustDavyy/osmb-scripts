@@ -265,7 +265,11 @@ public class Fish extends Task {
 
         if (spotTile != null && spotTile.isOnGameScreen()) {
             script.log(getClass(), "Fishing spot is on game screen, interacting directly.");
-            return interactWithFishingSpot(fishingSpot);
+            boolean success = interactWithFishingSpot(fishingSpot);
+            if (success) {
+                script.submitHumanTask(() -> false, script.random(2500, 4500));
+            }
+            return success;
         } else {
             script.log(getClass(), "Fishing spot is not on screen, walking to it...");
             WalkConfig.Builder walkConfig = new WalkConfig.Builder();

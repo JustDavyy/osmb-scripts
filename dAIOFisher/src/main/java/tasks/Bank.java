@@ -6,6 +6,7 @@ import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
 import com.osmb.api.utils.timing.Timer;
+import com.osmb.api.walker.WalkConfig;
 import data.FishingLocation;
 import data.FishingMethod;
 import utils.Task;
@@ -42,10 +43,9 @@ public class Bank extends Task {
 
         WorldPosition myPos = script.getWorldPosition();
 
-        // Move to bank first if we're not there yet
-        if (!fishingLocation.getBankArea().contains(myPos)) {
-            task = "Moving to bank area";
-            return script.getWalker().walkTo(fishingLocation.getBankArea().getRandomPosition());
+        // Move to bank first if we're not there yet (or can interact with it from where we are)
+        if (!isAtBank(myPos)) {
+            return walkToBankOrDeposit(fishingLocation);
         }
 
         Set<Integer> allFishAndBarrels = new HashSet<>(fishingMethod.getAllFish());
@@ -259,5 +259,62 @@ public class Bank extends Task {
 
             return script.getWidgetManager().getDepositBox().isVisible() || positionChangeTimer.get().timeElapsed() > 3000;
         }, script.random(14000, 16000));
+    }
+
+    private RSObject getClosestBankOrDeposit() {
+        String bankName = fishingMethod.getBankObjectName();
+        String bankAction = fishingMethod.getBankObjectAction();
+
+        if (bankName == null || bankAction == null) {
+            return null;
+        }
+
+        List<RSObject> objects = script.getObjectManager().getObjects(gameObject -> {
+            if (gameObject.getName() == null || gameObject.getActions() == null) return false;
+            return gameObject.getName().equalsIgnoreCase(bankName)
+                    && Arrays.stream(gameObject.getActions())
+                    .anyMatch(action -> action != null && action.equalsIgnoreCase(bankAction))
+                    && gameObject.canReach();
+        });
+
+        return objects.isEmpty() ? null : (RSObject) script.getUtils().getClosest(objects);
+    }
+
+    private boolean walkToBankOrDeposit(FishingLocation fishingLocation) {
+        WorldPosition myPos = script.getWorldPosition();
+        if (myPos == null) return false;
+
+        if (!fishingLocation.getBankArea().contains(myPos)) {
+            task = "Moving to bank area";
+
+            if (fishingMethod.getBankObjectType().equals(FishingMethod.BankObjectType.BANK) ||
+                    fishingMethod.getBankObjectType().equals(FishingMethod.BankObjectType.DEPOSIT_BOX)) {
+
+                WalkConfig cfg = new WalkConfig.Builder()
+                        .enableRun(true)
+                        .breakCondition(() -> {
+                            RSObject bank = getClosestBankOrDeposit();
+                            return bank != null && bank.isInteractableOnScreen();
+                        })
+                        .build();
+
+                return script.getWalker().walkTo(fishingLocation.getBankArea().getRandomPosition(), cfg);
+            } else {
+                return script.getWalker().walkTo(fishingLocation.getBankArea().getRandomPosition());
+            }
+        }
+
+        return true;
+    }
+
+    private boolean isAtBank(WorldPosition myPos) {
+        // True if inside the defined bank area
+        if (fishingLocation.getBankArea().contains(myPos)) {
+            return true;
+        }
+
+        // Or if bank/deposit is already visible & interactable on screen
+        RSObject bank = getClosestBankOrDeposit();
+        return bank != null && bank.isInteractableOnScreen();
     }
 }

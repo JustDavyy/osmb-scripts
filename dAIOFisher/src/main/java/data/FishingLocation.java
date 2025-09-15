@@ -1821,7 +1821,7 @@ public enum FishingLocation {
                             "Net",
                             List.of(ItemID.RAW_MONKFISH),
                             List.of(HandlingMode.DROP, HandlingMode.BANK),
-                            List.of(ItemID.BIG_FISHING_NET),
+                            List.of(ItemID.SMALL_FISHING_NET),
                             List.of(ItemID.MONKFISH),
                             List.of(ItemID.BURNT_MONKFISH),
                             "Net",
