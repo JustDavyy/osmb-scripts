@@ -6,6 +6,7 @@ import com.osmb.api.location.area.Area;
 import com.osmb.api.location.area.impl.RectangleArea;
 import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
+import com.osmb.api.scene.RSTile;
 import com.osmb.api.script.Script;
 import com.osmb.api.utils.timing.Timer;
 import com.osmb.api.walker.WalkConfig;
@@ -21,6 +22,7 @@ public class Bank extends Task {
     private static final Area bankArea = new RectangleArea(3731, 3799, 13, 13, 0);
     private static final Area bankWalkArea = new RectangleArea(3739, 3802, 3, 3, 0);
     private static final Area choppingArea = new RectangleArea(3700, 3828, 19, 13, 0);
+    private static final Area holeWalkArea = new RectangleArea(3710, 3832, 3, 3, 0);
 
     public static final Set<Integer> ITEMS_NOT_TO_DEPOSIT = new HashSet<>(Set.of(
             ItemID.BRONZE_AXE, ItemID.BRONZE_FELLING_AXE,
@@ -124,8 +126,21 @@ public class Bank extends Task {
                         .breakCondition(hole::isInteractableOnScreen)
                         .enableRun(true)
                         .build();
+                script.getWalker().walkTo(holeWalkArea.getRandomPosition(), config);
+                return false;
+            }
+
+            RSTile objectTile = hole.getTile();
+            if (objectTile == null) return false;
+
+            if (!objectTile.isOnGameScreen()) {
+                script.log(getClass(), "Hole object tile isn't on game screen, moving closer...");
+                WalkConfig config = new WalkConfig.Builder()
+                        .breakCondition(objectTile::isOnGameScreen)
+                        .enableRun(true)
+                        .build();
                 script.getWalker().walkTo(hole.getWorldPosition(), config);
-                return false; // Re-poll once it's on screen
+                return false;
             }
 
             // Interact with Hole

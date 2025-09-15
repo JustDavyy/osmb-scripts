@@ -252,17 +252,6 @@ public class Chop extends Task {
                 return false;
             }
 
-            // Walk to hole if not interactable on screen
-            if (!hole.isInteractableOnScreen()) {
-                script.log(getClass(), "Hole not on screen, walking closer...");
-                WalkConfig config = new WalkConfig.Builder()
-                        .breakCondition(hole::isInteractableOnScreen)
-                        .enableRun(true)
-                        .build();
-                script.getWalker().walkTo(hole.getWorldPosition(), config);
-                return false; // Re-poll once it's on screen
-            }
-
             // Interact with Hole
             task = "Climbing through hole";
             if (!hole.interact("Climb through")) {
