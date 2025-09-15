@@ -6,7 +6,6 @@ import com.osmb.api.location.area.Area;
 import com.osmb.api.location.area.impl.RectangleArea;
 import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
-import com.osmb.api.scene.RSTile;
 import com.osmb.api.script.Script;
 import com.osmb.api.utils.timing.Timer;
 import com.osmb.api.walker.WalkConfig;
@@ -127,19 +126,6 @@ public class Bank extends Task {
                         .enableRun(true)
                         .build();
                 script.getWalker().walkTo(holeWalkArea.getRandomPosition(), config);
-                return false;
-            }
-
-            RSTile objectTile = hole.getTile();
-            if (objectTile == null) return false;
-
-            if (!objectTile.isOnGameScreen()) {
-                script.log(getClass(), "Hole object tile isn't on game screen, moving closer...");
-                WalkConfig config = new WalkConfig.Builder()
-                        .breakCondition(objectTile::isOnGameScreen)
-                        .enableRun(true)
-                        .build();
-                script.getWalker().walkTo(hole.getWorldPosition(), config);
                 return false;
             }
 
