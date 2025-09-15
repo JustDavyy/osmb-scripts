@@ -525,7 +525,9 @@ public class Fight extends Task {
                 task = "Walk away from combat";
                 script.log("BreakManager", "Walking away as we need to break/hop!");
 
-                script.getWalker().walkTo(getCombatSafeSpot());
+                WorldPosition safeSpot = getCombatSafeSpot();
+                if (safeSpot == null) return false;
+                script.getWalker().walkTo(safeSpot);
                 script.submitHumanTask(() -> false, script.random(10000, 12500));
                 canBreakNow = true;
                 canHopNow   = true;
@@ -593,7 +595,9 @@ public class Fight extends Task {
                 task = "Walk away from combat";
                 script.log("BreakManager", "Walking away as we need to break/hop!");
 
-                script.getWalker().walkTo(getCombatSafeSpot());
+                WorldPosition safeSpot = getCombatSafeSpot();
+                if (safeSpot == null) return false;
+                script.getWalker().walkTo(safeSpot);
                 script.submitHumanTask(() -> false, script.random(10000, 12500));
                 canBreakNow = true;
                 canHopNow   = true;
