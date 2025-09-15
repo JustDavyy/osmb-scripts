@@ -4,6 +4,7 @@ import com.osmb.api.script.Script;
 import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
 import com.osmb.api.trackers.experience.XPTracker;
+import com.osmb.api.utils.timing.Timer;
 import com.osmb.api.visual.drawing.Canvas;
 import com.osmb.api.visual.image.Image;
 import javafx.scene.Scene;
@@ -21,8 +22,6 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -37,11 +36,11 @@ import java.util.concurrent.atomic.AtomicReference;
         name = "dFossilWCer",
         description = "Cuts and drops/banks Teak or Mahogany logs on Fossil Island",
         skillCategory = SkillCategory.WOODCUTTING,
-        version = 1.7,
+        version = 1.8,
         author = "JustDavyy"
 )
 public class dFossilWCer extends Script {
-    public static final String scriptVersion = "1.7";
+    public static final String scriptVersion = "1.8";
     private final String scriptName = "FossilWCer";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
@@ -54,12 +53,8 @@ public class dFossilWCer extends Script {
     public static boolean useLogBasket = false;
     public static boolean usedBasketAlready = false;
     public static int logsId = -1;
-    public static int centerX = -1;
-    public static int centerY = -1;
     public static int logsChopped = 0;
-    public static double totalXPGained = 0;
-    public static boolean readyToReadXP = false;
-    public static double previousXPRead = -1;
+    public static Timer lastXpGain = new Timer();
 
     public static String task = "Initializing...";
     public static long startTime = System.currentTimeMillis();

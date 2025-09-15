@@ -1,5 +1,7 @@
 package tasks;
 
+import com.osmb.api.input.MenuEntry;
+import com.osmb.api.input.MenuHook;
 import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.item.ItemID;
 import com.osmb.api.location.area.Area;
@@ -7,6 +9,7 @@ import com.osmb.api.location.area.impl.RectangleArea;
 import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
+import com.osmb.api.shape.Polygon;
 import com.osmb.api.shape.Rectangle;
 import com.osmb.api.ui.chatbox.dialogue.DialogueType;
 import com.osmb.api.ui.component.ComponentSearchResult;
@@ -30,6 +33,7 @@ import static main.dFossilWCer.*;
 
 public class Chop extends Task {
     private int clusterFailCount = 0;
+    private RSObject targetTree;
 
     private static final SearchablePixel[] MAHOGANY_PIXEL_CLUSTER = new SearchablePixel[]{
             new SearchablePixel(-11443436, new SingleThresholdComparator(2), ColorModel.RGB),
@@ -85,10 +89,8 @@ public class Chop extends Task {
 
         usedBasketAlready = false;
 
+        // === Pick correct pixel cluster ===
         SearchablePixel[] clusterToUse;
-
-        task = "Select correct pixel cluster";
-        // Choose cluster based on logsId
         if (logsId == ItemID.TEAK_LOGS) {
             clusterToUse = TEAK_PIXEL_CLUSTER;
         } else if (logsId == ItemID.MAHOGANY_LOGS) {
@@ -98,36 +100,17 @@ public class Chop extends Task {
             return false;
         }
 
-        task = "Build cluster query";
-        // Build cluster query
-        PixelCluster.ClusterQuery query = new PixelCluster.ClusterQuery(
-                10,
-                400,
-                clusterToUse
-        );
+        // === New tree detection via RSObject + convex hull color check ===
+        task = "Find tree";
+        RSObject treePatch = findTree(clusterToUse);
 
-        long startTime = System.currentTimeMillis();
-
-        task = "Perform cluster search";
-        // Perform cluster search
-        PixelCluster.ClusterSearchResult result = script.getPixelAnalyzer().findClusters(query);
-        long elapsed = System.currentTimeMillis() - startTime;
-
-        if (result == null || result.getClusters() == null) {
-            script.log(getClass(), "No cluster search result returned. Time taken: " + elapsed + " ms.");
-            return false;
-        }
-
-        List<PixelCluster> clusters = result.getClusters();
-
-        if (clusters.isEmpty()) {
-            script.log(getClass(), "No tree clusters found. Time taken: " + elapsed + " ms.");
+        if (treePatch == null) {
             clusterFailCount++;
+            script.log(getClass(), "No valid tree patch found. Fail count = " + clusterFailCount);
 
             if (clusterFailCount >= 3) {
-                script.log(getClass(), "No clusters found 3 times in a row, closing inventory and retrying.");
+                script.log(getClass(), "No patches found 3 times in a row, closing inventory and retrying.");
 
-                // Close inventory if open
                 if (script.getWidgetManager().getInventory().isVisible()) {
                     if (script.getWidgetManager().getInventory().close()) {
                         script.log(getClass(), "Inventory closed to refresh view.");
@@ -135,84 +118,34 @@ public class Chop extends Task {
                         script.log(getClass(), "Failed to close inventory.");
                     }
                 }
-
-                // Reset fail count after action
                 clusterFailCount = 0;
-
-                // Optional: wait a short random time before re-checking
                 script.submitHumanTask(() -> false, script.random(400, 800));
             }
-
             return false;
-        } else {
-            clusterFailCount = 0;
-            script.log(getClass(), "Found " + clusters.size() + " tree cluster(s). Time taken: " + elapsed + " ms.");
-
-            // Find closest cluster to center of screen
-            PixelCluster closest = clusters.stream()
-                    .min((a, b) -> {
-                        Point ca = a.getCenter();
-                        Point cb = b.getCenter();
-                        double da = Math.hypot(ca.x - centerX, ca.y - centerY);
-                        double db = Math.hypot(cb.x - centerX, cb.y - centerY);
-                        return Double.compare(da, db);
-                    })
-                    .orElse(null);
-
-            if (closest != null) {
-                Point center = closest.getCenter();
-                script.log(getClass(), "Closest cluster center at: (" + center.x + ", " + center.y + ")");
-
-                Rectangle bounds = closest.getBounds();
-                if (bounds != null) {
-                    script.log(getClass(), "Closest cluster original bounds: " + bounds);
-
-                    // Calculate 20% trim
-                    int trimX = (int) (bounds.width * 0.2);
-                    int trimY = (int) (bounds.height * 0.2);
-
-                    // Calculate new width and height
-                    int newWidth = bounds.width - (trimX * 2);
-                    int newHeight = bounds.height - (trimY * 2);
-
-                    // Ensure width and height remain positive
-                    if (newWidth <= 0 || newHeight <= 0) {
-                        script.log(getClass(), "Trimmed bounds invalid (too small). Using original bounds.");
-                    } else {
-                        bounds = new Rectangle(
-                                bounds.x + trimX,
-                                bounds.y + trimY,
-                                newWidth,
-                                newHeight
-                        );
-                        script.log(getClass(), "Trimmed cluster bounds: " + bounds);
-                    }
-
-                    task = "Initiate chop action";
-                    if (!script.getFinger().tap(bounds, "Chop")) {
-                        return false;
-                    }
-                    waitUntilFinishedChopping();
-
-                    // 15% chance to add a small additional post-chop humanized delay
-                    if (script.random(1, 100) <= 15) {
-                        int delay = script.random(400, 800);
-                        script.log(getClass(), "Adding extra humanized delay");
-                        script.submitHumanTask(() -> false, script.random(1, 2000));
-                    }
-
-                    return false;
-                } else {
-                    script.log(getClass(), "Closest cluster has no bounds.");
-                }
-            }
         }
 
-        script.submitHumanTask(() -> false, script.random(400, 800));
+        clusterFailCount = 0;
+
+        // === Interact with tree ===
+        task = "Chop tree";
+        if (!treePatch.interact(getMenuHook())) {
+            script.log(getClass(), "Failed to interact with tree.");
+            return false;
+        } else {
+            targetTree = treePatch;
+        }
+
+        waitUntilFinishedChopping(clusterToUse);
+
+        // === Small chance for additional delay ===
+        if (script.random(1, 100) <= 15) {
+            script.submitHumanTask(() -> false, script.random(1, 100));
+        }
+
         return true;
     }
 
-    private void waitUntilFinishedChopping() {
+    private void waitUntilFinishedChopping(SearchablePixel[] cluster) {
 
         int maxChopDuration = script.random(240_000, 270_000);
 
@@ -223,7 +156,7 @@ public class Chop extends Task {
         }
 
         AtomicInteger previousCount = new AtomicInteger(startSnapshot.getAmount(logsId));
-        Timer lastXpGain = new Timer();
+
         long start = System.currentTimeMillis();
 
         // === INITIAL: wait to let user start chopping ===
@@ -232,9 +165,6 @@ public class Chop extends Task {
         // === Main monitoring loop ===
         script.submitHumanTask(() -> {
             boolean gainedXP = false;
-            if (readyToReadXP) {
-                gainedXP = readXp();
-            }
 
             // === Inventory check ===
             ItemGroupResult currentInv = script.getWidgetManager().getInventory().search(Set.of(logsId));
@@ -262,44 +192,15 @@ public class Chop extends Task {
                 int gained = currentCount - lastCount;
                 previousCount.set(currentCount);
                 logsChopped += gained;
-                if (gainedXP) lastXpGain.reset();
                 script.log(getClass(), "+" + gained + " logs chopped! (" + logsChopped + " total)");
-                if (!readyToReadXP) readyToReadXP = true;
+                lastXpGain.reset();
             } else if (currentCount < lastCount) {
                 script.log(getClass(), "Detected log count drop (from " + lastCount + " to " + currentCount + "). Syncing.");
                 previousCount.set(currentCount);
-            } else {
-                if (gainedXP) lastXpGain.reset();
-
-                // === If using log basket and readyToReadXP is false, schedule it after 29s ===
-                if (useLogBasket && !readyToReadXP) {
-                    script.submitHumanTask(() -> {
-                        readyToReadXP = true;
-                        return false;
-                    }, script.random(12000, 15000));
-                }
             }
-
-            // === Check for nearby tree cluster presence ===
-            PixelCluster.ClusterQuery query = new PixelCluster.ClusterQuery(10, 400,
-                    logsId == ItemID.TEAK_LOGS ? TEAK_PIXEL_CLUSTER : MAHOGANY_PIXEL_CLUSTER);
-
-            PixelCluster.ClusterSearchResult clusterResult = script.getPixelAnalyzer().findClusters(query);
-
-            if (clusterResult == null || clusterResult.getClusters() == null) {
-                return false;
-            }
-
-            boolean clusterNearby = clusterResult.getClusters().stream()
-                    .anyMatch(c -> {
-                        Point p = c.getCenter();
-                        double distance = Math.hypot(p.x - centerX, p.y - centerY);
-                        return distance <= 125;
-                    });
-
-            if (!clusterNearby) {
-                script.log(getClass(), "Screen center: (" + centerX + ", " + centerY + ")");
-                script.log(getClass(), "Chop stopped: no tree cluster detected within 125px of screen center.");
+            // === Tree presence check ===
+            if (!isTreeStillPresent(targetTree, cluster)) {
+                script.log(getClass(), "Chop stopped: tree despawned.");
                 return true;
             }
 
@@ -319,52 +220,6 @@ public class Chop extends Task {
 
             return false;
         }, maxChopDuration);
-    }
-
-    private boolean readXp() {
-        task = "Read XP";
-        XPDropsComponent xpComponent = (XPDropsComponent) script.getWidgetManager().getComponent(XPDropsComponent.class);
-
-        if (xpComponent == null) {
-            script.log(getClass(), "XP button component not found.");
-            return false;
-        }
-
-        ComponentSearchResult<Integer> result = xpComponent.getResult();
-        if (result == null || result.getComponentImage().getGameFrameStatusType() != 1) return false;
-
-        Rectangle componentBounds = result.getBounds();
-        Rectangle xpTextRect = new Rectangle(componentBounds.x - 140, componentBounds.y - 1, 119, 38);
-
-        script.submitTask(() -> false, script.random(200, 400));
-        String xpText = script.getOCR().getText(Font.SMALL_FONT, xpTextRect, Color.WHITE.getRGB());
-
-        if (xpText == null || xpText.isBlank()) return false;
-        xpText = xpText.replaceAll("[^\\d]", "");
-        if (xpText.isEmpty()) return false;
-
-        try {
-            double currentXp = Double.parseDouble(xpText);
-            if (currentXp <= 0) return false;
-
-            if (previousXPRead < 0) {
-                previousXPRead = currentXp;
-                return false;
-            }
-
-            double xpGained = currentXp - previousXPRead;
-            if (xpGained > 0 && xpGained <= 15000) {
-                totalXPGained += xpGained;
-                script.log(getClass(), "Woodcutting XP gained: " + xpGained + " (" + totalXPGained + ")");
-                previousXPRead = currentXp;
-                return true;
-            }
-
-        } catch (NumberFormatException e) {
-            script.log(getClass(), "Failed to parse Fishing XP text: " + xpText);
-        }
-
-        return false;
     }
 
     private boolean walkWithShortcut() {
@@ -434,5 +289,61 @@ public class Chop extends Task {
 
         script.submitHumanTask(() -> currentPos != null && choppingArea.contains(currentPos), script.random(600, 1200));
         return true;
+    }
+
+    private RSObject findTree(SearchablePixel[] cluster) {
+        List<RSObject> patches = script.getObjectManager().getObjects(obj -> {
+            if (obj.getName() == null || obj.getActions() == null) return false;
+            return obj.getName().equalsIgnoreCase("Tree patch")
+                    && Arrays.asList(obj.getActions()).contains("Guide");
+        });
+
+        if (patches.isEmpty()) {
+            script.log(getClass(), "No valid trees found nearby.");
+            return null;
+        }
+
+        for (RSObject patch : patches) {
+            Polygon hull = patch.getConvexHull();
+            if (hull == null) continue;
+
+            List<Point> matches = script.getPixelAnalyzer()
+                    .findPixelsOnGameScreen(hull, cluster);
+
+            if (matches != null && !matches.isEmpty()) {
+                script.log(getClass(), "Tree at " + patch.getWorldPosition()
+                        + " has " + matches.size() + " color matches.");
+                return patch;
+            }
+        }
+
+        return null;
+    }
+
+    private boolean isTreeStillPresent(RSObject targetTree, SearchablePixel[] cluster) {
+        if (targetTree == null) return false;
+
+        Polygon hull = targetTree.getConvexHull();
+        if (hull == null) {
+            script.log(getClass(), "Target tree has no convex hull anymore.");
+            return false;
+        }
+
+        List<Point> matches = script.getPixelAnalyzer()
+                .findPixelsOnGameScreen(hull, cluster);
+
+        return matches != null && !matches.isEmpty();
+    }
+
+    private MenuHook getMenuHook() {
+        return menuEntries -> {
+            for (MenuEntry entry : menuEntries) {
+                String text = entry.getRawText().toLowerCase();
+                if (text.startsWith("chop down")) {
+                    return entry;
+                }
+            }
+            return null;
+        };
     }
 }

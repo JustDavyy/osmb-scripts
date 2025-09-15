@@ -46,17 +46,6 @@ public class Setup extends Task {
         startLevel = woodcuttingSkillLevel.getLevel();
         currentLevel = woodcuttingSkillLevel.getLevel();
 
-        task = "Get screen center";
-        // Get and store center bounds
-        int screenX = script.getScreen().getBounds().width;
-        int screenY = script.getScreen().getBounds().height;
-
-        centerX = (int) Math.ceil(screenX / 2.0);
-        centerY = (int) Math.ceil(screenY / 2.0);
-
-        script.log(getClass(), "Calculated screenX: " + screenX + ", screenY: " + screenY);
-        script.log(getClass(), "Initialized centerX: " + centerX + ", centerY: " + centerY);
-
         task = "Open inventory";
         script.log(getClass(), "Opening inventory tab");
         script.getWidgetManager().getTabManager().openTab(Tab.Type.INVENTORY);

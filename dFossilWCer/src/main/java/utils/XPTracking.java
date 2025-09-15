@@ -12,6 +12,8 @@ import com.osmb.api.visual.image.SearchableImage;
 
 import java.awt.*;
 
+import static main.dFossilWCer.lastXpGain;
+
 public class XPTracking {
 
     private static final int SPRITE_WOODCUTTING_ID = 214;
@@ -42,6 +44,7 @@ public class XPTracking {
                 double gainedXP = currentXP - prev;
                 if (gainedXP > 0) {
                     xpTracker.incrementXp(gainedXP);
+                    lastXpGain.reset();
                 }
             }
         }
