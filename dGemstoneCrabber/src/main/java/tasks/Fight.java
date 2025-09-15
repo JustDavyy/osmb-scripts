@@ -42,6 +42,9 @@ public class Fight extends Task {
     private static final WorldPosition crabNorthSpot = new WorldPosition(1273, 3173, 0);
     private static final WorldPosition crabEastSpot = new WorldPosition(1353, 3112, 0);
     private static final WorldPosition crabSouthSpot = new WorldPosition(1240, 3043, 0);
+    private static final WorldPosition crabNorthSafeSpot = new WorldPosition(1275, 3167, 0);
+    private static final WorldPosition crabEastSafeSpot = new WorldPosition(1353, 3120, 0);
+    private static final WorldPosition crabSouthSafeSpot = new WorldPosition(1247, 3040, 0);
 
     // Areas
     private static final Area crabNorthArea = new RectangleArea(1267, 3159, 15, 20, 0);
@@ -522,7 +525,7 @@ public class Fight extends Task {
                 task = "Walk away from combat";
                 script.log("BreakManager", "Walking away as we need to break/hop!");
 
-                walkToObject("Cave", "Crawl-through");
+                script.getWalker().walkTo(getCombatSafeSpot());
                 script.submitHumanTask(() -> false, script.random(10000, 12500));
                 canBreakNow = true;
                 canHopNow   = true;
@@ -590,7 +593,7 @@ public class Fight extends Task {
                 task = "Walk away from combat";
                 script.log("BreakManager", "Walking away as we need to break/hop!");
 
-                walkToObject("Cave", "Crawl-through");
+                script.getWalker().walkTo(getCombatSafeSpot());
                 script.submitHumanTask(() -> false, script.random(10000, 12500));
                 canBreakNow = true;
                 canHopNow   = true;
@@ -1162,6 +1165,35 @@ public class Fight extends Task {
         return crabNorthSpot;
     }
 
+    private WorldPosition getCombatSafeSpot() {
+        WorldPosition pos = script.getWorldPosition();
+        if (pos == null) return crabNorthSafeSpot;
+        currentPos = pos;
+        if (crabNorthArea.contains(currentPos)) {
+            return crabNorthSafeSpot;
+        }
+        if (crabEastArea.contains(currentPos)) {
+            return crabEastSafeSpot;
+        }
+        if (crabSouthArea.contains(currentPos)) {
+            return crabSouthSafeSpot;
+        }
+
+        // Check the closest crab area instead seeing as couldn't find anything
+        Area closestArea = getClosestCrabArea();
+        if (closestArea.equals(crabNorthArea)) {
+            return crabNorthSafeSpot;
+        }
+        if (closestArea.equals(crabEastArea)) {
+            return crabEastSafeSpot;
+        }
+        if (closestArea.equals(crabSouthArea)) {
+            return crabSouthSafeSpot;
+        }
+
+        return crabNorthSafeSpot;
+    }
+
     private boolean atNorthOrSouth() {
         WorldPosition pos = script.getWorldPosition();
         if (pos == null) return false;
@@ -1207,7 +1239,7 @@ public class Fight extends Task {
     private void disengageAndArmBanking() {
         task = "Disengage for banking";
         // Best-effort: step to cave to drop combat before banking
-        walkToObject("Cave", "Crawl-through");
+        script.getWalker().walkTo(getCombatSafeSpot());
         script.submitHumanTask(() -> false, script.random(1_000, 1_500));
 
         canBankNow = true;     // allow bank task to proceed
