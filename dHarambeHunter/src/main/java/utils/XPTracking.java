@@ -2,7 +2,7 @@ package utils;
 
 import com.osmb.api.ScriptCore;
 import com.osmb.api.shape.Rectangle;
-import com.osmb.api.trackers.experiencetracker.XPTracker;
+import com.osmb.api.trackers.experience.XPTracker;
 import com.osmb.api.ui.component.ComponentSearchResult;
 import com.osmb.api.ui.component.minimap.xpcounter.XPDropsComponent;
 import com.osmb.api.utils.RandomUtils;
