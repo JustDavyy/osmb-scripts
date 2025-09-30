@@ -188,7 +188,8 @@ public class ProcessTask extends Task {
             }
             return Objects.equals(gameObject.getName(), "Range")
                     || Objects.equals(gameObject.getName(), "Fire")
-                    || Objects.equals(gameObject.getName(), "Clay oven");
+                    || Objects.equals(gameObject.getName(), "Clay oven")
+                    || Objects.equals(gameObject.getName(), "Clay Oven");
         });
 
         if (objects.isEmpty()) {
