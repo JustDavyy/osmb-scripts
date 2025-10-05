@@ -1253,7 +1253,7 @@ public class Fight extends Task {
 
     private boolean needToEat() {
         if (useFood) {
-            Integer hpPerc = script.getWidgetManager().getMinimapOrbs().getHitpoints();
+            Integer hpPerc = script.getWidgetManager().getMinimapOrbs().getHitpointsPercentage();
             if (hpPerc == null || !(hpPerc == -1)) {
                 return false; // Can't see HP orb -> don't try to eat
             }
