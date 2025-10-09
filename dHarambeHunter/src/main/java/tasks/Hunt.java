@@ -357,7 +357,8 @@ public class Hunt extends Task {
             WalkConfig cfg = new WalkConfig.Builder()
                     .breakCondition(() -> {
                         if (lastTrap != null) return lastTrap.isInteractableOnScreen();
-                        return script.getSceneManager().getTile(lastTrapPos).isOnGameScreen();
+                        var tile = script.getSceneManager().getTile(lastTrapPos);
+                        return tile != null && tile.isOnGameScreen();
                     })
                     .enableRun(true)
                     .build();
@@ -457,7 +458,10 @@ public class Hunt extends Task {
             if (!script.getSceneManager().getTile(target).isOnGameScreen()) {
                 task = "Walking to bones";
                 WalkConfig cfg = new WalkConfig.Builder()
-                        .breakCondition(() -> script.getSceneManager().getTile(target).isOnGameScreen())
+                        .breakCondition(() -> {
+                            var tile = script.getSceneManager().getTile(lastTrapPos);
+                            return tile != null && tile.isOnGameScreen();
+                        })
                         .enableRun(true)
                         .build();
                 script.getWalker().walkTo(target, cfg);
@@ -467,7 +471,21 @@ public class Hunt extends Task {
             script.log(getClass(), "Trying to take bone at " + target);
 
             int beforeBones = inv.getAmount(ItemID.BONES);
-            boolean clicked = script.getFinger().tap(script.getSceneManager().getTile(target).getTileCube(25).getResized(0.6), "Take");
+            var tile = script.getSceneManager().getTile(target);
+            boolean clicked = false;
+            if (tile != null) {
+                var cube = tile.getTileCube(25);
+                if (cube != null) {
+                    clicked = script.getFinger().tap(cube.getResized(0.6), "Take");
+                    if (!clicked) {
+                        script.log(getClass(), "Failed to tap bone at " + target);
+                    }
+                } else {
+                    script.log(getClass(), "TileCube is null for target " + target);
+                }
+            } else {
+                script.log(getClass(), "Tile is null for target " + target + ". Scene may not be loaded.");
+            }
 
             if (clicked) {
                 boolean taken = script.submitHumanTask(() -> {
