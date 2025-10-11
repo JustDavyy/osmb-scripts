@@ -36,11 +36,11 @@ import java.util.concurrent.atomic.AtomicReference;
         name = "dFossilWCer",
         description = "Cuts and drops/banks Teak or Mahogany logs on Fossil Island",
         skillCategory = SkillCategory.WOODCUTTING,
-        version = 1.9,
+        version = 2.0,
         author = "JustDavyy"
 )
 public class dFossilWCer extends Script {
-    public static final String scriptVersion = "1.9";
+    public static final String scriptVersion = "2.0";
     private final String scriptName = "FossilWCer";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
@@ -157,17 +157,17 @@ public class dFossilWCer extends Script {
         double hours = Math.max(1e-9, elapsed / 3_600_000.0);
         String runtime = formatRuntime(elapsed);
 
-        // === Live XP via tracker (ETL/TTL/level progress) ===
+        // === Live XP via tracker (Woodcutting) ===
         String ttlText = "-";
         double etl = 0.0;                  // XP to next level
-        double xpGainedLive = 0.0;         // gained since start (live)
-        double currentXp = 0.0;            // absolute xp (live)
+        double xpGainedLive = 0.0;         // XP gained since start (live)
+        double currentXp = 0.0;            // absolute XP (live)
 
         if (xpTracking != null) {
-            XPTracker tracker = xpTracking.getXpTracker(); // single-skill tracker
+            XPTracker tracker = xpTracking.getWoodcuttingTracker();
             if (tracker != null) {
                 xpGainedLive = tracker.getXpGained();
-                currentXp    = tracker.getXp();
+                currentXp = tracker.getXp();
 
                 // Level sync (only increases)
                 final int MAX_LEVEL = 99;
@@ -180,9 +180,9 @@ public class dFossilWCer extends Script {
 
                 ttlText = tracker.timeToNextLevelString();
 
-                int curLevelXpStart   = tracker.getExperienceForLevel(currentLevel);
+                int curLevelXpStart = tracker.getExperienceForLevel(currentLevel);
                 int nextLevelXpTarget = tracker.getExperienceForLevel(Math.min(MAX_LEVEL, currentLevel + 1));
-                int span              = Math.max(1, nextLevelXpTarget - curLevelXpStart);
+                int span = Math.max(1, nextLevelXpTarget - curLevelXpStart);
 
                 etl = Math.max(0, nextLevelXpTarget - currentXp);
 
@@ -192,7 +192,7 @@ public class dFossilWCer extends Script {
         }
 
         int xpPerHourLive = (int) Math.round(xpGainedLive / hours);
-        int xpGainedInt   = (int) Math.round(xpGainedLive);
+        int xpGainedInt = (int) Math.round(xpGainedLive);
         xpGained = xpGainedInt;
 
         // Totals & rates
@@ -228,10 +228,10 @@ public class dFossilWCer extends Script {
         final int smallGap = 6;
         final int logoBottomGap = 8;
 
-        final int labelGray  = new Color(180,180,180).getRGB();
+        final int labelGray = new Color(180, 180, 180).getRGB();
         final int valueWhite = Color.WHITE.getRGB();
-        final int valueGreen = new Color(80, 220, 120).getRGB(); // level progress
-        final int valueBlue  = new Color(70, 130, 180).getRGB(); // highlights
+        final int valueGreen = new Color(80, 220, 120).getRGB(); // progress
+        final int valueBlue = new Color(70, 130, 180).getRGB();  // highlights
 
         ensureLogoLoaded();
         com.osmb.api.visual.image.Image scaledLogo = (logoImage != null) ? logoImage : null;
@@ -244,9 +244,7 @@ public class dFossilWCer extends Script {
 
         int y = innerY + topGap;
         if (scaledLogo != null) y += scaledLogo.height + logoBottomGap;
-        y += totalLines * lineGap;
-        y += smallGap;
-        y += 10;
+        y += totalLines * lineGap + smallGap + 10;
 
         int innerHeight = Math.max(240, y - innerY);
 
@@ -267,6 +265,8 @@ public class dFossilWCer extends Script {
             curY += scaledLogo.height + logoBottomGap;
         }
 
+        // === Stat Lines ===
+
         // 1) Runtime
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
@@ -285,13 +285,13 @@ public class dFossilWCer extends Script {
                 "Logs/hr", intFmt.format(logsHr), labelGray, valueBlue,
                 FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 4) XP gained (live)
+        // 4) XP gained
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "XP gained", intFmt.format(xpGainedInt), labelGray, valueWhite,
                 FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 5) XP/hr (live)
+        // 5) XP/hr
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "XP/hr", intFmt.format(xpPerHourLive), labelGray, valueWhite,
@@ -309,7 +309,7 @@ public class dFossilWCer extends Script {
                 "TTL", ttlText, labelGray, valueWhite,
                 FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 8) Level progress (green)
+        // 8) Level progress
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Level progress", levelProgressText, labelGray, valueGreen,

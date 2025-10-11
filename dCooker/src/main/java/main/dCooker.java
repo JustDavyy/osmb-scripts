@@ -40,11 +40,11 @@ import java.util.function.Predicate;
         name = "dCooker",
         description = "Cooks a wide variety of fish and other items at cookable objects.",
         skillCategory = SkillCategory.COOKING,
-        version = 2.9,
+        version = 3.0,
         author = "JustDavyy"
 )
 public class dCooker extends Script {
-    public static String scriptVersion = "2.9";
+    public static String scriptVersion = "3.0";
     private final String scriptName = "Cooker";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
@@ -134,29 +134,29 @@ public class dCooker extends Script {
         String runtime = formatRuntime(elapsed);
 
         // ==== Totals & rates ====
-        int totalCooked    = cookCount + burnCount;
-        int totalPerHour   = (int) Math.round(totalCooked      / hours);
-        int xpPerHourLive;                  // from tracker if available
-        int xpGainedLiveInt;                // rounded for display
+        int totalCooked  = cookCount + burnCount;
+        int totalPerHour = (int) Math.round(totalCooked / hours);
+        int xpPerHourLive;
+        int xpGainedLiveInt;
 
         // Success rate
         String rate = (totalCooked > 0)
                 ? String.format("%d%%", (int) Math.floor((cookCount * 100.0) / totalCooked))
                 : "N/A";
 
-        // ==== Cooking XP live via tracker (ETL/TTL/progress/current level sync) ====
+        // ==== Cooking XP live via tracker ====
         String ttlText = "-";
-        double etl = 0.0;                   // xp to next level
-        double xpGainedLive = 0.0;          // gained since start (live)
-        double currentXp = 0.0;             // absolute xp (live)
+        double etl = 0.0;
+        double xpGainedLive = 0.0;
+        double currentXp = 0.0;
         double levelProgressFractionCook = 0.0;
 
-        XPTracker tracker = (xpTracking != null) ? xpTracking.getXpTracker() : null;
+        XPTracker tracker = (xpTracking != null) ? xpTracking.getCookingTracker() : null;
         if (tracker != null) {
             xpGainedLive = tracker.getXpGained();
-            currentXp    = tracker.getXp();
+            currentXp = tracker.getXp();
 
-            // Level sync (only increases)
+            // --- Level sync (only increases)
             final int MAX_LEVEL = 99;
             int guard = 0;
             while (currentLevel < MAX_LEVEL
@@ -177,18 +177,18 @@ public class dCooker extends Script {
                     (currentXp - curLevelXpStart) / (double) span));
         }
 
-        xpPerHourLive  = (int) Math.round(xpGainedLive / hours);
+        xpPerHourLive = (int) Math.round(xpGainedLive / hours);
         xpGainedLiveInt = (int) Math.round(xpGainedLive);
         xpGained = xpGainedLiveInt;
 
-        // Current level text with (+N)
+        // --- Level text (+N)
         if (startLevel <= 0) startLevel = currentLevel;
         int levelsGained = Math.max(0, currentLevel - startLevel);
         String currentLevelText = (levelsGained > 0)
                 ? (currentLevel + " (+" + levelsGained + ")")
                 : String.valueOf(currentLevel);
 
-        // Percent text (dot decimal)
+        // --- Level progress percentage
         double pct = Math.max(0, Math.min(100, levelProgressFractionCook * 100.0));
         String levelProgressText = (Math.abs(pct - Math.rint(pct)) < 1e-9)
                 ? String.format(java.util.Locale.US, "%.0f%%", pct)
@@ -213,9 +213,9 @@ public class dCooker extends Script {
 
         final int labelGray  = new Color(180,180,180).getRGB();
         final int valueWhite = Color.WHITE.getRGB();
-        final int valueGreen = new Color(80, 220, 120).getRGB(); // level progress
-        final int valueBlue  = new Color(70, 130, 180).getRGB(); // highlights
-        final int valueRed  = new Color(255, 0, 0).getRGB(); // burn rate
+        final int valueGreen = new Color(80, 220, 120).getRGB(); // success/progress
+        final int valueBlue  = new Color(70, 130, 180).getRGB(); // general rate
+        final int valueRed   = new Color(255, 0, 0).getRGB();    // burns
 
         ensureLogoLoaded();
         com.osmb.api.visual.image.Image scaledLogo = (logoImage != null) ? logoImage : null;
@@ -230,13 +230,11 @@ public class dCooker extends Script {
 
         int y = innerY + topGap;
         if (scaledLogo != null) y += scaledLogo.height + logoBottomGap;
-        y += totalLines * lineGap;
-        y += smallGap;
-        y += 10;
+        y += totalLines * lineGap + smallGap + 10;
 
         int innerHeight = Math.max(240, y - innerY);
 
-        // Panel
+        // --- Panel
         c.fillRect(innerX - borderThickness, innerY - borderThickness,
                 innerWidth + (borderThickness * 2),
                 innerHeight + (borderThickness * 2),
@@ -246,80 +244,59 @@ public class dCooker extends Script {
 
         int curY = innerY + topGap;
 
-        // Logo (optional)
+        // --- Logo (optional)
         if (scaledLogo != null) {
             int imgX = innerX + (innerWidth - scaledLogo.width) / 2;
             c.drawAtOn(scaledLogo, imgX, curY);
             curY += scaledLogo.height + logoBottomGap;
         }
 
-        // 1) Runtime
+        // === Draw stat lines ===
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Runtime", runtime, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Runtime", runtime,
+                labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 2) Cooked
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Cooked", intFmt.format(cookCount), labelGray, valueGreen,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Cooked", intFmt.format(cookCount),
+                labelGray, valueGreen, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 3) Burned
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Burned", intFmt.format(burnCount), labelGray, valueRed,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Burned", intFmt.format(burnCount),
+                labelGray, valueRed, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 4) Cook rate
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Cook rate", rate, labelGray, valueBlue,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Cook rate", rate,
+                labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 5) Total/hr
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Total/hr", intFmt.format(totalPerHour), labelGray, valueBlue,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Total/hr", intFmt.format(totalPerHour),
+                labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 6) XP gained (live)
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "XP gained", intFmt.format(xpGainedLiveInt), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "XP gained", intFmt.format(xpGainedLiveInt),
+                labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 7) XP/hr (live)
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "XP/hr", intFmt.format(xpPerHourLive), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "XP/hr", intFmt.format(xpPerHourLive),
+                labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 8) ETL
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "ETL", intFmt.format(Math.round(etl)), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "ETL", intFmt.format(Math.round(etl)),
+                labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 9) TTL
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "TTL", ttlText, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "TTL", ttlText,
+                labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 10) Level progress (green)
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Level progress", levelProgressText, labelGray, valueGreen,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Level progress", levelProgressText,
+                labelGray, valueGreen, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 11) Current level
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Current level", currentLevelText, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Current level", currentLevelText,
+                labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // Optional multi-mode info
+        // Optional multiple-mode section
         if (isMultipleMode) {
             int remaining = Math.max(0, selectedItemIDs.size() - selectedItemIndex - 1);
             String nextFishName = "N/A";
@@ -332,36 +309,27 @@ public class dCooker extends Script {
                 }
             }
 
-            // Next fish
             curY += lineGap;
-            drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                    "Next fish", nextFishName, labelGray, valueBlue,
-                    FONT_VALUE_BOLD, FONT_LABEL);
+            drawStatLine(c, innerX, innerWidth, paddingX, curY, "Next fish", nextFishName,
+                    labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
 
-            // Types left
             curY += lineGap;
-            drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                    "Types left", String.valueOf(remaining), labelGray, valueBlue,
-                    FONT_VALUE_BOLD, FONT_LABEL);
+            drawStatLine(c, innerX, innerWidth, paddingX, curY, "Types left",
+                    String.valueOf(remaining), labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
         }
 
-        // Task
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Task", String.valueOf(task), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Task", String.valueOf(task),
+                labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // Version
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Version", scriptVersion, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Version", scriptVersion,
+                labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // Store canvas for webhook usage
+        // Snapshot for webhook
         try {
             lastCanvasFrame.set(c.toImageCopy());
-        } catch (Exception ignored) {
-        }
+        } catch (Exception ignored) {}
     }
 
     private void drawStatLine(Canvas c, int innerX, int innerWidth, int paddingX, int y,
@@ -430,11 +398,6 @@ public class dCooker extends Script {
         } catch (Exception e) {
             log(getClass(), "Error loading logo: " + e.getMessage());
         }
-    }
-
-    @Override
-    public void onNewFrame() {
-        xpTracking.checkXP();
     }
 
     @Override

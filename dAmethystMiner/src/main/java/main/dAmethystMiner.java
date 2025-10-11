@@ -38,11 +38,11 @@ import java.util.concurrent.atomic.AtomicReference;
         name = "dAmethystMiner",
         description = "Mines and crafts/banks amethyst in the mining guild",
         skillCategory = SkillCategory.MINING,
-        version = 2.1,
+        version = 2.2,
         author = "JustDavyy"
 )
 public class dAmethystMiner extends Script {
-    public static final String scriptVersion = "2.1";
+    public static final String scriptVersion = "2.2";
     private final String scriptName = "AmethystMiner";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
@@ -173,18 +173,18 @@ public class dAmethystMiner extends Script {
         double hours = Math.max(1e-9, elapsed / 3_600_000.0);
         String runtime = formatRuntime(elapsed);
 
-        // ======= LIVE XP (via trackers) & level sync =======
+        // ======= LIVE XP (via built-in trackers) & level sync =======
         // Mining
         String miningTTL = "-";
         double miningETL = 0;
-        double miningXpLive = 0;   // gained since start (live)
-        double miningXpAbs  = 0;   // absolute current xp
+        double miningXpLive = 0;
+        double miningXpAbs = 0;
         double levelProgressFractionMining = 0.0;
 
-        XPTracker mTrack = (xpTracking != null) ? xpTracking.getXpTracker(XPTracking.SkillType.MINING) : null;
+        XPTracker mTrack = (xpTracking != null) ? xpTracking.getMiningTracker() : null;
         if (mTrack != null) {
             miningXpLive = mTrack.getXpGained();
-            miningXpAbs  = mTrack.getXp();
+            miningXpAbs = mTrack.getXp();
 
             final int MAX_LEVEL = 99;
             int guard = 0;
@@ -197,11 +197,10 @@ public class dAmethystMiner extends Script {
             miningTTL = mTrack.timeToNextLevelString();
 
             int curStart = mTrack.getExperienceForLevel(currentMiningLevel);
-            int nextReq  = mTrack.getExperienceForLevel(Math.min(MAX_LEVEL, currentMiningLevel + 1));
-            int span     = Math.max(1, nextReq - curStart);
+            int nextReq = mTrack.getExperienceForLevel(Math.min(MAX_LEVEL, currentMiningLevel + 1));
+            int span = Math.max(1, nextReq - curStart);
 
             miningETL = Math.max(0, nextReq - miningXpAbs);
-
             levelProgressFractionMining = Math.max(0.0, Math.min(1.0,
                     (miningXpAbs - curStart) / (double) span));
         }
@@ -210,13 +209,13 @@ public class dAmethystMiner extends Script {
         String craftingTTL = "-";
         double craftingETL = 0;
         double craftingXpLive = 0;
-        double craftingXpAbs  = 0;
+        double craftingXpAbs = 0;
         double levelProgressFractionCrafting = 0.0;
 
-        XPTracker cTrack = (craftMode && xpTracking != null) ? xpTracking.getXpTracker(XPTracking.SkillType.CRAFTING) : null;
+        XPTracker cTrack = (craftMode && xpTracking != null) ? xpTracking.getCraftingTracker() : null;
         if (cTrack != null) {
             craftingXpLive = cTrack.getXpGained();
-            craftingXpAbs  = cTrack.getXp();
+            craftingXpAbs = cTrack.getXp();
 
             final int MAX_LEVEL = 99;
             int guard = 0;
@@ -229,22 +228,21 @@ public class dAmethystMiner extends Script {
             craftingTTL = cTrack.timeToNextLevelString();
 
             int curStart = cTrack.getExperienceForLevel(currentCraftingLevel);
-            int nextReq  = cTrack.getExperienceForLevel(Math.min(MAX_LEVEL, currentCraftingLevel + 1));
-            int span     = Math.max(1, nextReq - curStart);
+            int nextReq = cTrack.getExperienceForLevel(Math.min(MAX_LEVEL, currentCraftingLevel + 1));
+            int span = Math.max(1, nextReq - curStart);
 
             craftingETL = Math.max(0, nextReq - craftingXpAbs);
-
             levelProgressFractionCrafting = Math.max(0.0, Math.min(1.0,
                     (craftingXpAbs - curStart) / (double) span));
         }
 
-        // ======= Totals & rates (keep your existing counters) =======
-        int amethystHr     = (int) Math.round(amethystMined / hours);
-        int miningXpHr     = (int) Math.round((miningXpGained > 0 ? miningXpGained : miningXpLive) / hours);
+        // ======= Totals & rates =======
+        int amethystHr = (int) Math.round(amethystMined / hours);
+        int miningXpHr = (int) Math.round((miningXpGained > 0 ? miningXpGained : miningXpLive) / hours);
 
-        int itemsCrafted   = calculateCraftedItems(amethystCrafted);
+        int itemsCrafted = calculateCraftedItems(amethystCrafted);
         int itemsCraftedHr = (int) Math.round(itemsCrafted / hours);
-        int craftingXpHr   = (int) Math.round((craftingXpGained > 0 ? craftingXpGained : craftingXpLive) / hours);
+        int craftingXpHr = (int) Math.round((craftingXpGained > 0 ? craftingXpGained : craftingXpLive) / hours);
 
         // ======= Formatters =======
         java.text.DecimalFormat fmt = new java.text.DecimalFormat("#,###");
@@ -252,7 +250,7 @@ public class dAmethystMiner extends Script {
         sy.setGroupingSeparator('.');
         fmt.setDecimalFormatSymbols(sy);
 
-        // Current level (+N) text
+        // Level text
         if (startMiningLevel <= 0) startMiningLevel = currentMiningLevel;
         int miningLevelsGained = Math.max(0, currentMiningLevel - startMiningLevel);
         String miningLevelText = (miningLevelsGained > 0)
@@ -265,11 +263,11 @@ public class dAmethystMiner extends Script {
                 ? (currentCraftingLevel + " (+" + craftingLevelsGained + ")")
                 : String.valueOf(currentCraftingLevel);
 
-        // Percent text (dot decimal)
+        // Percent text
         String miningProgressText = percentText(levelProgressFractionMining);
         String craftingProgressText = percentText(levelProgressFractionCrafting);
 
-        // ======= Panel + layout (same style as your newer overlays) =======
+        // ======= Panel + layout =======
         final int x = 5;
         final int baseY = 40;
         final int width = 225;
@@ -280,30 +278,25 @@ public class dAmethystMiner extends Script {
         final int smallGap = 6;
         final int logoBottomGap = 8;
 
-        final int labelGray  = new Color(180,180,180).getRGB();
+        final int labelGray = new Color(180, 180, 180).getRGB();
         final int valueWhite = Color.WHITE.getRGB();
-        final int valueGreen = new Color(80, 220, 120).getRGB(); // level progress
-        final int valueBlue  = new Color(70, 130, 180).getRGB(); // highlights
+        final int valueGreen = new Color(80, 220, 120).getRGB();
+        final int valueBlue = new Color(70, 130, 180).getRGB();
 
         ensureLogoLoaded();
         com.osmb.api.visual.image.Image scaledLogo = (logoImage != null) ? logoImage : null;
+
+        int totalLines = 9;
+        if (craftMode) totalLines += 8;
+        totalLines += 2; // Task + Version
 
         int innerX = x;
         int innerY = baseY;
         int innerWidth = width;
 
-        int totalLines = 9; // mining block default
-        if (craftMode) {
-            totalLines += 8; // crafting block + items lines
-        }
-        totalLines += 2; // Task + Version
-
         int y = innerY + topGap;
         if (scaledLogo != null) y += scaledLogo.height + logoBottomGap;
-        y += totalLines * lineGap;
-        y += smallGap;
-        y += 10;
-
+        y += totalLines * lineGap + smallGap + 10;
         int innerHeight = Math.max(240, y - innerY);
 
         // Panel
@@ -324,13 +317,10 @@ public class dAmethystMiner extends Script {
         }
 
         // ==== Lines ====
-        // Runtime
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Runtime", runtime, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Runtime", runtime, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // Amethyst stats
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Amethyst mined", fmt.format(amethystMined), labelGray, valueBlue,
@@ -341,7 +331,7 @@ public class dAmethystMiner extends Script {
                 "Amethyst/hr", fmt.format(amethystHr), labelGray, valueBlue,
                 FONT_VALUE_BOLD, FONT_LABEL);
 
-        // Mining XP block
+        // --- Mining block ---
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Mining XP gained", fmt.format((miningXpGained > 0) ? miningXpGained : Math.round(miningXpLive)),
@@ -372,7 +362,7 @@ public class dAmethystMiner extends Script {
                 "Current level (Mining)", miningLevelText, labelGray, valueWhite,
                 FONT_VALUE_BOLD, FONT_LABEL);
 
-        // Crafting block (optional)
+        // --- Crafting block (optional) ---
         if (craftMode) {
             curY += lineGap;
             drawStatLine(c, innerX, innerWidth, paddingX, curY,
@@ -404,7 +394,6 @@ public class dAmethystMiner extends Script {
                     "Current level (Crafting)", craftingLevelText, labelGray, valueWhite,
                     FONT_VALUE_BOLD, FONT_LABEL);
 
-            // Items crafted
             curY += lineGap;
             drawStatLine(c, innerX, innerWidth, paddingX, curY,
                     "Items crafted", fmt.format(itemsCrafted), labelGray, valueBlue,
@@ -416,7 +405,7 @@ public class dAmethystMiner extends Script {
                     FONT_VALUE_BOLD, FONT_LABEL);
         }
 
-        // Footer: Task + Version
+        // --- Footer ---
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Task", String.valueOf(task), labelGray, valueWhite,
@@ -505,14 +494,6 @@ public class dAmethystMiner extends Script {
 
         } catch (Exception e) {
             log(getClass(), "Error loading logo: " + e.getMessage());
-        }
-    }
-
-    @Override
-    public void onNewFrame() {
-        xpTracking.checkXP(XPTracking.SkillType.MINING);
-        if (craftMode) {
-            xpTracking.checkXP(XPTracking.SkillType.CRAFTING);
         }
     }
 

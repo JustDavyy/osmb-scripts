@@ -35,11 +35,11 @@ import java.util.concurrent.atomic.AtomicReference;
         name = "dTeleporter",
         description = "Trains magic by continuously casting teleportation spells.",
         skillCategory = SkillCategory.MAGIC,
-        version = 1.7,
+        version = 1.8,
         author = "JustDavyy"
 )
 public class dTeleporter extends Script {
-    public static final String scriptVersion = "1.7";
+    public static final String scriptVersion = "1.8";
     private final String scriptName = "Teleporter";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
@@ -150,19 +150,21 @@ public class dTeleporter extends Script {
         double hours = Math.max(1e-9, elapsed / 3_600_000.0);
         String runtime = formatRuntime(elapsed);
 
-        // ==== Live XP via tracker (single-skill) ====
+        // ==== Live XP via built-in Magic tracker ====
         String ttlText = "-";
-        double etl = 0.0;                  // XP to next level
-        double xpGainedLive = 0.0;         // gained since start (live)
-        double currentXp = 0.0;            // absolute xp (live)
+        double etl = 0.0;
+        double xpGainedLive = 0.0;
+        double currentXp = 0.0;
+        double levelProgressFraction = 0.0;
 
         if (xpTracking != null) {
-            XPTracker tracker = xpTracking.getXpTracker(); // single-skill tracker
+            XPTracker tracker = xpTracking.getMagicTracker();
             if (tracker != null) {
                 xpGainedLive = tracker.getXpGained();
-                currentXp    = tracker.getXp();
+                currentXp = tracker.getXp();
+                ttlText = tracker.timeToNextLevelString();
+                etl = tracker.getXpForNextLevel();
 
-                // level sync (only ever increases)
                 final int MAX_LEVEL = 99;
                 int guard = 0;
                 while (currentLevel < MAX_LEVEL
@@ -171,46 +173,39 @@ public class dTeleporter extends Script {
                     currentLevel++;
                 }
 
-                ttlText = tracker.timeToNextLevelString();
-
-                int curLevelXpStart   = tracker.getExperienceForLevel(currentLevel);
+                int curLevelXpStart = tracker.getExperienceForLevel(currentLevel);
                 int nextLevelXpTarget = tracker.getExperienceForLevel(Math.min(MAX_LEVEL, currentLevel + 1));
-                int span              = Math.max(1, nextLevelXpTarget - curLevelXpStart);
-
-                etl = Math.max(0, nextLevelXpTarget - currentXp);
+                int span = Math.max(1, nextLevelXpTarget - curLevelXpStart);
 
                 levelProgressFraction = Math.max(0.0, Math.min(1.0,
                         (currentXp - curLevelXpStart) / (double) span));
             }
         }
 
-        int xpPerHour     = (int) Math.round(xpGainedLive / hours);
-        int xpGainedInt   = (int) Math.round(xpGainedLive);
+        int xpPerHour = (int) Math.round(xpGainedLive / hours);
+        int xpGainedInt = (int) Math.round(xpGainedLive);
         xpGained = xpGainedInt;
 
-        // ==== Teleport stats (keep your logic) ====
+        // ==== Teleport stats ====
         int teleportsPerHour = (int) Math.round(teleportCount / hours);
 
-        // Current level text with (+N)
         if (startLevel <= 0) startLevel = currentLevel;
         int levelsGained = Math.max(0, currentLevel - startLevel);
         String currentLevelText = (levelsGained > 0)
                 ? (currentLevel + " (+" + levelsGained + ")")
                 : String.valueOf(currentLevel);
 
-        // Percent text (dot decimal)
         double pct = Math.max(0, Math.min(100, levelProgressFraction * 100.0));
         String levelProgressText = (Math.abs(pct - Math.rint(pct)) < 1e-9)
                 ? String.format(java.util.Locale.US, "%.0f%%", pct)
                 : String.format(java.util.Locale.US, "%.1f%%", pct);
 
-        // === Formatting with dots ===
         java.text.DecimalFormat intFmt = new java.text.DecimalFormat("#,###");
         java.text.DecimalFormatSymbols sym = new java.text.DecimalFormatSymbols();
         sym.setGroupingSeparator('.');
         intFmt.setDecimalFormatSymbols(sym);
 
-        // === Panel + layout (standardized) ===
+        // ==== Panel layout ====
         final int x = 5;
         final int baseY = 40;
         final int width = 225;
@@ -221,33 +216,24 @@ public class dTeleporter extends Script {
         final int smallGap = 6;
         final int logoBottomGap = 8;
 
-        final int labelGray   = new Color(180,180,180).getRGB();
-        final int valueWhite  = Color.WHITE.getRGB();
-        final int valueGreen  = new Color(80, 220, 120).getRGB(); // level progress
-        final int valueBlue   = new Color(70, 130, 180).getRGB(); // highlights
+        final int labelGray = new Color(180, 180, 180).getRGB();
+        final int valueWhite = Color.WHITE.getRGB();
+        final int valueGreen = new Color(80, 220, 120).getRGB();
+        final int valueBlue = new Color(70, 130, 180).getRGB();
 
-        // logo scaling
         ensureLogoLoaded();
-        com.osmb.api.visual.image.Image scaledLogo = null;
-        if (logoImage != null) {
-            scaledLogo = logoImage;
-        }
+        com.osmb.api.visual.image.Image scaledLogo = (logoImage != null) ? logoImage : null;
 
         int innerX = x;
         int innerY = baseY;
         int innerWidth = width;
 
         int totalLines = 11;
-
         int y = innerY + topGap;
         if (scaledLogo != null) y += scaledLogo.height + logoBottomGap;
-        y += totalLines * lineGap;
-        y += smallGap;
-        y += 10;
-
+        y += totalLines * lineGap + smallGap + 10;
         int innerHeight = Math.max(240, y - innerY);
 
-        // Panel
         c.fillRect(innerX - borderThickness, innerY - borderThickness,
                 innerWidth + (borderThickness * 2),
                 innerHeight + (borderThickness * 2),
@@ -263,77 +249,42 @@ public class dTeleporter extends Script {
             curY += scaledLogo.height + logoBottomGap;
         }
 
-        // 1) Runtime
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Runtime", runtime, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Runtime", runtime, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 2) Teleports done
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Teleports done", intFmt.format(teleportCount), labelGray, valueBlue,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Teleports done", intFmt.format(teleportCount), labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 3) Teleports/hr
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Teleports/hr", intFmt.format(teleportsPerHour), labelGray, valueBlue,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Teleports/hr", intFmt.format(teleportsPerHour), labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 4) XP gained (live)
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "XP gained", intFmt.format(xpGainedInt), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "XP gained", intFmt.format(xpGainedInt), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 5) XP/hr (live)
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "XP/hr", intFmt.format(xpPerHour), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "XP/hr", intFmt.format(xpPerHour), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 6) ETL
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "ETL", intFmt.format(Math.round(etl)), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "ETL", intFmt.format(Math.round(etl)), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 7) TTL
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "TTL", ttlText, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "TTL", ttlText, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 8) Level progress (green)
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Level progress", levelProgressText, labelGray, valueGreen,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Level progress", levelProgressText, labelGray, valueGreen, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 9) Current level
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Current level", currentLevelText, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Current level", currentLevelText, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 10) Task
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Task", String.valueOf(task), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Task", String.valueOf(task), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 11) Version
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Version", scriptVersion, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Version", scriptVersion, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // Store canvas for webhook usage
         try {
             lastCanvasFrame.set(c.toImageCopy());
-        } catch (Exception ignored) {
-        }
+        } catch (Exception ignored) {}
     }
 
     private void drawStatLine(Canvas c, int innerX, int innerWidth, int paddingX, int y,
@@ -402,11 +353,6 @@ public class dTeleporter extends Script {
         } catch (Exception e) {
             log(getClass(), "Error loading logo: " + e.getMessage());
         }
-    }
-
-    @Override
-    public void onNewFrame() {
-        xpTracking.checkXP();
     }
 
     private void sendWebhookInternal() {

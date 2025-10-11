@@ -35,11 +35,11 @@ import java.util.concurrent.atomic.AtomicReference;
         name = "dHarambeHunter",
         description = "Hunts maniacal monkeys for great lazy hunter experience and the odd monkey tail.",
         skillCategory = SkillCategory.HUNTER,
-        version = 1.1,
+        version = 1.2,
         author = "JustDavyy"
 )
 public class dHarambeHunter extends Script {
-    public static final String scriptVersion = "1.1";
+    public static final String scriptVersion = "1.2";
     private final String scriptName = "HarambeHunter";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
@@ -90,11 +90,6 @@ public class dHarambeHunter extends Script {
     @Override
     public int[] regionsToPrioritise() {
         return new int[]{11662};
-    }
-
-    @Override
-    public void onNewFrame() {
-        xpTracking.checkXP();
     }
 
     @Override
@@ -158,56 +153,52 @@ public class dHarambeHunter extends Script {
     public void onPaint(Canvas c) {
         long elapsed = System.currentTimeMillis() - startTime;
         double hours = Math.max(1e-9, elapsed / 3_600_000.0);
+        String runtime = formatRuntime(elapsed);
 
         double currentXp = 0.0;
+        double xpGainedLive = 0.0;
+        double etl = 0.0;
         String ttlText = "-";
-        double etl = 0;
+        double levelProgressFraction = 0.0;
+
         if (xpTracking != null) {
-            XPTracker xpTracker = xpTracking.getXpTracker();
-            if (xpTracker != null) {
-                currentXp    = xpTracker.getXp();
-                xpGained = xpTracker.getXpGained();
-                ttlText = xpTracker.timeToNextLevelString();
-                etl = xpTracker.getXpForNextLevel();
+            XPTracker tracker = xpTracking.getHunterTracker();
+            if (tracker != null) {
+                currentXp = tracker.getXp();
+                xpGainedLive = tracker.getXpGained();
+                ttlText = tracker.timeToNextLevelString();
+                etl = tracker.getXpForNextLevel();
 
-                int curLevelXpStart   = xpTracker.getExperienceForLevel(currentLevel);
-                int nextLevelXpTarget = xpTracker.getExperienceForLevel(Math.min(99, currentLevel + 1));
-                int span              = Math.max(1, nextLevelXpTarget - curLevelXpStart);
-
+                int curLevelXpStart = tracker.getExperienceForLevel(currentLevel);
+                int nextLevelXpTarget = tracker.getExperienceForLevel(Math.min(99, currentLevel + 1));
+                int span = Math.max(1, nextLevelXpTarget - curLevelXpStart);
                 levelProgressFraction = Math.max(0.0, Math.min(1.0,
                         (currentXp - curLevelXpStart) / (double) span));
             }
         }
 
-        // ---- Derived stats ----
-        double xpPerHour = xpGained / hours;
-        int catchesFromXp = (int) Math.ceil(xpGained / 1000.0);
-        int caughtPerHour  = (int) Math.round(catchesFromXp / hours);
+        double xpPerHour = xpGainedLive / hours;
+        int catchesFromXp = (int) Math.ceil(xpGainedLive / 1000.0);
+        int caughtPerHour = (int) Math.round(catchesFromXp / hours);
 
-        String runtime = formatRuntime(elapsed);
-
-        // Ensure we have a baseline for level-gain display
         if (startLevel <= 0) startLevel = currentLevel;
         int levelsGained = Math.max(0, currentLevel - startLevel);
         String currentLevelText = (levelsGained > 0)
                 ? (currentLevel + " (+" + levelsGained + ")")
                 : String.valueOf(currentLevel);
 
-        // ---- Formatters ----
         DecimalFormat intFmt = new DecimalFormat("#,###");
         DecimalFormatSymbols sym = new DecimalFormatSymbols();
         sym.setGroupingSeparator('.');
         intFmt.setDecimalFormatSymbols(sym);
 
         String levelProgressText = formatPercent(levelProgressFraction * 100.0);
-
         if (currentLevel == 99) {
             ttlText = "MAXED";
             etl = 0;
             levelProgressText = "100%";
         }
 
-        // ---- Layout ----
         final int x = 5;
         final int baseY = 40;
         final int width = 225;
@@ -218,120 +209,85 @@ public class dHarambeHunter extends Script {
         final int smallGap = 6;
         final int logoBottomGap = 8;
 
-        // Colors
-        final int labelGray  = new Color(180,180,180).getRGB();
+        final int labelGray = new Color(180,180,180).getRGB();
         final int valueWhite = Color.WHITE.getRGB();
         final int valueGreen = new Color(80, 220, 120).getRGB();
-        final int valueBlue  = new Color(70, 130, 180).getRGB();
+        final int valueBlue = new Color(70, 130, 180).getRGB();
 
-        // ===== 1) Prepare & scale logo =====
         ensureLogoLoaded();
-        com.osmb.api.visual.image.Image scaledLogo = null;
-        if (logoImage != null) {
-            scaledLogo = logoImage;
-        }
+        com.osmb.api.visual.image.Image scaledLogo = (logoImage != null) ? logoImage : null;
 
-        // ===== 2) Compute panel height =====
         int innerX = x;
         int innerY = baseY;
         int innerWidth = width;
 
         int y = innerY + topGap;
         if (scaledLogo != null) y += scaledLogo.height + logoBottomGap;
-
-        y += 9 * lineGap; // 8+1 stats
-        y += smallGap;     // spacer
-        y += 2 * lineGap;  // Task + Version
-        y += 10;           // bottom padding
-
+        y += 9 * lineGap + smallGap + 2 * lineGap + 10;
         int innerHeight = Math.max(275, y - innerY);
 
-        // ===== 3) Draw panel =====
         c.fillRect(innerX - borderThickness, innerY - borderThickness,
                 innerWidth + (borderThickness * 2),
                 innerHeight + (borderThickness * 2),
                 Color.WHITE.getRGB(), 1);
-
         c.fillRect(innerX, innerY, innerWidth, innerHeight, Color.BLACK.getRGB(), 1);
         c.drawRect(innerX, innerY, innerWidth, innerHeight, Color.WHITE.getRGB());
 
-        // ===== 4) Draw content =====
         int curY = innerY + topGap;
 
-        // Logo (centered)
         if (scaledLogo != null) {
             int imgX = innerX + (innerWidth - scaledLogo.width) / 2;
             c.drawAtOn(scaledLogo, imgX, curY);
             curY += scaledLogo.height + logoBottomGap;
         }
 
-        // 1) Runtime
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Runtime", runtime, labelGray, valueWhite,
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Runtime", runtime,
+                labelGray, valueWhite, FONT_LABEL_BOLD, FONT_VALUE);
+
+        curY += lineGap;
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "XP Gained",
+                intFmt.format(Math.round(xpGainedLive)), labelGray, valueWhite,
                 FONT_LABEL_BOLD, FONT_VALUE);
 
-        // 2) XP Gained
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "XP Gained", intFmt.format(Math.round(xpGained)), labelGray, valueWhite,
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "XP/Hour",
+                intFmt.format(Math.round(xpPerHour)), labelGray, valueWhite,
                 FONT_LABEL_BOLD, FONT_VALUE);
 
-        // 3) XP/Hour
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "XP/Hour", intFmt.format(Math.round(xpPerHour)), labelGray, valueWhite,
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "ETL",
+                intFmt.format(Math.round(etl)), labelGray, valueWhite,
                 FONT_LABEL_BOLD, FONT_VALUE);
 
-        // 4) ETL
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "ETL", intFmt.format(Math.round(etl)), labelGray, valueWhite,
-                FONT_LABEL_BOLD, FONT_VALUE);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "TTL",
+                ttlText, labelGray, valueWhite, FONT_LABEL_BOLD, FONT_VALUE);
 
-        // 5) TTL
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "TTL", ttlText, labelGray, valueWhite,
-                FONT_LABEL_BOLD, FONT_VALUE);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Level Progress",
+                levelProgressText, labelGray, valueGreen, FONT_LABEL_BOLD, FONT_VALUE);
 
-        // 6) Level Progress (green)
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Level Progress", levelProgressText, labelGray, valueGreen,
-                FONT_LABEL_BOLD, FONT_VALUE);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Current Level",
+                currentLevelText, labelGray, valueWhite, FONT_LABEL_BOLD, FONT_VALUE);
 
-        // 7) Current level
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Current level", currentLevelText, labelGray, valueWhite,
-                FONT_LABEL_BOLD, FONT_VALUE);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Total Catches",
+                intFmt.format(catchesFromXp), labelGray, valueBlue, FONT_LABEL_BOLD, FONT_VALUE);
 
-        // 8) Total catches (XP/1000 rounded up)
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Total catches", intFmt.format(catchesFromXp), labelGray, valueBlue,
-                FONT_LABEL_BOLD, FONT_VALUE);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Caught/hr",
+                intFmt.format(caughtPerHour), labelGray, valueBlue, FONT_LABEL_BOLD, FONT_VALUE);
 
-        // 9) Caught/hr
-        curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Caught/hr", intFmt.format(caughtPerHour), labelGray, valueBlue,
-                FONT_LABEL_BOLD, FONT_VALUE);
-
-        // Task
         curY += lineGap + smallGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Task", String.valueOf(task), labelGray, valueWhite,
-                FONT_LABEL_BOLD, FONT_VALUE);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Task",
+                String.valueOf(task), labelGray, valueWhite, FONT_LABEL_BOLD, FONT_VALUE);
 
-        // Version
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Version", scriptVersion, labelGray, valueWhite,
-                FONT_LABEL_BOLD, FONT_VALUE);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Version",
+                scriptVersion, labelGray, valueWhite, FONT_LABEL_BOLD, FONT_VALUE);
 
-        // Store canvas for webhook usage
         try {
             lastCanvasFrame.set(c.toImageCopy());
         } catch (Exception ignored) {}

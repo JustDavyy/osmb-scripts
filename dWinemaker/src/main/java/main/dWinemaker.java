@@ -39,11 +39,11 @@ import java.util.function.Predicate;
         name = "dWinemaker",
         description = "Turns your grapes into Jug of Wines or Wine of Zamorak for hefty cooking experience.",
         skillCategory = SkillCategory.COOKING,
-        version = 2.0,
+        version = 2.1,
         author = "JustDavyy"
 )
 public class dWinemaker extends Script {
-    public static final String scriptVersion = "2.0";
+    public static final String scriptVersion = "2.1";
     private final String scriptName = "Winemaker";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
@@ -175,22 +175,24 @@ public class dWinemaker extends Script {
         double hours = Math.max(1e-9, elapsed / 3_600_000.0);
         String runtime = formatRuntime(elapsed);
 
-        // ==== Wines per hour (keep your counter) ====
+        // ==== Wines per hour ====
         int winesPerHour = (int) Math.round(craftCount / hours);
 
-        // ==== Live XP via tracker (single-skill) ====
+        // ==== Live XP via built-in Cooking tracker ====
         String ttlText = "-";
         double etl = 0.0;
         double xpGainedLive = 0.0;
         double currentXp = 0.0;
+        double levelProgressFraction = 0.0;
 
         if (xpTracking != null) {
-            XPTracker tracker = xpTracking.getXpTracker(); // single-skill tracker
+            XPTracker tracker = xpTracking.getCookingTracker();
             if (tracker != null) {
                 xpGainedLive = tracker.getXpGained();
-                currentXp    = tracker.getXp();
+                currentXp = tracker.getXp();
+                ttlText = tracker.timeToNextLevelString();
+                etl = tracker.getXpForNextLevel();
 
-                // level sync (only ever increases)
                 final int MAX_LEVEL = 99;
                 int guard = 0;
                 while (currentLevel < MAX_LEVEL
@@ -199,20 +201,16 @@ public class dWinemaker extends Script {
                     currentLevel++;
                 }
 
-                ttlText = tracker.timeToNextLevelString();
-
-                int curLevelXpStart   = tracker.getExperienceForLevel(currentLevel);
+                int curLevelXpStart = tracker.getExperienceForLevel(currentLevel);
                 int nextLevelXpTarget = tracker.getExperienceForLevel(Math.min(MAX_LEVEL, currentLevel + 1));
-                int span              = Math.max(1, nextLevelXpTarget - curLevelXpStart);
-
-                etl = Math.max(0, nextLevelXpTarget - currentXp);
+                int span = Math.max(1, nextLevelXpTarget - curLevelXpStart);
 
                 levelProgressFraction = Math.max(0.0, Math.min(1.0,
                         (currentXp - curLevelXpStart) / (double) span));
             }
         }
 
-        int xpPerHour   = (int) Math.round(xpGainedLive / hours);
+        int xpPerHour = (int) Math.round(xpGainedLive / hours);
         int xpGainedInt = (int) Math.round(xpGainedLive);
         xpGained = xpGainedInt;
 
@@ -238,17 +236,17 @@ public class dWinemaker extends Script {
         // === Panel + layout (standardized) ===
         final int x = 5;
         final int baseY = 40;
-        final int width = 260;          // a tad wider for labels
+        final int width = 260;
         final int borderThickness = 2;
         final int paddingX = 10;
         final int topGap = 6;
         final int lineGap = 16;
         final int logoBottomGap = 8;
 
-        final int labelGray   = new Color(180,180,180).getRGB();
-        final int valueWhite  = Color.WHITE.getRGB();
-        final int valueGreen  = new Color(80, 220, 120).getRGB(); // level progress
-        final int valueBlue   = new Color(70, 130, 180).getRGB(); // highlights
+        final int labelGray = new Color(180, 180, 180).getRGB();
+        final int valueWhite = Color.WHITE.getRGB();
+        final int valueGreen = new Color(80, 220, 120).getRGB();
+        final int valueBlue = new Color(70, 130, 180).getRGB();
 
         // Logo
         ensureLogoLoaded();
@@ -259,12 +257,9 @@ public class dWinemaker extends Script {
         int innerWidth = width;
 
         int totalLines = 11;
-
         int y = innerY + topGap;
         if (scaledLogo != null) y += scaledLogo.height + logoBottomGap;
-        y += totalLines * lineGap;
-        y += 10;
-
+        y += totalLines * lineGap + 10;
         int innerHeight = Math.max(230, y - innerY);
 
         // Panel
@@ -277,7 +272,6 @@ public class dWinemaker extends Script {
 
         int curY = innerY + topGap;
 
-        // Logo (optional)
         if (scaledLogo != null) {
             int imgX = innerX + (innerWidth - scaledLogo.width) / 2;
             c.drawAtOn(scaledLogo, imgX, curY);
@@ -419,11 +413,6 @@ public class dWinemaker extends Script {
         } catch (Exception e) {
             log(getClass(), "Error loading logo: " + e.getMessage());
         }
-    }
-
-    @Override
-    public void onNewFrame() {
-        xpTracking.checkXP();
     }
 
     private void sendWebhookInternal() {

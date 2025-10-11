@@ -43,11 +43,11 @@ import javax.imageio.ImageIO;
         name = "dAIOFisher",
         description = "AIO Fisher that fishes, banks and/or drops to get those gains!",
         skillCategory = SkillCategory.FISHING,
-        version = 3.1,
+        version = 3.2,
         author = "JustDavyy"
 )
 public class dAIOFisher extends Script {
-    public static String scriptVersion = "3.1";
+    public static String scriptVersion = "3.2";
     private final String scriptName = "AIOFisher";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
@@ -256,15 +256,15 @@ public class dAIOFisher extends Script {
         int fishingXpPerHour = (int) Math.round(fishingXp / hours);
         int cookingXpPerHour = (int) Math.round(cookingXp / hours);
 
-        int cookingXpBanked = caughtCount * 190; // Karambwan note from your old code
+        int cookingXpBanked = caughtCount * 190; // Karambwan XP note
 
-        // Format
+        // Formatters
         java.text.DecimalFormat intFmt = new java.text.DecimalFormat("#,###");
         java.text.DecimalFormatSymbols sy = new java.text.DecimalFormatSymbols();
         sy.setGroupingSeparator('.');
         intFmt.setDecimalFormatSymbols(sy);
 
-        // ===== Panel config (same “new system” look) =====
+        // ===== Panel config =====
         final int x = 5;
         final int baseY = 40;
         final int width = 260;
@@ -288,11 +288,10 @@ public class dAIOFisher extends Script {
         double fishETL = 0;
         double fishProgressFrac = 0.0;
 
-        XPTracker fishTracker = (xpTracking != null) ? xpTracking.getXpTracker(utils.XPTracking.SkillType.FISHING) : null;
+        XPTracker fishTracker = (xpTracking != null) ? xpTracking.getFishingTracker() : null;
         if (fishTracker != null) {
             double curXp = fishTracker.getXp();
 
-            // Sync fishing level upwards (uses your currentFishingLevel fields)
             final int MAX = 99;
             int guard = 0;
             while (currentFishingLevel < MAX
@@ -314,33 +313,31 @@ public class dAIOFisher extends Script {
                 ? String.format(java.util.Locale.US, "%.0f%%", fishProgressFrac * 100.0)
                 : String.format(java.util.Locale.US, "%.1f%%", fishProgressFrac * 100.0);
 
-        // ===== Live Cooking stats from tracker (only if cooking) =====
-        boolean showCook = cookMode; // your flag that the script is cooking
+        // ===== Live Cooking stats from tracker (only if cookMode) =====
+        boolean showCook = cookMode;
         String cookTTL = "-";
         double cookETL = 0;
         double cookProgressFrac = 0.0;
 
-        if (showCook) {
-            XPTracker cookTracker = (xpTracking != null) ? xpTracking.getXpTracker(utils.XPTracking.SkillType.COOKING) : null;
-            if (cookTracker != null) {
-                double curXp = cookTracker.getXp();
+        XPTracker cookTracker = (showCook && xpTracking != null) ? xpTracking.getCookingTracker() : null;
+        if (cookTracker != null) {
+            double curXp = cookTracker.getXp();
 
-                final int MAX = 99;
-                int guard = 0;
-                while (currentCookingLevel < MAX
-                        && curXp >= cookTracker.getExperienceForLevel(currentCookingLevel + 1)
-                        && guard++ < 150) {
-                    currentCookingLevel++;
-                }
-
-                int curStart = cookTracker.getExperienceForLevel(currentCookingLevel);
-                int nextGoal = cookTracker.getExperienceForLevel(Math.min(MAX, currentCookingLevel + 1));
-                int span     = Math.max(1, nextGoal - curStart);
-
-                cookETL = Math.max(0, nextGoal - curXp);
-                cookTTL = cookTracker.timeToNextLevelString();
-                cookProgressFrac = Math.max(0.0, Math.min(1.0, (curXp - curStart) / (double) span));
+            final int MAX = 99;
+            int guard = 0;
+            while (currentCookingLevel < MAX
+                    && curXp >= cookTracker.getExperienceForLevel(currentCookingLevel + 1)
+                    && guard++ < 150) {
+                currentCookingLevel++;
             }
+
+            int curStart = cookTracker.getExperienceForLevel(currentCookingLevel);
+            int nextGoal = cookTracker.getExperienceForLevel(Math.min(MAX, currentCookingLevel + 1));
+            int span     = Math.max(1, nextGoal - curStart);
+
+            cookETL = Math.max(0, nextGoal - curXp);
+            cookTTL = cookTracker.timeToNextLevelString();
+            cookProgressFrac = Math.max(0.0, Math.min(1.0, (curXp - curStart) / (double) span));
         }
 
         String cookProgressText = (Math.abs(cookProgressFrac * 100.0 - Math.rint(cookProgressFrac * 100.0)) < 1e-9)
@@ -351,25 +348,12 @@ public class dAIOFisher extends Script {
         boolean isMinnows = (fishingLocation == FishingLocation.Minnows);
         boolean isKaramb  = (fishingLocation == FishingLocation.Karambwans);
 
-        int totalLines = 0;
-        if (scaledLogo != null) { /* visual gap only */ }
-
-        // Fisher base:
-        totalLines += 1; // Runtime
-        totalLines += 2; // Catches + Catches/hr
-        if (isMinnows) totalLines += 2; // Sharks lines
-
-        totalLines += 2; // Fishing XP + XP/hr
-        totalLines += 4; // Fishing progress + level + TTL + ETL
-
-        if (isKaramb) totalLines += 3; // banked xp, bank method, travel
-
-        if (showCook) {
-            totalLines += 2; // Cooking XP + XP/hr
-            totalLines += 4; // Cooking progress + level + TTL + ETL
-        }
-
-        totalLines += 4; // Footer (task, location, mode, version)
+        int totalLines = 1 + 2; // Runtime + Catches
+        if (isMinnows) totalLines += 2; // Sharks
+        totalLines += 6; // Fishing XP, XP/hr, progress, level, TTL, ETL
+        if (isKaramb) totalLines += 3; // Karamb extras
+        if (showCook) totalLines += 6; // Cooking XP, XP/hr, progress, level, TTL, ETL
+        totalLines += 4; // Footer
 
         int innerX = x;
         int innerY = baseY;
@@ -377,10 +361,7 @@ public class dAIOFisher extends Script {
 
         int y = innerY + topGap;
         if (scaledLogo != null) y += scaledLogo.height + logoBottomGap;
-        y += totalLines * lineGap;
-        y += smallGap;
-        y += 10;
-
+        y += totalLines * lineGap + smallGap + 10;
         int innerHeight = Math.max(240, y - innerY);
 
         // Panel
@@ -401,12 +382,10 @@ public class dAIOFisher extends Script {
         }
 
         // ===== Lines =====
-        // Runtime
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Runtime", runtime, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // Catches, Catches/hr
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Catches", intFmt.format(caughtCount), labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
@@ -415,21 +394,18 @@ public class dAIOFisher extends Script {
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Catches/hr", intFmt.format(caughtPerHour), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // Minnows: Sharks lines
         if (isMinnows) {
-            int sharks      = caughtCount / 40;
+            int sharks = caughtCount / 40;
             int sharksPerHr = caughtPerHour / 40;
-
             curY += lineGap;
             drawStatLine(c, innerX, innerWidth, paddingX, curY,
                     "Sharks", intFmt.format(sharks), labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
-
             curY += lineGap;
             drawStatLine(c, innerX, innerWidth, paddingX, curY,
                     "Sharks/hr", intFmt.format(sharksPerHr), labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
         }
 
-        // Fishing XP + XP/hr
+        // --- Fishing XP + Stats ---
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Fishing XP", intFmt.format(fishingXp), labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
@@ -438,7 +414,6 @@ public class dAIOFisher extends Script {
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Fishing XP/hr", intFmt.format(fishingXpPerHour), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // Fishing progress/level/TTL/ETL
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Fishing Progress", fishProgressText, labelGray, valueGreen, FONT_VALUE_BOLD, FONT_LABEL);
@@ -458,7 +433,7 @@ public class dAIOFisher extends Script {
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Fishing ETL", intFmt.format(Math.round(fishETL)), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // Karambwans extras
+        // Karamb extras
         if (isKaramb) {
             curY += lineGap;
             drawStatLine(c, innerX, innerWidth, paddingX, curY,
@@ -473,7 +448,7 @@ public class dAIOFisher extends Script {
                     "Travel method", String.valueOf(fairyOption), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
         }
 
-        // Cooking block (when cooking)
+        // --- Cooking XP + Stats ---
         if (showCook) {
             curY += lineGap;
             drawStatLine(c, innerX, innerWidth, paddingX, curY,
@@ -503,7 +478,7 @@ public class dAIOFisher extends Script {
                     "Cooking ETL", intFmt.format(Math.round(cookETL)), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
         }
 
-        // Footer
+        // --- Footer ---
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Task", String.valueOf(task), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
@@ -520,7 +495,6 @@ public class dAIOFisher extends Script {
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Version", scriptVersion, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // Store for webhook
         try { lastCanvasFrame.set(c.toImageCopy()); } catch (Exception ignored) {}
     }
 
@@ -589,14 +563,6 @@ public class dAIOFisher extends Script {
 
         } catch (Exception e) {
             log(getClass(), "Error loading logo: " + e.getMessage());
-        }
-    }
-
-    @Override
-    public void onNewFrame() {
-        xpTracking.checkXP(XPTracking.SkillType.FISHING);
-        if (cookMode) {
-            xpTracking.checkXP(XPTracking.SkillType.COOKING);
         }
     }
 

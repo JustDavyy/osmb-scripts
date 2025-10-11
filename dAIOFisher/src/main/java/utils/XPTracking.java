@@ -1,127 +1,74 @@
 package utils;
 
 import com.osmb.api.ScriptCore;
-import com.osmb.api.shape.Rectangle;
 import com.osmb.api.trackers.experience.XPTracker;
-import com.osmb.api.ui.component.ComponentSearchResult;
-import com.osmb.api.ui.component.minimap.xpcounter.XPDropsComponent;
-import com.osmb.api.utils.RandomUtils;
-import com.osmb.api.visual.color.ColorModel;
-import com.osmb.api.visual.color.tolerance.impl.SingleThresholdComparator;
-import com.osmb.api.visual.image.SearchableImage;
-import main.dAIOFisher;
+import com.osmb.api.ui.component.tabs.skill.SkillType;
 
-import java.util.EnumMap;
 import java.util.Map;
 
 public class XPTracking {
 
-    public enum SkillType { FISHING, COOKING }
-
-    private static final int SPRITE_FISHING_ID = 211;
-    private static final int SPRITE_COOKING_ID = 212;
-
     private final ScriptCore core;
-    private final XPDropsComponent xpDropsComponent;
-
-    private final SearchableImage fishingSprite;
-    private final SearchableImage cookingSprite;
-
-    // One live tracker per skill
-    private final Map<SkillType, XPTracker> trackers = new EnumMap<>(SkillType.class);
 
     public XPTracking(ScriptCore core) {
         this.core = core;
-        this.xpDropsComponent = (XPDropsComponent) core.getWidgetManager().getComponent(XPDropsComponent.class);
-
-        SingleThresholdComparator comp = new SingleThresholdComparator(15);
-        SearchableImage fishFull  = new SearchableImage(SPRITE_FISHING_ID, core, comp, ColorModel.RGB);
-        SearchableImage cookFull  = new SearchableImage(SPRITE_COOKING_ID, core, comp, ColorModel.RGB);
-
-        this.fishingSprite = fishFull.subImage(fishFull.width / 2, 0, fishFull.width / 2, fishFull.height);
-        this.cookingSprite = cookFull.subImage(cookFull.width / 2, 0, cookFull.width / 2, cookFull.height);
     }
 
-    public XPTracker getXpTracker(SkillType skill) {
+    private XPTracker getTracker(SkillType skill) {
+        Map<SkillType, XPTracker> trackers = core.getXPTrackers();
+        if (trackers == null) return null;
         return trackers.get(skill);
     }
 
-    public void checkXP(SkillType skill) {
-        Integer currentXP = getXpCounterForSkill(skill);
-        if (currentXP == null) return;
+    // --- Fishing ---
 
-        XPTracker t = trackers.get(skill);
-        if (t == null) {
-            t = new XPTracker(core, currentXP);
-            trackers.put(skill, t);
-        } else {
-            double prev = t.getXp();
-            double gained = currentXP - prev;
-            if (gained > 0) {
-                t.incrementXp(gained);
-
-                // Set last XP gained time
-                dAIOFisher.lastXpGained = System.currentTimeMillis();
-
-                // Increment skill-specific totals
-                switch (skill) {
-                    case FISHING -> dAIOFisher.fishingXp += gained;
-                    case COOKING -> dAIOFisher.cookingXp += gained;
-                }
-            }
-        }
+    public XPTracker getFishingTracker() {
+        return getTracker(SkillType.FISHING);
     }
 
-    public boolean checkXPCounterActive() {
-        if (xpDropsComponent == null) return false;
-        Rectangle bounds = xpDropsComponent.getBounds();
-        if (bounds == null) return true;
-
-        ComponentSearchResult<Integer> result = xpDropsComponent.getResult();
-        if (result == null || result.getComponentImage().getGameFrameStatusType() != 1) {
-            core.getFinger().tap(bounds);
-            boolean ok = core.pollFramesHuman(() -> {
-                ComponentSearchResult<Integer> r = xpDropsComponent.getResult();
-                return r != null && r.getComponentImage().getGameFrameStatusType() == 1;
-            }, RandomUtils.uniformRandom(1500, 3000));
-            bounds = xpDropsComponent.getBounds();
-            return ok && bounds != null;
-        }
-        return true;
+    public double getFishingXpGained() {
+        XPTracker tracker = getFishingTracker();
+        return (tracker != null) ? tracker.getXpGained() : 0.0;
     }
 
-    private Integer getXpCounterForSkill(SkillType skill) {
-        Rectangle bounds = getXPDropsBounds();
-        if (bounds == null) return null;
-
-        SearchableImage sprite = (skill == SkillType.FISHING) ? fishingSprite : cookingSprite;
-
-        boolean matches = core.getImageAnalyzer().findLocation(bounds, sprite) != null;
-        if (!matches) return null;
-
-        String xpText = core.getOCR()
-                .getText(com.osmb.api.visual.ocr.fonts.Font.SMALL_FONT, bounds, -1)
-                .replaceAll("[^0-9]", "");
-        if (xpText.isEmpty()) return null;
-
-        try {
-            return Integer.parseInt(xpText);
-        } catch (NumberFormatException e) {
-            return null;
-        }
+    public int getFishingXpPerHour() {
+        XPTracker tracker = getFishingTracker();
+        return (tracker != null) ? tracker.getXpPerHour() : 0;
     }
 
-    private Rectangle getXPDropsBounds() {
-        XPDropsComponent comp = (XPDropsComponent) core.getWidgetManager().getComponent(XPDropsComponent.class);
-        if (comp == null) return null;
+    public int getFishingLevel() {
+        XPTracker tracker = getFishingTracker();
+        return (tracker != null) ? tracker.getLevel() : 0;
+    }
 
-        Rectangle b = comp.getBounds();
-        if (b == null) return null;
+    public String getFishingTimeToNextLevel() {
+        XPTracker tracker = getFishingTracker();
+        return (tracker != null) ? tracker.timeToNextLevelString() : "-";
+    }
 
-        ComponentSearchResult<Integer> result = comp.getResult();
-        if (result == null || result.getComponentImage().getGameFrameStatusType() != 1) return null;
+    // --- Cooking ---
 
-        // Same crop you used before
-        return new Rectangle(b.x - 140, b.y - 1, 119, 38);
+    public XPTracker getCookingTracker() {
+        return getTracker(SkillType.COOKING);
+    }
+
+    public double getCookingXpGained() {
+        XPTracker tracker = getCookingTracker();
+        return (tracker != null) ? tracker.getXpGained() : 0.0;
+    }
+
+    public int getCookingXpPerHour() {
+        XPTracker tracker = getCookingTracker();
+        return (tracker != null) ? tracker.getXpPerHour() : 0;
+    }
+
+    public int getCookingLevel() {
+        XPTracker tracker = getCookingTracker();
+        return (tracker != null) ? tracker.getLevel() : 0;
+    }
+
+    public String getCookingTimeToNextLevel() {
+        XPTracker tracker = getCookingTracker();
+        return (tracker != null) ? tracker.timeToNextLevelString() : "-";
     }
 }

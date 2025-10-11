@@ -1,107 +1,52 @@
 package utils;
 
 import com.osmb.api.ScriptCore;
-import com.osmb.api.shape.Rectangle;
 import com.osmb.api.trackers.experience.XPTracker;
-import com.osmb.api.ui.component.ComponentSearchResult;
-import com.osmb.api.ui.component.minimap.xpcounter.XPDropsComponent;
-import com.osmb.api.utils.RandomUtils;
-import com.osmb.api.visual.color.ColorModel;
-import com.osmb.api.visual.color.tolerance.impl.SingleThresholdComparator;
-import com.osmb.api.visual.image.SearchableImage;
+import com.osmb.api.ui.component.tabs.skill.SkillType;
 
-import java.awt.*;
+import java.util.Map;
 
 public class XPTracking {
 
-    private static final int SPRITE_COOKING_ID = 212;
-
     private final ScriptCore core;
-    private final SearchableImage cookingSprite;
-    private final XPDropsComponent xpDropsComponent;
-    private XPTracker xpTracker;
 
     public XPTracking(ScriptCore core) {
         this.core = core;
-        this.xpDropsComponent = (XPDropsComponent) core.getWidgetManager().getComponent(XPDropsComponent.class);
-        SearchableImage cookingFull = new SearchableImage(SPRITE_COOKING_ID, core, new SingleThresholdComparator(15), ColorModel.RGB);
-        this.cookingSprite = cookingFull.subImage(cookingFull.width / 2, 0, cookingFull.width / 2, cookingFull.height);
     }
 
-    public XPTracker getXpTracker() {
-        return xpTracker;
+    // --- Internal helper to retrieve a specific tracker ---
+    private XPTracker getTracker(SkillType skill) {
+        Map<SkillType, XPTracker> trackers = core.getXPTrackers();
+        if (trackers == null) return null;
+        return trackers.get(skill);
     }
 
-    public void checkXP() {
-        Integer currentXP = getXpCounter();
-        if (currentXP != null) {
-            if (xpTracker == null) {
-                xpTracker = new XPTracker(core, currentXP);
-            } else {
-                double prev = xpTracker.getXp();
-                double gainedXP = currentXP - prev;
-                if (gainedXP > 0) {
-                    xpTracker.incrementXp(gainedXP);
-                }
-            }
-        }
+    // --- Cooking-specific methods ---
+    public XPTracker getCookingTracker() {
+        return getTracker(SkillType.COOKING);
     }
 
-    private Integer getXpCounter() {
-        Rectangle bounds = getXPDropsBounds();
-        if (bounds == null) {
-            return null;
-        }
-        boolean matchescooking = core.getImageAnalyzer().findLocation(bounds, cookingSprite) != null;
-        if (!matchescooking) {
-            return null;
-        }
-        core.getScreen().getDrawableCanvas().drawRect(bounds, Color.RED.getRGB(), 1);
-        String xpText = core.getOCR()
-                .getText(com.osmb.api.visual.ocr.fonts.Font.SMALL_FONT, bounds, -1)
-                .replaceAll("[^0-9]", "");
-        if (xpText.isEmpty()) {
-            return null;
-        }
-        try {
-            return Integer.parseInt(xpText);
-        } catch (NumberFormatException e) {
-            return null;
-        }
+    public double getCookingXpGained() {
+        XPTracker tracker = getCookingTracker();
+        if (tracker == null) return 0.0;
+        return tracker.getXpGained();
     }
 
-    public boolean checkXPCounterActive() {
-        if (xpDropsComponent == null) {
-            return false;
-        }
-        Rectangle bounds = xpDropsComponent.getBounds();
-        if (bounds == null) {
-            return true;
-        }
-        ComponentSearchResult<Integer> result = xpDropsComponent.getResult();
-        if (result == null || result.getComponentImage().getGameFrameStatusType() != 1) {
-            core.getFinger().tap(bounds);
-            boolean succeed = core.pollFramesHuman(() -> {
-                ComponentSearchResult<Integer> r = xpDropsComponent.getResult();
-                return r != null && r.getComponentImage().getGameFrameStatusType() == 1;
-            }, RandomUtils.uniformRandom(1500, 3000));
-            bounds = xpDropsComponent.getBounds();
-            return succeed && bounds != null;
-        }
-        return true;
+    public int getCookingXpPerHour() {
+        XPTracker tracker = getCookingTracker();
+        if (tracker == null) return 0;
+        return tracker.getXpPerHour();
     }
 
-    private Rectangle getXPDropsBounds() {
-        XPDropsComponent comp = (XPDropsComponent) core.getWidgetManager().getComponent(XPDropsComponent.class);
-        if (comp == null) return null;
-        Rectangle b = comp.getBounds();
-        if (b == null) {
-            return null;
-        }
-        ComponentSearchResult<Integer> result = comp.getResult();
-        if (result == null || result.getComponentImage().getGameFrameStatusType() != 1) {
-            return null;
-        }
-        return new Rectangle(b.x - 140, b.y - 1, 119, 38);
+    public int getCookingLevel() {
+        XPTracker tracker = getCookingTracker();
+        if (tracker == null) return 0;
+        return tracker.getLevel();
+    }
+
+    public String getCookingTimeToNextLevel() {
+        XPTracker tracker = getCookingTracker();
+        if (tracker == null) return "-";
+        return tracker.timeToNextLevelString();
     }
 }

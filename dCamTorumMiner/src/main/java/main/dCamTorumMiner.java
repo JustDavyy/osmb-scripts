@@ -38,11 +38,11 @@ import java.util.concurrent.atomic.AtomicReference;
         name = "dCamTorumMiner",
         description = "Mines blessed bone shards in the Cam Torum mine",
         skillCategory = SkillCategory.MINING,
-        version = 2.5,
+        version = 2.6,
         author = "JustDavyy"
 )
 public class dCamTorumMiner extends Script {
-    public static final String scriptVersion = "2.5";
+    public static final String scriptVersion = "2.6";
     private final String scriptName = "CamTorumMiner";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
@@ -181,7 +181,7 @@ public class dCamTorumMiner extends Script {
         double currentXp    = 0.0;      // absolute XP (live)
 
         if (xpTracking != null) {
-            XPTracker tracker = xpTracking.getXpTracker(); // Mining tracker
+            XPTracker tracker = xpTracking.getMiningTracker();
             if (tracker != null) {
                 xpGainedLive = tracker.getXpGained();
                 currentXp    = tracker.getXp();
@@ -208,12 +208,12 @@ public class dCamTorumMiner extends Script {
             }
         }
 
-        // ==== Your derived stats ====
+        // ==== Derived stats ====
         int shardsHr    = (int) Math.round(blessedShardCount / hours);
         int miningXpHr  = (int) Math.round(xpGainedLive / hours);
         double prayerXp = blessedShardCount * 5.5;
         int prayerXpHr  = (int) Math.round(prayerXp / hours);
-        xpGained = (int) (xpGainedLive + prayerXp);
+        xpGained        = (int) (xpGainedLive + prayerXp);
 
         // Level text (+N)
         if (startLevel <= 0) startLevel = currentLevel;
@@ -234,7 +234,7 @@ public class dCamTorumMiner extends Script {
         sym.setGroupingSeparator('.');
         intFmt.setDecimalFormatSymbols(sym);
 
-        // === Panel + layout (your standard overlay) ===
+        // === Panel + layout (standard overlay) ===
         final int x = 5;
         final int baseY = 40;
         final int width = 225;
@@ -256,14 +256,11 @@ public class dCamTorumMiner extends Script {
         int innerX = x;
         int innerY = baseY;
         int innerWidth = width;
-
         int totalLines = 13;
 
         int y = innerY + topGap;
         if (scaledLogo != null) y += scaledLogo.height + logoBottomGap;
-        y += totalLines * lineGap;
-        y += smallGap;
-        y += 10;
+        y += totalLines * lineGap + smallGap + 10;
 
         int innerHeight = Math.max(240, y - innerY);
 
@@ -284,86 +281,76 @@ public class dCamTorumMiner extends Script {
             curY += scaledLogo.height + logoBottomGap;
         }
 
-        // 1) Runtime
+        // === Lines ===
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Runtime", runtime, labelGray, valueWhite,
                 FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 2) Bone shards gained
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Bone shards gained", intFmt.format(blessedShardCount), labelGray, valueBlue,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Bone shards gained", intFmt.format(blessedShardCount),
+                labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 3) Bone shards/hr
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Bone shards/hr", intFmt.format(shardsHr), labelGray, valueBlue,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Bone shards/hr", intFmt.format(shardsHr),
+                labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 4) Mining XP gained
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Mining XP gained", intFmt.format(Math.round(xpGainedLive)), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Mining XP gained", intFmt.format(Math.round(xpGainedLive)),
+                labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 5) Mining XP/hr
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Mining XP/hr", intFmt.format(miningXpHr), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Mining XP/hr", intFmt.format(miningXpHr),
+                labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 6) Prayer XP gained
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Prayer XP gained", intFmt.format(Math.round(prayerXp)), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Prayer XP gained", intFmt.format(Math.round(prayerXp)),
+                labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 7) Prayer XP/hr
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Prayer XP/hr", intFmt.format(prayerXpHr), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Prayer XP/hr", intFmt.format(prayerXpHr),
+                labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 8) ETL
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "ETL", intFmt.format(Math.round(etl)), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "ETL", intFmt.format(Math.round(etl)),
+                labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 9) TTL
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "TTL", ttlText, labelGray, valueWhite,
                 FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 10) Level progress
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Level progress", levelProgressText, labelGray, valueGreen,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Level progress", levelProgressText,
+                labelGray, valueGreen, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 11) Current level
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Current level", currentLevelText, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Current level", currentLevelText,
+                labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 12) Task
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Task", String.valueOf(task), labelGray, valueWhite,
                 FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 13) Version
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Version", scriptVersion, labelGray, valueWhite,
                 FONT_VALUE_BOLD, FONT_LABEL);
 
         // Snapshot for webhook
-        try { lastCanvasFrame.set(c.toImageCopy()); } catch (Exception ignored) {}
+        try {
+            lastCanvasFrame.set(c.toImageCopy());
+        } catch (Exception ignored) {}
     }
 
     private void drawStatLine(Canvas c, int innerX, int innerWidth, int paddingX, int y,
@@ -432,11 +419,6 @@ public class dCamTorumMiner extends Script {
         } catch (Exception e) {
             log(getClass(), "Error loading logo: " + e.getMessage());
         }
-    }
-
-    @Override
-    public void onNewFrame() {
-        xpTracking.checkXP();
     }
 
     private void sendWebhookInternal() {

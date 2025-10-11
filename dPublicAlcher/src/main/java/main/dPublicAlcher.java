@@ -40,11 +40,11 @@ import javax.imageio.ImageIO;
         name = "dPublic Alcher",
         description = "Alchs items (both high & low) until out of items or runes.",
         skillCategory = SkillCategory.MAGIC,
-        version = 2.1,
+        version = 2.2,
         author = "JustDavyy"
 )
 public class dPublicAlcher extends Script {
-    public static final String scriptVersion = "2.1";
+    public static final String scriptVersion = "2.2";
     private final String scriptName = "PublicAlcher";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
@@ -113,20 +113,20 @@ public class dPublicAlcher extends Script {
         double hours = Math.max(1e-9, elapsed / 3_600_000.0);
         String runtime = formatRuntime(elapsed);
 
-        // === Live XP via tracker (Magic) ===
+        double currentXp = 0.0;
+        double xpGainedLive = 0.0;
+        double etl = 0.0;
         String ttlText = "-";
-        double etl = 0.0;                // XP to next level
-        double xpGainedLive = 0.0;       // gained since start
-        double currentXp = 0.0;          // absolute xp
         double levelProgressFraction = 0.0;
 
         if (xpTracking != null) {
-            XPTracker tracker = xpTracking.getXpTracker(); // single-skill usage for this script
+            XPTracker tracker = xpTracking.getMagicTracker();
             if (tracker != null) {
+                currentXp = tracker.getXp();
                 xpGainedLive = tracker.getXpGained();
-                currentXp    = tracker.getXp();
+                ttlText = tracker.timeToNextLevelString();
+                etl = tracker.getXpForNextLevel();
 
-                // Level sync (only increases)
                 final int MAX_LEVEL = 99;
                 int guard = 0;
                 while (currentLevel < MAX_LEVEL
@@ -135,23 +135,17 @@ public class dPublicAlcher extends Script {
                     currentLevel++;
                 }
 
-                ttlText = tracker.timeToNextLevelString();
-
-                int curLevelXpStart   = tracker.getExperienceForLevel(currentLevel);
+                int curLevelXpStart = tracker.getExperienceForLevel(currentLevel);
                 int nextLevelXpTarget = tracker.getExperienceForLevel(Math.min(MAX_LEVEL, currentLevel + 1));
-                int span              = Math.max(1, nextLevelXpTarget - curLevelXpStart);
-
-                etl = Math.max(0, nextLevelXpTarget - currentXp);
-
+                int span = Math.max(1, nextLevelXpTarget - curLevelXpStart);
                 levelProgressFraction = Math.max(0.0, Math.min(1.0,
                         (currentXp - curLevelXpStart) / (double) span));
             }
         }
 
         int xpPerHour = (int) Math.round(xpGainedLive / hours);
-        xpGained  = (int) Math.round(xpGainedLive);
+        xpGained = (int) Math.round(xpGainedLive);
 
-        // Alchs/hr + time to completion
         int alchsPerHour = (int) Math.round(alchCount / hours);
         String timeTillCompletion = "-";
         if (alchsPerHour > 0 && stackSize > 0) {
@@ -159,26 +153,28 @@ public class dPublicAlcher extends Script {
             timeTillCompletion = formatRuntime(msLeft);
         }
 
-        // Current level text with (+N)
         if (startLevel <= 0) startLevel = currentLevel;
         int levelsGained = Math.max(0, currentLevel - startLevel);
         String currentLevelText = (levelsGained > 0)
                 ? (currentLevel + " (+" + levelsGained + ")")
                 : String.valueOf(currentLevel);
 
-        // Percent text (dot decimal)
         double pct = Math.max(0, Math.min(100, levelProgressFraction * 100.0));
         String levelProgressText = (Math.abs(pct - Math.rint(pct)) < 1e-9)
                 ? String.format(java.util.Locale.US, "%.0f%%", pct)
                 : String.format(java.util.Locale.US, "%.1f%%", pct);
 
-        // Formatting with dots for grouping
+        if (currentLevel == 99) {
+            ttlText = "MAXED";
+            etl = 0;
+            levelProgressText = "100%";
+        }
+
         java.text.DecimalFormat intFmt = new java.text.DecimalFormat("#,###");
         java.text.DecimalFormatSymbols sym = new java.text.DecimalFormatSymbols();
         sym.setGroupingSeparator('.');
         intFmt.setDecimalFormatSymbols(sym);
 
-        // === Panel + layout (standardized) ===
         final int x = 5;
         final int baseY = 40;
         final int width = 225;
@@ -191,8 +187,8 @@ public class dPublicAlcher extends Script {
 
         final int labelGray  = new java.awt.Color(180,180,180).getRGB();
         final int valueWhite = java.awt.Color.WHITE.getRGB();
-        final int valueGreen = new java.awt.Color(80, 220, 120).getRGB(); // level progress
-        final int valueBlue  = new java.awt.Color(70, 130, 180).getRGB(); // highlights
+        final int valueGreen = new java.awt.Color(80, 220, 120).getRGB();
+        final int valueBlue  = new java.awt.Color(70, 130, 180).getRGB();
 
         ensureLogoLoaded();
         com.osmb.api.visual.image.Image scaledLogo = (logoImage != null) ? logoImage : null;
@@ -202,16 +198,11 @@ public class dPublicAlcher extends Script {
         int innerWidth = width;
 
         int totalLines = 13;
-
         int y = innerY + topGap;
         if (scaledLogo != null) y += scaledLogo.height + logoBottomGap;
-        y += totalLines * lineGap;
-        y += smallGap;
-        y += 10;
-
+        y += totalLines * lineGap + smallGap + 10;
         int innerHeight = Math.max(240, y - innerY);
 
-        // Panel
         c.fillRect(innerX - borderThickness, innerY - borderThickness,
                 innerWidth + (borderThickness * 2),
                 innerHeight + (borderThickness * 2),
@@ -221,92 +212,51 @@ public class dPublicAlcher extends Script {
 
         int curY = innerY + topGap;
 
-        // Optional logo
         if (scaledLogo != null) {
             int imgX = innerX + (innerWidth - scaledLogo.width) / 2;
             c.drawAtOn(scaledLogo, imgX, curY);
             curY += scaledLogo.height + logoBottomGap;
         }
 
-        // 1) Runtime
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Runtime", runtime, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Runtime", runtime, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 2) Alchs done
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Alchs done", intFmt.format(alchCount), labelGray, valueBlue,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Alchs done", intFmt.format(alchCount), labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 3) Alchs/hr
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Alchs/hr", intFmt.format(alchsPerHour), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Alchs/hr", intFmt.format(alchsPerHour), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 4) XP Gained (live)
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "XP Gained", intFmt.format(xpGained), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "XP Gained", intFmt.format(xpGained), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 5) XP/hr (live)
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "XP/hr", intFmt.format(xpPerHour), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "XP/hr", intFmt.format(xpPerHour), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 6) ETL
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "ETL", intFmt.format(Math.round(etl)), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "ETL", intFmt.format(Math.round(etl)), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 7) TTL
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "TTL", ttlText, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "TTL", ttlText, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 8) Time till completion
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Time till completion", timeTillCompletion, labelGray, valueBlue,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Time till completion", timeTillCompletion, labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 9) Level progress
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Level progress", levelProgressText, labelGray, valueGreen,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Level progress", levelProgressText, labelGray, valueGreen, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 10) Current level
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Current level", currentLevelText, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Current level", currentLevelText, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 11) Items left
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Items left", intFmt.format(stackSize), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Items left", intFmt.format(stackSize), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 12) Task
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Task", String.valueOf(task), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Task", String.valueOf(task), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 13) Version
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Version", scriptVersion, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Version", scriptVersion, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // (Optional) store canvas for webhooks
         try { lastCanvasFrame.set(c.toImageCopy()); } catch (Exception ignored) {}
     }
 
@@ -376,11 +326,6 @@ public class dPublicAlcher extends Script {
         } catch (Exception e) {
             log(getClass(), "Error loading logo: " + e.getMessage());
         }
-    }
-
-    @Override
-    public void onNewFrame() {
-        xpTracking.checkXP();
     }
 
     @Override

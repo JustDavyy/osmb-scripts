@@ -40,11 +40,11 @@ import javax.imageio.ImageIO;
         name = "dRangingGuild",
         description = "Trains ranged by doing the ranging guild minigame",
         skillCategory = SkillCategory.COMBAT,
-        version = 2.2,
+        version = 2.3,
         author = "JustDavyy"
 )
 public class dRangingGuild extends Script {
-    public static final String scriptVersion = "2.2";
+    public static final String scriptVersion = "2.3";
     private final String scriptName = "RangingGuild";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
@@ -116,25 +116,25 @@ public class dRangingGuild extends Script {
         double hours = Math.max(1e-9, elapsed / 3_600_000.0);
         String runtime = formatRuntime(elapsed);
 
-        // ===== Derived stats from game counters =====
-        int scoreTotal     = totalScore + currentScore;   // your running total logic
-        ticketsEarned  = scoreTotal / 10;
-        // Ranged XP in the minigame is 0.5 per point; but we now display LIVE via tracker below.
+        // === Derived minigame stats ===
+        int scoreTotal = totalScore + currentScore;
+        ticketsEarned = scoreTotal / 10;
 
-        // ===== Live XP via tracker (Ranged) =====
+        // === Live XP via tracker (Ranged) ===
         String ttlText = "-";
-        double etl = 0.0;                 // xp to next level
-        double xpGainedLive = 0.0;        // gained since start (live)
-        double currentXp = 0.0;           // absolute xp (live)
+        double etl = 0.0;
+        double xpGainedLive = 0.0;
+        double currentXp = 0.0;
         double levelProgressFraction = 0.0;
 
         if (xpTracking != null) {
-            XPTracker tracker = xpTracking.getXpTracker(); // single-skill usage for this script
+            XPTracker tracker = xpTracking.getRangedTracker();
             if (tracker != null) {
+                currentXp = tracker.getXp();
                 xpGainedLive = tracker.getXpGained();
-                currentXp    = tracker.getXp();
+                ttlText = tracker.timeToNextLevelString();
+                etl = tracker.getXpForNextLevel();
 
-                // level sync (only ever increases)
                 final int MAX_LEVEL = 99;
                 int guard = 0;
                 while (currentLevel < MAX_LEVEL
@@ -143,42 +143,40 @@ public class dRangingGuild extends Script {
                     currentLevel++;
                 }
 
-                ttlText = tracker.timeToNextLevelString();
-
-                int curLevelXpStart   = tracker.getExperienceForLevel(currentLevel);
+                int curLevelXpStart = tracker.getExperienceForLevel(currentLevel);
                 int nextLevelXpTarget = tracker.getExperienceForLevel(Math.min(MAX_LEVEL, currentLevel + 1));
-                int span              = Math.max(1, nextLevelXpTarget - curLevelXpStart);
-
-                etl = Math.max(0, nextLevelXpTarget - currentXp);
-
+                int span = Math.max(1, nextLevelXpTarget - curLevelXpStart);
                 levelProgressFraction = Math.max(0.0, Math.min(1.0,
                         (currentXp - curLevelXpStart) / (double) span));
             }
         }
 
         int xpPerHour = (int) Math.round(xpGainedLive / hours);
-        xpGained  = (int) Math.round(xpGainedLive);
+        xpGained = (int) Math.round(xpGainedLive);
 
-        // current level text with (+N)
         if (startLevel <= 0) startLevel = currentLevel;
         int levelsGained = Math.max(0, currentLevel - startLevel);
         String currentLevelText = (levelsGained > 0)
                 ? (currentLevel + " (+" + levelsGained + ")")
                 : String.valueOf(currentLevel);
 
-        // percent text (dot decimal)
         double pct = Math.max(0, Math.min(100, levelProgressFraction * 100.0));
         String levelProgressText = (Math.abs(pct - Math.rint(pct)) < 1e-9)
                 ? String.format(java.util.Locale.US, "%.0f%%", pct)
                 : String.format(java.util.Locale.US, "%.1f%%", pct);
 
-        // formatting with dots for grouping
+        if (currentLevel == 99) {
+            ttlText = "MAXED";
+            etl = 0;
+            levelProgressText = "100%";
+        }
+
         java.text.DecimalFormat intFmt = new java.text.DecimalFormat("#,###");
         java.text.DecimalFormatSymbols sym = new java.text.DecimalFormatSymbols();
         sym.setGroupingSeparator('.');
         intFmt.setDecimalFormatSymbols(sym);
 
-        // ===== Panel + layout (standardized) =====
+        // === Panel layout ===
         final int x = 5;
         final int baseY = 40;
         final int width = 225;
@@ -191,8 +189,8 @@ public class dRangingGuild extends Script {
 
         final int labelGray  = new java.awt.Color(180,180,180).getRGB();
         final int valueWhite = java.awt.Color.WHITE.getRGB();
-        final int valueGreen = new java.awt.Color(80, 220, 120).getRGB(); // level progress
-        final int valueBlue  = new java.awt.Color(70, 130, 180).getRGB(); // highlights
+        final int valueGreen = new java.awt.Color(80, 220, 120).getRGB();
+        final int valueBlue  = new java.awt.Color(70, 130, 180).getRGB();
 
         ensureLogoLoaded();
         com.osmb.api.visual.image.Image scaledLogo = (logoImage != null) ? logoImage : null;
@@ -202,16 +200,12 @@ public class dRangingGuild extends Script {
         int innerWidth = width;
 
         int totalLines = 11;
-
         int y = innerY + topGap;
         if (scaledLogo != null) y += scaledLogo.height + logoBottomGap;
-        y += totalLines * lineGap;
-        y += smallGap;
-        y += 10;
-
+        y += totalLines * lineGap + smallGap + 10;
         int innerHeight = Math.max(220, y - innerY);
 
-        // panel
+        // Panel background
         c.fillRect(innerX - borderThickness, innerY - borderThickness,
                 innerWidth + (borderThickness * 2),
                 innerHeight + (borderThickness * 2),
@@ -221,7 +215,7 @@ public class dRangingGuild extends Script {
 
         int curY = innerY + topGap;
 
-        // optional logo
+        // Optional logo
         if (scaledLogo != null) {
             int imgX = innerX + (innerWidth - scaledLogo.width) / 2;
             c.drawAtOn(scaledLogo, imgX, curY);
@@ -252,7 +246,7 @@ public class dRangingGuild extends Script {
                 "XP Gained", intFmt.format(xpGained), labelGray, valueWhite,
                 FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 5) XP/hr (live)
+        // 5) XP/hr
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "XP/hr", intFmt.format(xpPerHour), labelGray, valueWhite,
@@ -294,7 +288,6 @@ public class dRangingGuild extends Script {
                 "Version", scriptVersion, labelGray, valueWhite,
                 FONT_VALUE_BOLD, FONT_LABEL);
 
-        // (optional) store canvas for webhook usage
         try { lastCanvasFrame.set(c.toImageCopy()); } catch (Exception ignored) {}
     }
 
@@ -364,11 +357,6 @@ public class dRangingGuild extends Script {
         } catch (Exception e) {
             log(getClass(), "Error loading logo: " + e.getMessage());
         }
-    }
-
-    @Override
-    public void onNewFrame() {
-        xpTracking.checkXP();
     }
 
     @Override

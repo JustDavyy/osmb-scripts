@@ -42,12 +42,12 @@ import javax.imageio.ImageIO;
         name = "dBattlestaffCrafter",
         description = "Attaches orbs to battlestaves for quick crafting experience",
         skillCategory = SkillCategory.CRAFTING,
-        version = 1.9,
+        version = 2.0,
         author = "JustDavyy"
 )
 
 public class dBattlestaffCrafter extends Script {
-    public static final String scriptVersion = "1.9";
+    public static final String scriptVersion = "2.0";
     private final String scriptName = "BattlestaffCrafter";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
@@ -178,17 +178,17 @@ public class dBattlestaffCrafter extends Script {
 
         // ==== Live XP via tracker (ETL/TTL/progress/current level sync) ====
         String ttlText = "-";
-        double etl = 0.0;               // remaining XP to next level
-        double xpGainedLive = 0.0;      // gained XP since start (live)
-        double currentXp = 0.0;         // absolute XP (live)
+        double etl = 0.0;
+        double xpGainedLive = 0.0;
+        double currentXp = 0.0;
 
         if (xpTracking != null) {
-            XPTracker tracker = xpTracking.getXpTracker();
+            XPTracker tracker = xpTracking.getCraftingTracker();
             if (tracker != null) {
                 xpGainedLive = tracker.getXpGained();
-                currentXp    = tracker.getXp();
+                currentXp = tracker.getXp();
 
-                // level sync (only ever increases)
+                // Level sync (only increases)
                 final int MAX_LEVEL = 99;
                 int guard = 0;
                 while (currentLevel < MAX_LEVEL
@@ -199,21 +199,21 @@ public class dBattlestaffCrafter extends Script {
 
                 ttlText = tracker.timeToNextLevelString();
 
-                int curLevelXpStart   = tracker.getExperienceForLevel(currentLevel);
-                int nextLevelXpTarget = tracker.getExperienceForLevel(Math.min(MAX_LEVEL, currentLevel + 1));
-                int span              = Math.max(1, nextLevelXpTarget - curLevelXpStart);
+                int curStart = tracker.getExperienceForLevel(currentLevel);
+                int nextReq = tracker.getExperienceForLevel(Math.min(MAX_LEVEL, currentLevel + 1));
+                int span = Math.max(1, nextReq - curStart);
 
-                etl = Math.max(0, nextLevelXpTarget - currentXp);
+                etl = Math.max(0, nextReq - currentXp);
 
                 levelProgressFraction = Math.max(0.0, Math.min(1.0,
-                        (currentXp - curLevelXpStart) / (double) span));
+                        (currentXp - curStart) / (double) span));
             }
         }
 
-        int craftedCount   = (int) Math.round(xpGainedLive / getXPForStaff(staffID));
-        int xpPerHour      = (int) Math.round(xpGainedLive / hours);
-        xpGained       = (int) Math.round(xpGainedLive);
-        int craftsPerHour  = (int) Math.round(craftedCount / hours);
+        int craftedCount = (int) Math.round(xpGainedLive / getXPForStaff(staffID));
+        int xpPerHour = (int) Math.round(xpGainedLive / hours);
+        xpGained = (int) Math.round(xpGainedLive);
+        int craftsPerHour = (int) Math.round(craftedCount / hours);
 
         // Current level text (+N)
         if (startLevel <= 0) startLevel = currentLevel;
@@ -228,13 +228,13 @@ public class dBattlestaffCrafter extends Script {
                 ? String.format(java.util.Locale.US, "%.0f%%", pct)
                 : String.format(java.util.Locale.US, "%.1f%%", pct);
 
-        // Formatting with dot grouping
+        // Formatting
         DecimalFormat intFmt = new DecimalFormat("#,###");
         DecimalFormatSymbols sym = new DecimalFormatSymbols();
         sym.setGroupingSeparator('.');
         intFmt.setDecimalFormatSymbols(sym);
 
-        // === Panel + layout (your standard overlay) ===
+        // === Panel layout ===
         final int x = 5;
         final int baseY = 40;
         final int width = 225;
@@ -247,8 +247,8 @@ public class dBattlestaffCrafter extends Script {
 
         final int labelGray  = new Color(180,180,180).getRGB();
         final int valueWhite = Color.WHITE.getRGB();
-        final int valueGreen = new Color(80, 220, 120).getRGB(); // level progress
-        final int valueBlue  = new Color(70, 130, 180).getRGB(); // crafted + crafts/hr
+        final int valueGreen = new Color(80, 220, 120).getRGB();
+        final int valueBlue  = new Color(70, 130, 180).getRGB();
 
         ensureLogoLoaded();
         com.osmb.api.visual.image.Image scaledLogo = (logoImage != null) ? logoImage : null;
@@ -261,13 +261,11 @@ public class dBattlestaffCrafter extends Script {
 
         int y = innerY + topGap;
         if (scaledLogo != null) y += scaledLogo.height + logoBottomGap;
-        y += totalLines * lineGap;
-        y += smallGap;
-        y += 10;
+        y += totalLines * lineGap + smallGap + 10;
 
         int innerHeight = Math.max(240, y - innerY);
 
-        // Panel
+        // Panel background
         c.fillRect(innerX - borderThickness, innerY - borderThickness,
                 innerWidth + (borderThickness * 2),
                 innerHeight + (borderThickness * 2),
@@ -284,73 +282,51 @@ public class dBattlestaffCrafter extends Script {
             curY += scaledLogo.height + logoBottomGap;
         }
 
-        // 1) Runtime
+        // === Lines ===
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Runtime", runtime, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Runtime", runtime, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 2) Staffs crafted
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Staffs crafted", intFmt.format(craftedCount), labelGray, valueBlue,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Staffs crafted", intFmt.format(craftedCount), labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 3) Crafts/hr
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Crafts/hr", intFmt.format(craftsPerHour), labelGray, valueBlue,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Crafts/hr", intFmt.format(craftsPerHour), labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 4) XP Gained
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "XP Gained", intFmt.format(xpGained), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "XP Gained", intFmt.format(xpGained), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 5) XP/hr
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "XP/hr", intFmt.format(xpPerHour), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "XP/hr", intFmt.format(xpPerHour), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 6) ETL
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "ETL", intFmt.format(Math.round(etl)), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "ETL", intFmt.format(Math.round(etl)), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 7) TTL
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "TTL", ttlText, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "TTL", ttlText, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 8) Level Progress (green)
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Level progress", levelProgressText, labelGray, valueGreen,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Level progress", levelProgressText, labelGray, valueGreen, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 9) Current level
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Current level", currentLevelText, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Current level", currentLevelText, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 10) Task
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Task", String.valueOf(task), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Task", String.valueOf(task), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 11) Version
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Version", scriptVersion, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Version", scriptVersion, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // Store canvas for webhook usage (your standard step)
         try {
             lastCanvasFrame.set(c.toImageCopy());
         } catch (Exception ignored) {}
@@ -422,11 +398,6 @@ public class dBattlestaffCrafter extends Script {
         } catch (Exception e) {
             log(getClass(), "Error loading logo: " + e.getMessage());
         }
-    }
-
-    @Override
-    public void onNewFrame() {
-        xpTracking.checkXP();
     }
 
     @Override

@@ -39,11 +39,11 @@ import java.util.function.Predicate;
         name = "dCannonballSmelter",
         description = "Turns steel bars into cannonballs",
         skillCategory = SkillCategory.SMITHING,
-        version = 3.2,
+        version = 3.3,
         author = "JustDavyy"
 )
 public class dCannonballSmelter extends Script implements WebhookSender {
-    public static final String scriptVersion = "3.2";
+    public static final String scriptVersion = "3.3";
     private final String scriptName = "CannonballSmelter";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
@@ -111,11 +111,6 @@ public class dCannonballSmelter extends Script implements WebhookSender {
     }
 
     @Override
-    public void onNewFrame() {
-        xpTracking.checkXP();
-    }
-
-    @Override
     public void onStart() {
         log(getClass().getSimpleName(), "Starting dCannonballSmelter v" + scriptVersion);
 
@@ -180,41 +175,42 @@ public class dCannonballSmelter extends Script implements WebhookSender {
         double hours = Math.max(1e-9, elapsed / 3_600_000.0);
         String runtime = formatRuntime(elapsed);
 
+        // === Smithing-related production stats ===
         int ballsSmelted  = smeltCount * 4;
         int smeltsPerHour = (int) Math.round(smeltCount / hours);
         int ballsPerHour  = (int) Math.round(ballsSmelted / hours);
 
+        // === Live XP via Smithing tracker ===
         String ttlText = "-";
-        double etl = 0;
-        double xpGainedLive = 0;
+        double etl = 0.0;
+        double xpGainedLive = 0.0;
+        double currentXp = 0.0;
 
         if (xpTracking != null) {
-            XPTracker xpTracker = xpTracking.getXpTracker();
-            if (xpTracker != null) {
-                xpGainedLive = xpTracker.getXpGained();
+            XPTracker tracker = xpTracking.getSmithingTracker();
+            if (tracker != null) {
+                xpGainedLive = tracker.getXpGained();
+                currentXp = tracker.getXp();
 
-                // Live XP at this moment
-                double currentXp = xpTracker.getXp();
-
-                // --- Level sync
+                // --- Level sync (only increases)
                 final int MAX_LEVEL = 99;
-                int guard = 0;            // extra safety, though the loop is inherently finite
+                int guard = 0;
                 while (currentLevel < MAX_LEVEL
-                        && currentXp >= xpTracker.getExperienceForLevel(currentLevel + 1)
+                        && currentXp >= tracker.getExperienceForLevel(currentLevel + 1)
                         && guard++ < 10) {
                     currentLevel++;
                 }
 
                 // TTL/ETL
-                ttlText = xpTracker.timeToNextLevelString();
+                ttlText = tracker.timeToNextLevelString();
 
-                int curLevelXpStart   = xpTracker.getExperienceForLevel(currentLevel);
-                int nextLevelXpTarget = xpTracker.getExperienceForLevel(Math.min(MAX_LEVEL, currentLevel + 1));
+                int curLevelXpStart   = tracker.getExperienceForLevel(currentLevel);
+                int nextLevelXpTarget = tracker.getExperienceForLevel(Math.min(MAX_LEVEL, currentLevel + 1));
                 int span              = Math.max(1, nextLevelXpTarget - curLevelXpStart);
 
                 etl = Math.max(0, nextLevelXpTarget - currentXp);
 
-                // progress as fraction within current level
+                // progress within level
                 levelProgressFraction = Math.max(0.0, Math.min(1.0,
                         (currentXp - curLevelXpStart) / (double) span));
             }
@@ -223,24 +219,26 @@ public class dCannonballSmelter extends Script implements WebhookSender {
         totalXpGained = xpGainedLive;
         int xpPerHour = (int) Math.round(xpGainedLive / hours);
 
-        // (+N) display stays as-is:
+        // === Level text (+N)
         if (startLevel <= 0) startLevel = currentLevel;
         int levelsGained = Math.max(0, currentLevel - startLevel);
         String currentLevelText = (levelsGained > 0)
                 ? (currentLevel + " (+" + levelsGained + ")")
                 : String.valueOf(currentLevel);
 
-        // Percent text (dot as decimal separator)
+        // === Level progress %
         double pct = Math.max(0, Math.min(100, levelProgressFraction * 100.0));
         String levelProgressText = (Math.abs(pct - Math.rint(pct)) < 1e-9)
                 ? String.format(java.util.Locale.US, "%.0f%%", pct)
                 : String.format(java.util.Locale.US, "%.1f%%", pct);
 
-        DecimalFormat intFmt = new DecimalFormat("#,###");
-        DecimalFormatSymbols sym = new DecimalFormatSymbols();
+        // === Number formatting
+        java.text.DecimalFormat intFmt = new java.text.DecimalFormat("#,###");
+        java.text.DecimalFormatSymbols sym = new java.text.DecimalFormatSymbols();
         sym.setGroupingSeparator('.');
         intFmt.setDecimalFormatSymbols(sym);
 
+        // === Layout constants ===
         final int x = 5;
         final int baseY = 40;
         final int width = 225;
@@ -250,34 +248,28 @@ public class dCannonballSmelter extends Script implements WebhookSender {
         final int lineGap = 16;
         final int smallGap = 6;
         final int logoBottomGap = 8;
-        final int maxLogoWidth  = width - paddingX * 2;
-        final int maxLogoHeight = 48;
 
         final int labelGray  = new Color(180,180,180).getRGB();
         final int valueWhite = Color.WHITE.getRGB();
         final int valueGreen = new Color(80, 220, 120).getRGB(); // level progress
-        final int valueBlue  = new Color(70, 130, 180).getRGB(); // cballs + cballs/hr
+        final int valueBlue  = new Color(70, 130, 180).getRGB(); // cballs/cballs/hr highlight
 
+        // === Logo ===
         ensureLogoLoaded();
-        com.osmb.api.visual.image.Image scaledLogo = null;
-        if (logoImage != null) {
-            scaledLogo = logoImage;
-        }
+        com.osmb.api.visual.image.Image scaledLogo = (logoImage != null) ? logoImage : null;
 
         int innerX = x;
         int innerY = baseY;
         int innerWidth = width;
-
         int totalLines = 12;
 
         int y = innerY + topGap;
         if (scaledLogo != null) y += scaledLogo.height + logoBottomGap;
-        y += totalLines * lineGap;
-        y += smallGap;
-        y += 10;
+        y += totalLines * lineGap + smallGap + 10;
 
         int innerHeight = Math.max(240, y - innerY);
 
+        // === Panel ===
         c.fillRect(innerX - borderThickness, innerY - borderThickness,
                 innerWidth + (borderThickness * 2),
                 innerHeight + (borderThickness * 2),
@@ -293,6 +285,7 @@ public class dCannonballSmelter extends Script implements WebhookSender {
             curY += scaledLogo.height + logoBottomGap;
         }
 
+        // === Display lines ===
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Runtime", runtime, labelGray, valueWhite,
@@ -333,7 +326,6 @@ public class dCannonballSmelter extends Script implements WebhookSender {
                 "TTL", ttlText, labelGray, valueWhite,
                 FONT_VALUE_BOLD, FONT_LABEL);
 
-        // Level Progress (green, bold) — after TTL
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Level Progress", levelProgressText, labelGray, valueGreen,
@@ -354,11 +346,10 @@ public class dCannonballSmelter extends Script implements WebhookSender {
                 "Version", scriptVersion, labelGray, valueWhite,
                 FONT_VALUE_BOLD, FONT_LABEL);
 
-        // Store canvas for webhook usage
+        // === Webhook snapshot ===
         try {
             lastCanvasFrame.set(c.toImageCopy());
-        } catch (Exception ignored) {
-        }
+        } catch (Exception ignored) {}
     }
 
     private void drawStatLine(Canvas c, int innerX, int innerWidth, int paddingX, int y,

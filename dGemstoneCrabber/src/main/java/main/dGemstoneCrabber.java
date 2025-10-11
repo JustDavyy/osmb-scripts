@@ -38,11 +38,11 @@ import java.util.concurrent.atomic.AtomicReference;
         name = "dGemstoneCrabber",
         description = "Trains combat by hunting the gem stone crab",
         skillCategory = SkillCategory.COMBAT,
-        version = 2.0,
+        version = 2.1,
         author = "JustDavyy"
 )
 public class dGemstoneCrabber extends Script implements WebhookSender {
-    public static final String scriptVersion = "2.0";
+    public static final String scriptVersion = "2.1";
     private final String scriptName = "GemstoneCrabber";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
@@ -205,30 +205,31 @@ public class dGemstoneCrabber extends Script implements WebhookSender {
         double hours = Math.max(1e-9, elapsed / 3_600_000.0);
         String runtime = formatRuntime(elapsed);
 
-        // === Live XP via tracker ===
+        // === Combined XP tracking ===
+        double xpGainedLive = 0.0;
         if (xpTracking != null) {
-            XPTracker t = xpTracking.getXpTracker();
-            if (t != null) {
-                xpGainedLive = t.getXpGained();
+            XPTracker totalTracker = xpTracking.getXpTracker();
+            if (totalTracker != null) {
+                xpGainedLive = totalTracker.getXpGained();
             }
         }
 
-        // Texts
+        // === Display numbers ===
         int xpPerHourLive = (int) Math.round(xpGainedLive / hours);
         java.text.DecimalFormat totalFmt = new java.text.DecimalFormat("#,###");
-        String totalXpText   = totalFmt.format(Math.round(xpGainedLive));
+        String totalXpText = totalFmt.format(Math.round(xpGainedLive));
         String xpPerHourText = formatRateKMB(xpPerHourLive) + "/hr";
 
-        String breakText  = "" +getProfileManager().isDueToBreak();
-        String hopText    = "" + getProfileManager().isDueToHop();
-        String eatText    = "" + shouldEat;
-        String potText    = formatBoost(nextPotAt);
-        String axeText    = formatBoost(dbaNextBoostAt);
-        String heartText  = formatBoost(heartNextBoostAt);
-        String taskText   = String.valueOf(task);
+        String breakText = "" + getProfileManager().isDueToBreak();
+        String hopText = "" + getProfileManager().isDueToHop();
+        String eatText = "" + shouldEat;
+        String potText = formatBoost(nextPotAt);
+        String axeText = formatBoost(dbaNextBoostAt);
+        String heartText = formatBoost(heartNextBoostAt);
+        String taskText = String.valueOf(task);
         String lastXpText = formatLastXpGain();
 
-        // === Panel + layout (standardized) ===
+        // === Layout ===
         final int x = 5;
         final int baseY = 40;
         final int width = 225;
@@ -239,11 +240,10 @@ public class dGemstoneCrabber extends Script implements WebhookSender {
         final int smallGap = 6;
         final int logoBottomGap = 8;
 
-        // colors
-        final int labelGray  = new Color(180,180,180).getRGB();
+        final int labelGray = new Color(180, 180, 180).getRGB();
         final int valueWhite = Color.WHITE.getRGB();
-        final int valueBlue  = new Color(70, 130, 180).getRGB();
-        final int valueGreen  = new Color(80, 220, 120).getRGB();
+        final int valueBlue = new Color(70, 130, 180).getRGB();
+        final int valueGreen = new Color(80, 220, 120).getRGB();
 
         ensureLogoLoaded();
         com.osmb.api.visual.image.Image scaledLogo = (logoImage != null) ? logoImage : null;
@@ -252,20 +252,13 @@ public class dGemstoneCrabber extends Script implements WebhookSender {
         int innerY = baseY;
         int innerWidth = width;
 
-        int totalLines = 9
-                + (usePot ? 1 : 0)
-                + (useDBAXE ? 1 : 0)
-                + (useHearts ? 1 : 0);
-
+        int totalLines = 9 + (usePot ? 1 : 0) + (useDBAXE ? 1 : 0) + (useHearts ? 1 : 0);
         int y = innerY + topGap;
         if (scaledLogo != null) y += scaledLogo.height + logoBottomGap;
-        y += totalLines * lineGap;
-        y += smallGap;
-        y += 10;
-
+        y += totalLines * lineGap + smallGap + 10;
         int innerHeight = Math.max(220, y - innerY);
 
-        // Frame
+        // === Frame ===
         c.fillRect(innerX - borderThickness, innerY - borderThickness,
                 innerWidth + (borderThickness * 2),
                 innerHeight + (borderThickness * 2),
@@ -281,85 +274,61 @@ public class dGemstoneCrabber extends Script implements WebhookSender {
             curY += scaledLogo.height + logoBottomGap;
         }
 
-        // 1) Runtime
+        // === Stats ===
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Runtime", runtime, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Runtime", runtime, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 2) XP gained
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "XP gained", totalXpText, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "XP gained", totalXpText, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 3) XP rate
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "XP rate", xpPerHourText, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "XP rate", xpPerHourText, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 4) Break info
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Time to break", breakText, labelGray, valueBlue,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Time to break", breakText, labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 5) Hop info
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Time to hop", hopText, labelGray, valueBlue,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Time to hop", hopText, labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 6) Eat
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Should eat", eatText, labelGray, valueGreen,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Should eat", eatText, labelGray, valueGreen, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 7) Pot (opt)
         if (usePot) {
             curY += lineGap;
             drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                    "Next pot", potText, labelGray, valueBlue,
-                    FONT_VALUE_BOLD, FONT_LABEL);
+                    "Next pot", potText, labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
         }
 
-        // 8) Axe spec (opt)
         if (useDBAXE) {
             curY += lineGap;
             drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                    "Next spec", axeText, labelGray, valueBlue,
-                    FONT_VALUE_BOLD, FONT_LABEL);
+                    "Next spec", axeText, labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
         }
 
-        // 9) Heart (opt)
         if (useHearts) {
             curY += lineGap;
             drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                    "Next heart", heartText, labelGray, valueBlue,
-                    FONT_VALUE_BOLD, FONT_LABEL);
+                    "Next heart", heartText, labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
         }
 
-        // 10) Task
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Task", taskText, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Task", taskText, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 11) Last XP gain
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Last XP gain", lastXpText, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Last XP gain", lastXpText, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // 12) Version
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Version", scriptVersion, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+                "Version", scriptVersion, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
-        // Store canvas for webhook usage
         try {
             lastCanvasFrame.set(c.toImageCopy());
         } catch (Exception ignored) {}

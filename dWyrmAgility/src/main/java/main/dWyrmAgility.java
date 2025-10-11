@@ -44,12 +44,12 @@ import java.util.concurrent.atomic.AtomicReference;
 @ScriptDefinition(
         name = "dWyrmAgility",
         author = "JustDavyy",
-        version = 1.9,
+        version = 2.0,
         description = "Does the Wyrm basic or advanced agility course.",
         skillCategory = SkillCategory.AGILITY
 )
 public class dWyrmAgility extends Script {
-    public static final String scriptVersion = "1.9";
+    public static final String scriptVersion = "2.0";
     private final String scriptName = "WyrmAgility";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
@@ -313,19 +313,21 @@ public class dWyrmAgility extends Script {
         int termitesPerHour = (int) Math.round(termitesGained / hours);
         int shardsPerHour   = (int) Math.round(shardsGained / hours);
 
-        // ==== Live XP via tracker (single-skill) ====
+        // ==== Live XP via built-in Agility tracker ====
         String ttlText = "-";
         double etl = 0.0;
         double xpGainedLive = 0.0;
         double currentXp = 0.0;
+        double levelProgressFraction = 0.0;
 
         if (xpTracking != null) {
-            XPTracker tracker = xpTracking.getXpTracker(); // single-skill tracker for this script
+            XPTracker tracker = xpTracking.getAgilityTracker();
             if (tracker != null) {
                 xpGainedLive = tracker.getXpGained();
-                currentXp    = tracker.getXp();
+                currentXp = tracker.getXp();
+                ttlText = tracker.timeToNextLevelString();
+                etl = tracker.getXpForNextLevel();
 
-                // level sync (only ever increases)
                 final int MAX_LEVEL = 99;
                 int guard = 0;
                 while (currentLevel < MAX_LEVEL
@@ -334,13 +336,9 @@ public class dWyrmAgility extends Script {
                     currentLevel++;
                 }
 
-                ttlText = tracker.timeToNextLevelString();
-
-                int curLevelXpStart   = tracker.getExperienceForLevel(currentLevel);
+                int curLevelXpStart = tracker.getExperienceForLevel(currentLevel);
                 int nextLevelXpTarget = tracker.getExperienceForLevel(Math.min(MAX_LEVEL, currentLevel + 1));
-                int span              = Math.max(1, nextLevelXpTarget - curLevelXpStart);
-
-                etl = Math.max(0, nextLevelXpTarget - currentXp);
+                int span = Math.max(1, nextLevelXpTarget - curLevelXpStart);
 
                 levelProgressFraction = Math.max(0.0, Math.min(1.0,
                         (currentXp - curLevelXpStart) / (double) span));
@@ -348,7 +346,7 @@ public class dWyrmAgility extends Script {
         }
 
         int xpPerHour = (int) Math.round(xpGainedLive / hours);
-        xpGained  = (int) Math.round(xpGainedLive);
+        xpGained = (int) Math.round(xpGainedLive);
 
         // Current level text with (+N)
         if (startLevel <= 0) startLevel = currentLevel;
@@ -357,7 +355,7 @@ public class dWyrmAgility extends Script {
                 ? (currentLevel + " (+" + levelsGained + ")")
                 : String.valueOf(currentLevel);
 
-        // Percent text (dot decimal)
+        // Percent text
         double pct = Math.max(0, Math.min(100, levelProgressFraction * 100.0));
         String levelProgressText = (Math.abs(pct - Math.rint(pct)) < 1e-9)
                 ? String.format(java.util.Locale.US, "%.0f%%", pct)
@@ -369,7 +367,7 @@ public class dWyrmAgility extends Script {
         sym.setGroupingSeparator('.');
         intFmt.setDecimalFormatSymbols(sym);
 
-        // === Panel + layout (standardized) ===
+        // === Panel + layout ===
         final int x = 5;
         final int baseY = 40;
         final int width = 225;
@@ -381,8 +379,8 @@ public class dWyrmAgility extends Script {
 
         final int labelGray   = new Color(180,180,180).getRGB();
         final int valueWhite  = Color.WHITE.getRGB();
-        final int valueGreen  = new Color(80, 220, 120).getRGB(); // level progress
-        final int valueBlue   = new Color(70, 130, 180).getRGB(); // highlights
+        final int valueGreen  = new Color(80, 220, 120).getRGB();
+        final int valueBlue   = new Color(70, 130, 180).getRGB();
 
         ensureLogoLoaded();
         com.osmb.api.visual.image.Image scaledLogo = (logoImage != null) ? logoImage : null;
@@ -390,15 +388,11 @@ public class dWyrmAgility extends Script {
         int innerX = x;
         int innerY = baseY;
         int innerWidth = width;
-
-        // +4 lines for termites/shards before laps
         int totalLines = 16;
 
         int y = innerY + topGap;
         if (scaledLogo != null) y += scaledLogo.height + logoBottomGap;
-        y += totalLines * lineGap;
-        y += 10;
-
+        y += totalLines * lineGap + 10;
         int innerHeight = Math.max(230, y - innerY);
 
         // Panel
@@ -411,113 +405,51 @@ public class dWyrmAgility extends Script {
 
         int curY = innerY + topGap;
 
-        // Logo (optional)
+        // Logo
         if (scaledLogo != null) {
             int imgX = innerX + (innerWidth - scaledLogo.width) / 2;
             c.drawAtOn(scaledLogo, imgX, curY);
             curY += scaledLogo.height + logoBottomGap;
         }
 
-        // 1) Runtime
+        // === Stats ===
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Runtime", runtime, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
-
-        // 2) XP gained (live)
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Runtime", runtime, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "XP gained", intFmt.format(xpGained), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
-
-        // 3) XP/hr (live)
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "XP gained", intFmt.format(xpGained), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "XP/hr", intFmt.format(xpPerHour), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
-
-        // 4) Termites gained (blue)
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "XP/hr", intFmt.format(xpPerHour), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Termites gained", intFmt.format(termitesGained), labelGray, valueBlue,
-                FONT_VALUE_BOLD, FONT_LABEL);
-
-        // 5) Termites/hr (white)
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Termites gained", intFmt.format(termitesGained), labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Termites/hr", intFmt.format(termitesPerHour), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
-
-        // 6) Shards gained (blue)
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Termites/hr", intFmt.format(termitesPerHour), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Shards gained", intFmt.format(shardsGained), labelGray, valueBlue,
-                FONT_VALUE_BOLD, FONT_LABEL);
-
-        // 7) Shards/hr (white)
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Shards gained", intFmt.format(shardsGained), labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Shards/hr", intFmt.format(shardsPerHour), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
-
-        // 8) Laps done (blue)
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Shards/hr", intFmt.format(shardsPerHour), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Laps done", intFmt.format(lapCount), labelGray, valueBlue,
-                FONT_VALUE_BOLD, FONT_LABEL);
-
-        // 9) Laps/hr (white by your scheme)
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Laps done", intFmt.format(lapCount), labelGray, valueBlue, FONT_VALUE_BOLD, FONT_LABEL);
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Laps/hr", intFmt.format(lapsPerHour), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
-
-        // 10) ETL
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Laps/hr", intFmt.format(lapsPerHour), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "ETL", intFmt.format(Math.round(etl)), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
-
-        // 11) TTL
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "ETL", intFmt.format(Math.round(etl)), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "TTL", ttlText, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
-
-        // 12) Level progress
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "TTL", ttlText, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Level progress", levelProgressText, labelGray, valueGreen,
-                FONT_VALUE_BOLD, FONT_LABEL);
-
-        // 13) Current level
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Level progress", levelProgressText, labelGray, valueGreen, FONT_VALUE_BOLD, FONT_LABEL);
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Current level", currentLevelText, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
-
-        // 14) Task
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Current level", currentLevelText, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Task", String.valueOf(task), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
-
-        // 15) Selected course
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Task", String.valueOf(task), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Course", selectedCourse.name(), labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
-
-        // 16) Version
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Course", selectedCourse.name(), labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
         curY += lineGap;
-        drawStatLine(c, innerX, innerWidth, paddingX, curY,
-                "Version", scriptVersion, labelGray, valueWhite,
-                FONT_VALUE_BOLD, FONT_LABEL);
+        drawStatLine(c, innerX, innerWidth, paddingX, curY, "Version", scriptVersion, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
 
         // Store canvas for webhook usage
         try {
             lastCanvasFrame.set(c.toImageCopy());
-        } catch (Exception ignored) { }
+        } catch (Exception ignored) {}
     }
 
     private void drawStatLine(Canvas c, int innerX, int innerWidth, int paddingX, int y,
@@ -586,11 +518,6 @@ public class dWyrmAgility extends Script {
         } catch (Exception e) {
             log(getClass(), "Error loading logo: " + e.getMessage());
         }
-    }
-
-    @Override
-    public void onNewFrame() {
-        xpTracking.checkXP();
     }
 
     private void sendWebhookInternal() {
