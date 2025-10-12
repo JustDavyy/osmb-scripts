@@ -35,16 +35,18 @@ import java.util.concurrent.atomic.AtomicReference;
         name = "dHarambeHunter",
         description = "Hunts maniacal monkeys for great lazy hunter experience and the odd monkey tail.",
         skillCategory = SkillCategory.HUNTER,
-        version = 1.5,
+        version = 1.6,
         author = "JustDavyy"
 )
 public class dHarambeHunter extends Script {
-    public static final String scriptVersion = "1.5";
+    public static final String scriptVersion = "1.6";
     private final String scriptName = "HarambeHunter";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
     private static final long STATS_INTERVAL_MS = 600_000L;
     public static boolean setupDone = false;
+    public static boolean canHop = true;
+    public static boolean canBreak = true;
 
     public static String task = "Initialize";
     private static final Font FONT_VALUE       = new Font("Arial", Font.PLAIN, 12);
@@ -91,6 +93,14 @@ public class dHarambeHunter extends Script {
     public int[] regionsToPrioritise() {
         return new int[]{11662};
     }
+
+    @Override
+    public boolean canBreak() {
+        return canBreak;
+    }
+
+    @Override
+    public boolean canHopWorlds() {return canHop;}
 
     @Override
     public void onStart() {

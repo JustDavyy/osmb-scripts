@@ -216,6 +216,8 @@ public class Hunt extends Task {
                 }, script.random(90000, 120000));
 
                 if (turnedGreen) {
+                    canHop = false;
+                    canBreak = false;
                     Map<RSObject, PixelAnalyzer.RespawnCircle> postCheck =
                             script.getPixelAnalyzer().getRespawnCircleObjects(
                                     List.of(lastTrap),
@@ -288,9 +290,13 @@ public class Hunt extends Task {
 
                     if (gained) {
                         script.log(getClass(), "Successfully looted a (damaged) monkey tail (screen-based).");
+                        canBreak = true;
+                        canHop = true;
                         return true;
                     } else {
                         script.log(getClass(), "No loot detected after checking trap (screen-based).");
+                        canBreak = true;
+                        canHop = true;
                         return false;
                     }
                 }
