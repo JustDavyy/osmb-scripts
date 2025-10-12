@@ -487,9 +487,14 @@ public class Hunt extends Task {
             if (tile != null) {
                 var cube = tile.getTileCube(25);
                 if (cube != null) {
-                    clicked = script.getFinger().tap(cube.getResized(0.6), "Take");
-                    if (!clicked) {
-                        script.log(getClass(), "Failed to tap bone at " + target);
+                    var resized = cube.getResized(0.6);
+                    if (resized != null) {
+                        clicked = script.getFinger().tap(resized, "Take");
+                        if (!clicked) {
+                            script.log(getClass(), "Failed to tap bone at " + target);
+                        }
+                    } else {
+                        script.log(getClass(), "Resized cube was null for tile " + target);
                     }
                 } else {
                     script.log(getClass(), "TileCube is null for target " + target);
