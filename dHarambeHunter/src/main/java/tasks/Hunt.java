@@ -5,6 +5,7 @@ import com.osmb.api.item.ItemID;
 import com.osmb.api.location.position.types.WorldPosition;
 import com.osmb.api.scene.RSObject;
 import com.osmb.api.script.Script;
+import com.osmb.api.utils.UIResult;
 import com.osmb.api.utils.UIResultList;
 import com.osmb.api.visual.PixelAnalyzer;
 import com.osmb.api.visual.color.ColorModel;
@@ -335,7 +336,12 @@ public class Hunt extends Task {
                     if (inv.getAmount(ItemID.BONES) > 10 && inv.contains(ItemID.BONES_TO_BANANAS)) {
 
                         // Check tap to drop
-                        if (script.getWidgetManager().getHotkeys().isTapToDropEnabled().get()) {
+                        UIResult<Boolean> tapToDrop = script.getWidgetManager().getHotkeys().isTapToDropEnabled();
+                        if (tapToDrop == null || tapToDrop.isNotFound() || tapToDrop.isNotVisible() || tapToDrop.get() == null) {
+                            return false;
+                        }
+
+                        if (tapToDrop.get()) {
                             return script.getWidgetManager().getHotkeys().setTapToDropEnabled(false);
                         }
 
@@ -366,6 +372,11 @@ public class Hunt extends Task {
                 script.log(getClass(), "Walking failed.");
                 return false;
             }
+        }
+
+        if (lastTrap == null || lastTrap.getName() == null || lastTrap.getName().isBlank()) {
+            script.log(getClass(), "lastTrap invalid (null name)");
+            return false;
         }
 
         task = "Setting trap...";
