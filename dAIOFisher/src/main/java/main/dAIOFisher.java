@@ -43,11 +43,11 @@ import javax.imageio.ImageIO;
         name = "dAIOFisher",
         description = "AIO Fisher that fishes, banks and/or drops to get those gains!",
         skillCategory = SkillCategory.FISHING,
-        version = 3.3,
+        version = 3.4,
         author = "JustDavyy"
 )
 public class dAIOFisher extends Script {
-    public static String scriptVersion = "3.3";
+    public static String scriptVersion = "3.4";
     private final String scriptName = "AIOFisher";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
@@ -288,7 +288,7 @@ public class dAIOFisher extends Script {
         XPTracker fishTracker = (xpTracking != null) ? xpTracking.getFishingTracker() : null;
         if (fishTracker != null) {
             double curXp = fishTracker.getXp();
-            fishingXp = fishTracker.getXp();
+            fishingXp = fishTracker.getXpGained();
 
             final int MAX = 99;
             int guard = 0;
