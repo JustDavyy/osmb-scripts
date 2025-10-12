@@ -38,11 +38,11 @@ import java.util.concurrent.atomic.AtomicReference;
         name = "dAmethystMiner",
         description = "Mines and crafts/banks amethyst in the mining guild",
         skillCategory = SkillCategory.MINING,
-        version = 2.2,
+        version = 2.3,
         author = "JustDavyy"
 )
 public class dAmethystMiner extends Script {
-    public static final String scriptVersion = "2.2";
+    public static final String scriptVersion = "2.3";
     private final String scriptName = "AmethystMiner";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;

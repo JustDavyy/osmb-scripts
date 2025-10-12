@@ -205,6 +205,8 @@ public class MineTask extends Task {
             return false;
         }
 
+        task = "Wait before check";
+        script.submitHumanTask(() -> false, script.random(1500, 2500));
         task = "Wait until interrupt";
         waitUntilFinishedMining(targetVein);
         task = "Human delay task";
