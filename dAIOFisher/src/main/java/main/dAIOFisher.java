@@ -43,11 +43,11 @@ import javax.imageio.ImageIO;
         name = "dAIOFisher",
         description = "AIO Fisher that fishes, banks and/or drops to get those gains!",
         skillCategory = SkillCategory.FISHING,
-        version = 3.2,
+        version = 3.3,
         author = "JustDavyy"
 )
 public class dAIOFisher extends Script {
-    public static String scriptVersion = "3.2";
+    public static String scriptVersion = "3.3";
     private final String scriptName = "AIOFisher";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
@@ -253,9 +253,6 @@ public class dAIOFisher extends Script {
         int caughtCount   = fish1Caught + fish2Caught + fish3Caught + fish4Caught + fish5Caught + fish6Caught + fish7Caught + fish8Caught;
         int caughtPerHour = (int) Math.round(caughtCount / hours);
 
-        int fishingXpPerHour = (int) Math.round(fishingXp / hours);
-        int cookingXpPerHour = (int) Math.round(cookingXp / hours);
-
         int cookingXpBanked = caughtCount * 190; // Karambwan XP note
 
         // Formatters
@@ -291,6 +288,7 @@ public class dAIOFisher extends Script {
         XPTracker fishTracker = (xpTracking != null) ? xpTracking.getFishingTracker() : null;
         if (fishTracker != null) {
             double curXp = fishTracker.getXp();
+            fishingXp = fishTracker.getXp();
 
             final int MAX = 99;
             int guard = 0;
@@ -322,6 +320,7 @@ public class dAIOFisher extends Script {
         XPTracker cookTracker = (showCook && xpTracking != null) ? xpTracking.getCookingTracker() : null;
         if (cookTracker != null) {
             double curXp = cookTracker.getXp();
+            cookingXp = cookTracker.getXpGained();
 
             final int MAX = 99;
             int guard = 0;
@@ -339,6 +338,9 @@ public class dAIOFisher extends Script {
             cookTTL = cookTracker.timeToNextLevelString();
             cookProgressFrac = Math.max(0.0, Math.min(1.0, (curXp - curStart) / (double) span));
         }
+
+        int fishingXpPerHour = (int) Math.round(fishingXp / hours);
+        int cookingXpPerHour = (int) Math.round(cookingXp / hours);
 
         String cookProgressText = (Math.abs(cookProgressFrac * 100.0 - Math.rint(cookProgressFrac * 100.0)) < 1e-9)
                 ? String.format(java.util.Locale.US, "%.0f%%", cookProgressFrac * 100.0)
