@@ -1,5 +1,7 @@
 package tasks;
 
+import com.osmb.api.input.MenuEntry;
+import com.osmb.api.input.MenuHook;
 import com.osmb.api.item.ItemGroupResult;
 import com.osmb.api.item.ItemID;
 import com.osmb.api.location.position.types.WorldPosition;
@@ -489,7 +491,7 @@ public class Hunt extends Task {
                 if (cube != null) {
                     var resized = cube.getResized(0.6);
                     if (resized != null) {
-                        clicked = script.getFinger().tap(resized, "Take");
+                        clicked = script.getFinger().tap(resized, getMenuHook());
                         if (!clicked) {
                             script.log(getClass(), "Failed to tap bone at " + target);
                         }
@@ -594,5 +596,17 @@ public class Hunt extends Task {
 
         List<ImageSearchResult> matches = script.getImageAnalyzer().findLocations(screen, monkeyTail);
         return (matches != null) ? matches.size() : 0;
+    }
+
+    private MenuHook getMenuHook() {
+        return menuEntries -> {
+            for (MenuEntry entry : menuEntries) {
+                String text = entry.getRawText().toLowerCase();
+                if (text.startsWith("take") && text.endsWith("bones")) {
+                    return entry;
+                }
+            }
+            return null;
+        };
     }
 }
