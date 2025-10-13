@@ -133,13 +133,13 @@ public class Setup extends Task {
                 task = "Check ardy cloak";
                 script.log(getClass().getSimpleName(), "Ardougne cloak option is selected, checking if it's equipped...");
                 Equipment equipment = script.getWidgetManager().getEquipment();
-                UIResult<Boolean> result = equipment.isEquiped(cloakIds);
+                UIResult<Boolean> result = equipment.isEquipped(cloakIds);
 
                 if (result.isFound()) {
                     script.log(getClass().getSimpleName(), "One of the ardougne cloaks is found to be equipped.");
                     // One of the cloaks is equipped, find which one
                     for (int cloakId : cloakIds) {
-                        UIResult<Boolean> check = equipment.isEquiped(cloakId);
+                        UIResult<Boolean> check = equipment.isEquipped(cloakId);
                         if (check.isFound()) {
                             equippedCloakId = cloakId;
                             script.log(getClass().getSimpleName(), "Ardougne cloak equipped: " + script.getItemManager().getItemName(equippedCloakId) + " (" + equippedCloakId + ").");
@@ -158,13 +158,13 @@ public class Setup extends Task {
                 task = "Check quest cape";
                 script.log(getClass().getSimpleName(), "Quest cape option is selected, checking if it's equipped...");
                 Equipment equipment = script.getWidgetManager().getEquipment();
-                UIResult<Boolean> result = equipment.isEquiped(qcapeIds);
+                UIResult<Boolean> result = equipment.isEquipped(qcapeIds);
 
                 if (result.isFound()) {
                     script.log(getClass().getSimpleName(), "One of the quest capes is found to be equipped.");
                     // One of the capes is equipped, find which one
                     for (int cloakId : qcapeIds) {
-                        UIResult<Boolean> check = equipment.isEquiped(cloakId);
+                        UIResult<Boolean> check = equipment.isEquipped(cloakId);
                         if (check.isFound()) {
                             equippedCloakId = cloakId;
                             script.log(getClass().getSimpleName(), "Quest cape equipped: " + script.getItemManager().getItemName(equippedCloakId) + " (" + equippedCloakId + ").");
@@ -327,7 +327,7 @@ public class Setup extends Task {
                 case ItemID.HARPOON -> {
                     boolean found = false;
                     for (int id : TOOL_EQUIVALENTS.get("harpoon")) {
-                        UIResult<Boolean> res = equipment.isEquiped(id);
+                        UIResult<Boolean> res = equipment.isEquipped(id);
                         if (res.isFound()) {
                             found = true;
                             break;
@@ -335,10 +335,10 @@ public class Setup extends Task {
                     }
                     yield found;
                 }
-                case ItemID.FISHING_ROD -> equipment.isEquiped(ItemID.PEARL_FISHING_ROD).isFound();
-                case ItemID.OILY_FISHING_ROD -> equipment.isEquiped(ItemID.OILY_PEARL_FISHING_ROD).isFound();
-                case ItemID.FLY_FISHING_ROD -> equipment.isEquiped(ItemID.PEARL_FLY_FISHING_ROD).isFound();
-                case ItemID.BARBARIAN_ROD -> equipment.isEquiped(ItemID.PEARL_BARBARIAN_ROD).isFound();
+                case ItemID.FISHING_ROD -> equipment.isEquipped(ItemID.PEARL_FISHING_ROD).isFound();
+                case ItemID.OILY_FISHING_ROD -> equipment.isEquipped(ItemID.OILY_PEARL_FISHING_ROD).isFound();
+                case ItemID.FLY_FISHING_ROD -> equipment.isEquipped(ItemID.PEARL_FLY_FISHING_ROD).isFound();
+                case ItemID.BARBARIAN_ROD -> equipment.isEquipped(ItemID.PEARL_BARBARIAN_ROD).isFound();
                 default -> false;
             };
 

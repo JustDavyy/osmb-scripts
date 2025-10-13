@@ -31,7 +31,7 @@ public class Setup extends Task {
 
             // Check if Ring of Elements is equipped
             Equipment equipment = script.getWidgetManager().getEquipment();
-            boolean equipped = equipment.isEquiped(ItemID.RING_OF_THE_ELEMENTS_26818).isFound();
+            boolean equipped = equipment.isEquipped(ItemID.RING_OF_THE_ELEMENTS_26818).isFound();
 
             if (!equipped) {
                 script.log(getClass(), "Ring of Elements not equipped, while marked as use = TRUE. Stopping script.");
