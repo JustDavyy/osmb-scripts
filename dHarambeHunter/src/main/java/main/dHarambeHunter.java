@@ -35,11 +35,11 @@ import java.util.concurrent.atomic.AtomicReference;
         name = "dHarambeHunter",
         description = "Hunts maniacal monkeys for great lazy hunter experience and the odd monkey tail.",
         skillCategory = SkillCategory.HUNTER,
-        version = 1.6,
+        version = 1.7,
         author = "JustDavyy"
 )
 public class dHarambeHunter extends Script {
-    public static final String scriptVersion = "1.6";
+    public static final String scriptVersion = "1.7";
     private final String scriptName = "HarambeHunter";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;

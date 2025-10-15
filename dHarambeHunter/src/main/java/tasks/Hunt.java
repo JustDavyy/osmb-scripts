@@ -558,8 +558,17 @@ public class Hunt extends Task {
         }
 
         // Enable tap-to-drop
-        if (!script.getWidgetManager().getHotkeys().isTapToDropEnabled().get()) {
-            script.getWidgetManager().getHotkeys().setTapToDropEnabled(true);
+        var hotkeys = script.getWidgetManager().getHotkeys();
+        if (hotkeys != null) {
+            var tapToDrop = hotkeys.isTapToDropEnabled();
+            Boolean isEnabled = (tapToDrop != null) ? tapToDrop.get() : null;
+            if (isEnabled == null || !isEnabled) {
+                hotkeys.setTapToDropEnabled(true);
+                script.log(getClass(), "Enabled Tap-to-Drop mode.");
+            }
+        } else {
+            script.log(getClass(), "Hotkeys widget manager is null. Cannot check tap-to-drop state.");
+            return;
         }
 
         for (ImageSearchResult match : matches) {
@@ -572,9 +581,17 @@ public class Hunt extends Task {
             }
         }
 
-        // Disable tap-to-drop afterwards
-        if (script.getWidgetManager().getHotkeys().isTapToDropEnabled().get()) {
-            script.getWidgetManager().getHotkeys().setTapToDropEnabled(false);
+        // Disable tap-to-drop
+        hotkeys = script.getWidgetManager().getHotkeys();
+        if (hotkeys != null) {
+            var tapToDrop = hotkeys.isTapToDropEnabled();
+            Boolean isEnabled = (tapToDrop != null) ? tapToDrop.get() : null;
+            if (isEnabled != null && isEnabled) {
+                hotkeys.setTapToDropEnabled(false);
+                script.log(getClass(), "Disabled Tap-to-Drop mode.");
+            }
+        } else {
+            script.log(getClass(), "Hotkeys widget manager is null. Cannot disable tap-to-drop.");
         }
 
         script.log(getClass(), "Dropped " + matches.size() + " monkey tails.");
