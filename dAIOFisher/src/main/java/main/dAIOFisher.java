@@ -43,11 +43,11 @@ import javax.imageio.ImageIO;
         name = "dAIOFisher",
         description = "AIO Fisher that fishes, banks and/or drops to get those gains!",
         skillCategory = SkillCategory.FISHING,
-        version = 3.5,
+        version = 3.6,
         author = "JustDavyy"
 )
 public class dAIOFisher extends Script {
-    public static String scriptVersion = "3.5";
+    public static String scriptVersion = "3.6";
     private final String scriptName = "AIOFisher";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
@@ -73,7 +73,7 @@ public class dAIOFisher extends Script {
 
     public static double fishingXp = 0;
     public static double cookingXp = 0;
-    public static long totalXPGained = 0;
+    private double lastXpValue = 0;
 
     public static long lastXpGained = System.currentTimeMillis() - 20000;
 
@@ -496,6 +496,13 @@ public class dAIOFisher extends Script {
         curY += lineGap;
         drawStatLine(c, innerX, innerWidth, paddingX, curY,
                 "Version", scriptVersion, labelGray, valueWhite, FONT_VALUE_BOLD, FONT_LABEL);
+
+        // --- Track XP gain timestamp ---
+        double totalXpNow = fishingXp + cookingXp;
+        if (totalXpNow > lastXpValue) {
+            lastXpValue = totalXpNow;
+            lastXpGained = System.currentTimeMillis();
+        }
 
         try { lastCanvasFrame.set(c.toImageCopy()); } catch (Exception ignored) {}
     }

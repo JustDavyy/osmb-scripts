@@ -30,18 +30,23 @@ public class Bank extends Task {
     }
 
     public boolean activate() {
-        ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(Collections.emptySet());
+        Set<Integer> allFish = new HashSet<>(fishingMethod.getAllFish());
+        ItemGroupResult inventorySnapshot = script.getWidgetManager().getInventory().search(allFish);
         if (inventorySnapshot == null) {
             script.log(getClass().getSimpleName(), "Inventory not visible.");
             return false;
         }
-        return bankMode && inventorySnapshot.isFull() || bankMode && script.getWidgetManager().getDepositBox().isVisible();
+
+        WorldPosition myPos = script.getWorldPosition();
+
+        return bankMode && inventorySnapshot.isFull() || bankMode && script.getWidgetManager().getDepositBox().isVisible() || myPos != null && isAtBank(myPos) && inventorySnapshot.containsAny(allFish);
     }
 
     public boolean execute() {
         task = getClass().getSimpleName();
 
         WorldPosition myPos = script.getWorldPosition();
+        if (myPos == null) return false;
 
         // Move to bank first if we're not there yet (or can interact with it from where we are)
         if (!isAtBank(myPos)) {
