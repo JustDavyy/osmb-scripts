@@ -38,16 +38,16 @@ import java.util.concurrent.atomic.AtomicReference;
         name = "dGemstoneCrabber",
         description = "Trains combat by hunting the gem stone crab",
         skillCategory = SkillCategory.COMBAT,
-        version = 2.1,
+        version = 2.2,
         author = "JustDavyy"
 )
 public class dGemstoneCrabber extends Script implements WebhookSender {
-    public static final String scriptVersion = "2.1";
+    public static final String scriptVersion = "2.2";
     private final String scriptName = "GemstoneCrabber";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
     private static final long STATS_INTERVAL_MS = 600_000L;
-    private static double xpGainedLive = 0.0;
+    private static double xpGained = 0.0;
     public static boolean setupDone = false;
     public static boolean canHopNow = false;
     public static boolean canBreakNow = false;
@@ -184,7 +184,7 @@ public class dGemstoneCrabber extends Script implements WebhookSender {
         long nowMs = System.currentTimeMillis();
         if (nowMs - lastStatsSent >= STATS_INTERVAL_MS) {
             long elapsed = nowMs - startTime;
-            sendStats(0L, (long) xpGainedLive, elapsed);
+            sendStats(0L, (long) xpGained, elapsed);
             lastStatsSent = nowMs;
         }
 
@@ -219,6 +219,7 @@ public class dGemstoneCrabber extends Script implements WebhookSender {
         java.text.DecimalFormat totalFmt = new java.text.DecimalFormat("#,###");
         String totalXpText = totalFmt.format(Math.round(xpGainedLive));
         String xpPerHourText = formatRateKMB(xpPerHourLive) + "/hr";
+        xpGained = Math.round(xpGainedLive);
 
         String breakText = "" + getProfileManager().isDueToBreak();
         String hopText = "" + getProfileManager().isDueToHop();
