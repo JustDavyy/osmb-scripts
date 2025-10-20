@@ -40,11 +40,11 @@ import java.util.function.Predicate;
         name = "dCooker",
         description = "Cooks a wide variety of fish and other items at cookable objects.",
         skillCategory = SkillCategory.COOKING,
-        version = 3.0,
+        version = 3.1,
         author = "JustDavyy"
 )
 public class dCooker extends Script {
-    public static String scriptVersion = "3.0";
+    public static String scriptVersion = "3.1";
     private final String scriptName = "Cooker";
     private static String sessionId = UUID.randomUUID().toString();
     private static long lastStatsSent = 0;
