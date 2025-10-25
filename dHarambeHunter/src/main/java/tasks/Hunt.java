@@ -245,6 +245,7 @@ public class Hunt extends Task {
                 script.log(getClass(), "Insert additional human delay before checking.");
                 script.submitHumanTask(() -> false, script.random(1, 500));
 
+                script.getWidgetManager().getInventory().unSelectItemIfSelected();
                 if (lastTrap.interact("Check")) {
                     gained = script.submitHumanTask(() -> {
                         // --- Ensure template is loaded ---
@@ -354,6 +355,7 @@ public class Hunt extends Task {
                         }
 
                         script.log(getClass(), "Got enough bones, using Bones to Bananas tab!");
+                        script.getWidgetManager().getInventory().unSelectItemIfSelected();
                         inv.getItem(ItemID.BONES_TO_BANANAS).interact();
                         return script.submitHumanTask(() -> inv.contains(ItemID.BANANA),
                                 script.random(1500, 2500));
@@ -387,6 +389,7 @@ public class Hunt extends Task {
             return false;
         }
 
+        script.getWidgetManager().getInventory().unSelectItemIfSelected();
         task = "Setting trap...";
         if (lastTrap.interact("Set-trap")) {
             boolean appeared = script.submitHumanTask(() -> {
