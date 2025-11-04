@@ -8,7 +8,7 @@ import com.osmb.api.script.SkillCategory;
         name = "dAIOFisher",
         description = "AIO Fisher that fishes, banks and/or drops to get those gains!",
         skillCategory = SkillCategory.FISHING,
-        version = 3.6,
+        version = 3.7,
         author = "JustDavyy"
 )
                     public final class dAIOFisher {

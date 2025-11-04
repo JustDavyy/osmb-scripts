@@ -7,7 +7,7 @@ import com.osmb.api.script.SkillCategory;
         name = "dCamTorumMiner",
         description = "Mines blessed bone shards in the Cam Torum mine",
         skillCategory = SkillCategory.MINING,
-        version = 2.6,
+        version = 2.7,
         author = "JustDavyy"
 )
                     public final class dCamTorumMiner {

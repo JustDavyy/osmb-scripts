@@ -7,7 +7,7 @@ import com.osmb.api.script.SkillCategory;
         name = "dBattlestaffCrafter",
         description = "Attaches orbs to battlestaves for quick crafting experience",
         skillCategory = SkillCategory.CRAFTING,
-        version = 2.0,
+        version = 2.1,
         author = "JustDavyy"
 )
                     public final class dBattlestaffCrafter {

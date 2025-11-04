@@ -6,7 +6,7 @@ import com.osmb.api.script.SkillCategory;
                     @ScriptDefinition(
         name = "dWyrmAgility",
         author = "JustDavyy",
-        version = 2.1,
+        version = 2.2,
         description = "Does the Wyrm basic or advanced agility course.",
         skillCategory = SkillCategory.AGILITY
 )
