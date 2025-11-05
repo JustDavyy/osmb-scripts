@@ -7,7 +7,7 @@ import com.osmb.api.script.SkillCategory;
         name = "dAmethystMiner",
         description = "Mines and crafts/banks amethyst in the mining guild",
         skillCategory = SkillCategory.MINING,
-        version = 2.4,
+        version = 2.5,
         author = "JustDavyy"
 )
                     public final class dAmethystMiner {
