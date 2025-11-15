@@ -7,7 +7,7 @@ import com.osmb.api.script.SkillCategory;
         name = "dTeleporter",
         description = "Trains magic by continuously casting teleportation spells.",
         skillCategory = SkillCategory.MAGIC,
-        version = 1.9,
+        version = 2.0,
         author = "JustDavyy"
 )
                     public final class dTeleporter {

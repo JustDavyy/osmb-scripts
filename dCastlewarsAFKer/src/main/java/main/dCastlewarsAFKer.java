@@ -7,7 +7,7 @@ import com.osmb.api.script.SkillCategory;
         name = "dCastlewarsAFKer",
         description = "AFKs the castle wars minigame on mass worlds",
         skillCategory = SkillCategory.OTHER,
-        version = 1.9,
+        version = 2.0,
         author = "JustDavyy"
 )
                     public final class dCastlewarsAFKer {

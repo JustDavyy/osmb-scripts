@@ -7,7 +7,7 @@ import com.osmb.api.script.SkillCategory;
         name = "dOffering",
         description = "Performs the Sinister or Demonic offering spell for prayer gains",
         skillCategory = SkillCategory.PRAYER,
-        version = 2.3,
+        version = 2.4,
         author = "JustDavyy"
 )
                     public final class dOffering {

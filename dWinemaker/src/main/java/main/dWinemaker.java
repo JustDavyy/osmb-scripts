@@ -7,7 +7,7 @@ import com.osmb.api.script.SkillCategory;
         name = "dWinemaker",
         description = "Turns your grapes into Jug of Wines or Wine of Zamorak for hefty cooking experience.",
         skillCategory = SkillCategory.COOKING,
-        version = 2.2,
+        version = 2.3,
         author = "JustDavyy"
 )
                     public final class dWinemaker {
