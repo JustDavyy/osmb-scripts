@@ -7,7 +7,7 @@ import com.osmb.api.script.SkillCategory;
         name = "dCooker",
         description = "Cooks a wide variety of fish and other items at cookable objects.",
         skillCategory = SkillCategory.COOKING,
-        version = 3.4,
+        version = 3.5,
         author = "JustDavyy"
 )
                     public final class dCooker {
