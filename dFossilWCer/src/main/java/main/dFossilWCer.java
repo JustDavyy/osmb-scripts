@@ -7,7 +7,7 @@ import com.osmb.api.script.SkillCategory;
         name = "dFossilWCer",
         description = "Cuts and drops/banks hardwood trees on Fossil Island",
         skillCategory = SkillCategory.WOODCUTTING,
-        version = 2.5,
+        version = 2.6,
         author = "JustDavyy"
 )
                     public final class dFossilWCer {
