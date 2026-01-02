@@ -7,7 +7,7 @@ import com.osmb.api.script.SkillCategory;
         name = "dHarambeHunter",
         description = "Hunts maniacal monkeys for great lazy hunter experience and the odd monkey tail.",
         skillCategory = SkillCategory.HUNTER,
-        version = 2.1,
+        version = 2.2,
         author = "JustDavyy"
 )
                     public final class dHarambeHunter {
