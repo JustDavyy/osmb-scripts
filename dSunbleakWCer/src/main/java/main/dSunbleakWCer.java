@@ -7,7 +7,7 @@ import com.osmb.api.script.SkillCategory;
         name = "dSunbleakWCer",
         description = "Chops and optionally banks Ironwood logs on Sunbleak island",
         skillCategory = SkillCategory.WOODCUTTING,
-        version = 1.1,
+        version = 1.2,
         author = "JustDavyy"
 )
                     public final class dSunbleakWCer {
