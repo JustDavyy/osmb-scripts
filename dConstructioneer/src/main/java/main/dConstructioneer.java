@@ -7,7 +7,7 @@ import com.osmb.api.script.SkillCategory;
         name = "dConstructioneer",
         description = "Trains construction quickly by making hull parts or repair kits for the Sailing skill",
         skillCategory = SkillCategory.CONSTRUCTION,
-        version = 1.1,
+        version = 1.2,
         author = "JustDavyy"
 )
                     public final class dConstructioneer {
