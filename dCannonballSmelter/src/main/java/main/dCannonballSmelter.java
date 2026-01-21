@@ -7,7 +7,7 @@ import com.osmb.api.script.SkillCategory;
         name = "dCannonballSmelter",
         description = "Turns steel bars into cannonballs",
         skillCategory = SkillCategory.SMITHING,
-        version = 3.5,
+        version = 3.6,
         author = "JustDavyy"
 )
                     public final class dCannonballSmelter {

@@ -8,7 +8,7 @@ import com.osmb.api.script.SkillCategory;
         name = "dRangingGuild",
         description = "Trains ranged by doing the ranging guild minigame",
         skillCategory = SkillCategory.COMBAT,
-        version = 2.5,
+        version = 2.6,
         author = "JustDavyy"
 )
                     public final class dRangingGuild {

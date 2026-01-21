@@ -7,7 +7,7 @@ import com.osmb.api.script.SkillCategory;
         name = "dAmethystCutter",
         description = "Crafts your amethyst into useful resources",
         skillCategory = SkillCategory.CRAFTING,
-        version = 1.0,
+        version = 1.1,
         author = "JustDavyy"
 )
                     public final class dAmethystCutter {
