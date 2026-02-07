@@ -7,7 +7,7 @@ import com.osmb.api.script.SkillCategory;
         name = "dGemstoneCrabber",
         description = "Trains combat by hunting the gem stone crab",
         skillCategory = SkillCategory.COMBAT,
-        version = 3.0,
+        version = 3.1,
         author = "JustDavyy"
 )
                     public final class dGemstoneCrabber {
