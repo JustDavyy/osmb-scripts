@@ -4,10 +4,10 @@
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dWyrmAgility",
+name = "dWyrmAgility",
+threadUrl = "https://wiki.osmb.co.uk/article/dwyrmagility",
         author = "JustDavyy",
-        version = 2.7,
-        description = "Does the Wyrm basic or advanced agility course.",
+        version = 2.8,
         skillCategory = SkillCategory.AGILITY
 )
                     public final class dWyrmAgility {

@@ -4,10 +4,10 @@
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dBattlestaffCrafter",
-        description = "Attaches orbs to battlestaves for quick crafting experience",
+name = "dBattlestaffCrafter",
+threadUrl = "https://wiki.osmb.co.uk/article/dbattlestaffcrafter",
         skillCategory = SkillCategory.CRAFTING,
-        version = 2.3,
+        version = 2.4,
         author = "JustDavyy"
 )
                     public final class dBattlestaffCrafter {

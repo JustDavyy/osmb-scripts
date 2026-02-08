@@ -5,10 +5,10 @@ import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dBoltEnchanter",
-        description = "Casts the enchant crossbow bolt spell to enchant gem tipped bolts.",
+name = "dBoltEnchanter",
+threadUrl = "https://wiki.osmb.co.uk/article/dboltenchanter",
         skillCategory = SkillCategory.MAGIC,
-        version = 1.6,
+        version = 1.7,
         author = "JustDavyy"
 )
                     public final class dBoltEnchanter {

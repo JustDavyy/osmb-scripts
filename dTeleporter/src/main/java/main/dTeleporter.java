@@ -4,10 +4,10 @@
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dTeleporter",
-        description = "Trains magic by continuously casting teleportation spells.",
+name = "dTeleporter",
+threadUrl = "https://wiki.osmb.co.uk/article/dteleporter",
         skillCategory = SkillCategory.MAGIC,
-        version = 2.1,
+        version = 2.2,
         author = "JustDavyy"
 )
                     public final class dTeleporter {

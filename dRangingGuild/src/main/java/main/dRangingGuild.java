@@ -5,10 +5,10 @@ import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dRangingGuild",
-        description = "Trains ranged by doing the ranging guild minigame",
+name = "dRangingGuild",
+threadUrl = "https://wiki.osmb.co.uk/article/drangingguild",
         skillCategory = SkillCategory.COMBAT,
-        version = 2.6,
+        version = 2.7,
         author = "JustDavyy"
 )
                     public final class dRangingGuild {

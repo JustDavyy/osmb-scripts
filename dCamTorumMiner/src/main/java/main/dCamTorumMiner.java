@@ -4,10 +4,10 @@
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dCamTorumMiner",
-        description = "Mines blessed bone shards in the Cam Torum mine",
+name = "dCamTorumMiner",
+threadUrl = "https://wiki.osmb.co.uk/article/dcamtorumminer",
         skillCategory = SkillCategory.MINING,
-        version = 2.9,
+        version = 3.0,
         author = "JustDavyy"
 )
                     public final class dCamTorumMiner {

@@ -4,10 +4,10 @@
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dCannonballSmelter",
-        description = "Turns steel bars into cannonballs",
+name = "dCannonballSmelter",
+threadUrl = "https://wiki.osmb.co.uk/article/dcannonballsmelter",
         skillCategory = SkillCategory.SMITHING,
-        version = 3.6,
+        version = 3.7,
         author = "JustDavyy"
 )
                     public final class dCannonballSmelter {

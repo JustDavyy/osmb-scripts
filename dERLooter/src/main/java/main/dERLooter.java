@@ -4,10 +4,10 @@
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dERLooter",
-        description = "Loots and banks eclipse reds in the hunter guild",
+name = "dERLooter",
+threadUrl = "https://wiki.osmb.co.uk/article/derlooter",
         skillCategory = SkillCategory.OTHER,
-        version = 1.7,
+        version = 1.8,
         author = "JustDavyy"
 )
                     public final class dERLooter {

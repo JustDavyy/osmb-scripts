@@ -4,10 +4,10 @@
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dAmethystMiner",
-        description = "Mines and crafts/banks amethyst in the mining guild",
+name = "dAmethystMiner",
+threadUrl = "https://wiki.osmb.co.uk/article/damethystminer",
         skillCategory = SkillCategory.MINING,
-        version = 2.7,
+        version = 2.8,
         author = "JustDavyy"
 )
                     public final class dAmethystMiner {

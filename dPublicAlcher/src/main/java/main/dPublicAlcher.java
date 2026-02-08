@@ -5,10 +5,10 @@ import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dPublic Alcher",
-        description = "Alchs items using high or low alch until out of items or runes.",
+name = "dPublic Alcher",
+threadUrl = "https://wiki.osmb.co.uk/article/dpublicalcher",
         skillCategory = SkillCategory.MAGIC,
-        version = 2.6,
+        version = 2.7,
         author = "JustDavyy"
 )
                     public final class dPublicAlcher {

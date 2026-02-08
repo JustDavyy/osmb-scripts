@@ -4,10 +4,10 @@
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dWinemaker",
-        description = "Turns your grapes into Jug of Wines or Wine of Zamorak for hefty cooking experience.",
+name = "dWinemaker",
+threadUrl = "https://wiki.osmb.co.uk/article/dwinemaker",
         skillCategory = SkillCategory.COOKING,
-        version = 2.4,
+        version = 2.5,
         author = "JustDavyy"
 )
                     public final class dWinemaker {

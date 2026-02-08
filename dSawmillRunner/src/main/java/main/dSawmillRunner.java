@@ -4,10 +4,10 @@
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dSawmillRunner",
-        description = "Creates planks of your choice at multiple sawmills",
+name = "dSawmillRunner",
+threadUrl = "https://wiki.osmb.co.uk/article/dsawmillrunner",
         skillCategory = SkillCategory.CONSTRUCTION,
-        version = 2.0,
+        version = 2.1,
         author = "JustDavyy"
 )
                     public final class dSawmillRunner {

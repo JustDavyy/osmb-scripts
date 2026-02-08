@@ -4,10 +4,10 @@
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dCastlewarsAFKer",
-        description = "AFKs the castle wars minigame on mass worlds",
+name = "dCastlewarsAFKer",
+threadUrl = "https://wiki.osmb.co.uk/article/dcastlewarsafker",
         skillCategory = SkillCategory.OTHER,
-        version = 2.1,
+        version = 2.2,
         author = "JustDavyy"
 )
                     public final class dCastlewarsAFKer {

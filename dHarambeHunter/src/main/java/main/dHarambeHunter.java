@@ -4,10 +4,10 @@
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dHarambeHunter",
-        description = "Hunts maniacal monkeys for great lazy hunter experience and the odd monkey tail.",
+name = "dHarambeHunter",
+threadUrl = "https://wiki.osmb.co.uk/article/dharambehunter",
         skillCategory = SkillCategory.HUNTER,
-        version = 2.3,
+        version = 2.4,
         author = "JustDavyy"
 )
                     public final class dHarambeHunter {

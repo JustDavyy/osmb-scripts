@@ -4,10 +4,10 @@
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dOffering",
-        description = "Performs the Sinister or Demonic offering spell for prayer gains",
+name = "dOffering",
+threadUrl = "https://wiki.osmb.co.uk/article/doffering",
         skillCategory = SkillCategory.PRAYER,
-        version = 2.5,
+        version = 2.6,
         author = "JustDavyy"
 )
                     public final class dOffering {

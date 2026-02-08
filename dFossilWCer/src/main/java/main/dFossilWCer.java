@@ -4,10 +4,10 @@
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dFossilWCer",
-        description = "Cuts and drops/banks hardwood trees on Fossil Island",
+name = "dFossilWCer",
+threadUrl = "https://wiki.osmb.co.uk/article/dfossilwcer",
         skillCategory = SkillCategory.WOODCUTTING,
-        version = 2.8,
+        version = 2.9,
         author = "JustDavyy"
 )
                     public final class dFossilWCer {

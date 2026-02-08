@@ -4,10 +4,10 @@
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dLooter",
-        description = "Loots WT/GOTR/Tempoross, seed packs and cwars supply crates",
+name = "dLooter",
+threadUrl = "https://wiki.osmb.co.uk/article/dlooter",
         skillCategory = SkillCategory.OTHER,
-        version = 1.4,
+        version = 1.5,
         author = "JustDavyy"
 )
                     public final class dLooter {

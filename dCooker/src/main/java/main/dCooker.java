@@ -4,10 +4,10 @@
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dCooker",
-        description = "Cooks a wide variety of fish and other items at cookable objects.",
+name = "dCooker",
+threadUrl = "https://wiki.osmb.co.uk/article/dcooker",
         skillCategory = SkillCategory.COOKING,
-        version = 3.6,
+        version = 3.7,
         author = "JustDavyy"
 )
                     public final class dCooker {

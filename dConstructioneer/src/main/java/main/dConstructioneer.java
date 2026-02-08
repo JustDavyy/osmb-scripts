@@ -4,10 +4,10 @@
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dConstructioneer",
-        description = "Trains construction quickly by making hull parts or repair kits for the Sailing skill",
+name = "dConstructioneer",
+threadUrl = "https://wiki.osmb.co.uk/article/dconstructioneer",
         skillCategory = SkillCategory.CONSTRUCTION,
-        version = 1.3,
+        version = 1.4,
         author = "JustDavyy"
 )
                     public final class dConstructioneer {

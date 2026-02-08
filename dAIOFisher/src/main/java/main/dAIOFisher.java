@@ -5,10 +5,10 @@ import com.osmb.api.script.ScriptDefinition;
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dAIOFisher",
-        description = "AIO Fisher that fishes, banks and/or drops to get those gains!",
+name = "dAIOFisher",
+threadUrl = "https://wiki.osmb.co.uk/article/daiofisher",
         skillCategory = SkillCategory.FISHING,
-        version = 4.2,
+        version = 4.3,
         author = "JustDavyy"
 )
                     public final class dAIOFisher {

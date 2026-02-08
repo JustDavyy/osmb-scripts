@@ -4,10 +4,10 @@
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dSunbleakWCer",
-        description = "Chops and optionally banks Ironwood logs on Sunbleak island",
+name = "dSunbleakWCer",
+threadUrl = "https://wiki.osmb.co.uk/article/dsunbleakwcer",
         skillCategory = SkillCategory.WOODCUTTING,
-        version = 1.3,
+        version = 1.4,
         author = "JustDavyy"
 )
                     public final class dSunbleakWCer {

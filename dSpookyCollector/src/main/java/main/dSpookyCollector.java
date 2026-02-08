@@ -4,10 +4,10 @@
 import com.osmb.api.script.SkillCategory;
 
                     @ScriptDefinition(
-        name = "dSpookyCollector",
-        description = "Collects spooky stuff at varrock west bank for u smelly fetish people",
+name = "dSpookyCollector",
+threadUrl = "",
         skillCategory = SkillCategory.OTHER,
-        version = 1.5,
+        version = 1.6,
         author = "JustDavyy"
 )
                     public final class dSpookyCollector {
