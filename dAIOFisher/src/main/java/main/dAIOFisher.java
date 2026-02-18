@@ -8,7 +8,7 @@ import com.osmb.api.script.SkillCategory;
 name = "dAIOFisher",
 threadUrl = "https://wiki.osmb.co.uk/article/daiofisher",
         skillCategory = SkillCategory.FISHING,
-        version = 4.3,
+        version = 4.4,
         author = "JustDavyy"
 )
                     public final class dAIOFisher {
