@@ -7,7 +7,7 @@ import com.osmb.api.script.SkillCategory;
     name = "dMLMv2",
     threadUrl = "https://wiki.osmb.co.uk/article/dmlmv2",
     skillCategory = SkillCategory.MINING,
-    version = 1.2,
+    version = 1.3,
     author = "JustDavyy"
 )
                     public final class dMLMv2 {
